@@ -93,8 +93,7 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 ## Decisões em aberto
 
 - Quais cidades e fontes de dados serão atendidas no lançamento? Há disponibilidade de localização em tempo real, itinerários e previsões?
-- O que conta como uma busca e quando as cinco buscas diárias são renovadas?
-- A cota diária deve contar cada início de rastreamento; definir o horário e o fuso de renovação dessa cota.
+- Qual será o horário e o fuso de renovação da cota diária de 5 rastreamentos durante o teste?
 - Quais meios de pagamento e regras de renovação serão usados para a assinatura?
 - O teste de 7 dias exigirá o cadastro de um meio de pagamento? Haverá cobrança automática ao final do período?
 - O que acontecerá com os dados do usuário e suas linhas favoritas se o teste terminar sem a contratação de uma assinatura?
@@ -102,4 +101,4 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 
 ## Tecnologia
 
-O aplicativo será desenvolvido em Flutter para oferecer uma experiência consistente em dispositivos móveis e também na web. A disponibilidade de recursos como mapas, notificações e compras pode variar por plataforma e deve ser validada durante a implementação.
+O aplicativo será desenvolvido em Flutter para oferecer uma experiência consistente em dispositivos móveis e também na web. O backend ficará no diretório `backend/` e será escrito em Dart usando o framework [Vaden](https://github.com/Flutterando/vaden). A disponibilidade de recursos como mapas, notificações e compras pode variar por plataforma e deve ser validada durante a implementação.
