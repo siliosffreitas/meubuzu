@@ -86,6 +86,16 @@ class VadenApp implements DartVadenApplication {
 
     _injector.add(HelloController.new);
     final routerHelloController = Router();
+    var pipelineHelloControllerhello = const Pipeline();
+    final handlerHelloControllerhello = (Request request) async {
+      final ctrl = _injector.get<HelloController>();
+      final result = ctrl.hello();
+      return Response.ok(result, headers: {'Content-Type': 'text/plain'});
+    };
+    routerHelloController.get(
+      '/',
+      pipelineHelloControllerhello.addHandler(handlerHelloControllerhello),
+    );
     var pipelineHelloControllerping = const Pipeline();
     final handlerHelloControllerping = (Request request) async {
       final ctrl = _injector.get<HelloController>();
