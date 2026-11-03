@@ -43,8 +43,11 @@ O MeuBuzu não terá um plano gratuito permanente. Novos usuários podem acessar
 | Busca de localidades, linhas e paradas | Não consome a cota de rastreamentos | Não consome a cota de rastreamentos |
 | Anúncios | Exibe anúncios | Sem anúncios |
 | Favoritar linhas | Não incluído | Incluído |
+| Cache de dados cadastrais de paradas, linhas e ônibus | Baixa os dados novamente ao abrir o app | Mantém os dados em cache local para acelerar consultas e reduzir downloads repetidos |
 
 Pesquisar ou consultar localidades, linhas e paradas não consome a cota. Cada vez que o usuário inicia o rastreamento de uma linha, essa ação conta como um rastreamento, inclusive quando a linha é escolhida para chegar a uma localidade pesquisada. No teste, o usuário pode acompanhar apenas uma linha por vez e iniciar até 5 rastreamentos por dia.
+
+O cache Premium cobre dados cadastrais que mudam com pouca frequência, como paradas, linhas e características dos ônibus. As posições dos veículos continuam sendo atualizadas online. O primeiro carregamento e a sincronização de alterações ainda podem usar internet; o cache reduz downloads repetidos nas próximas consultas.
 
 - Informar com clareza a data de término do teste, o preço da assinatura e as condições de cobrança antes de iniciar o período de teste.
 - Permitir gerenciar ou cancelar a assinatura e restaurar compras, conforme as regras da plataforma de pagamento.
