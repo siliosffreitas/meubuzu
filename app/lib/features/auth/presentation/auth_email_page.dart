@@ -56,7 +56,10 @@ class _AuthEmailPageState extends State<AuthEmailPage> {
     }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => AuthCodePage(email: _viewModel.email.trim()),
+        builder: (_) => AuthCodePage(
+          email: _viewModel.email.trim(),
+          repository: widget.repository,
+        ),
       ),
     );
   }
