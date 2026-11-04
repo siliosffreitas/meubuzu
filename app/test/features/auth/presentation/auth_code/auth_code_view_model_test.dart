@@ -42,6 +42,7 @@ void main() {
       final confirmed = await viewModel.confirm();
 
       expect(confirmed, isFalse);
+      expect(viewModel.errorTitle, isNull);
       expect(viewModel.errorMessage, 'Informe os 6 dígitos do código.');
       expect(repository.confirmed, isEmpty);
     });
@@ -113,9 +114,11 @@ void main() {
       final confirmed = await viewModel.confirm();
 
       expect(confirmed, isFalse);
+      expect(viewModel.errorTitle, 'Código inválido');
       expect(
         viewModel.errorMessage,
-        'Código incorreto ou expirado. Confira e tente novamente.',
+        'Confira os 6 dígitos e tente novamente. Se precisar, solicite '
+        'outro código.',
       );
       expect(viewModel.isSubmitting, isFalse);
     });
@@ -130,6 +133,7 @@ void main() {
       final confirmed = await viewModel.confirm();
 
       expect(confirmed, isFalse);
+      expect(viewModel.errorTitle, isNull);
       expect(
         viewModel.errorMessage,
         'Não foi possível confirmar o código. Verifique sua conexão e tente '
@@ -220,6 +224,7 @@ void main() {
 
       viewModel.setCode('1');
 
+      expect(viewModel.errorTitle, isNull);
       expect(viewModel.errorMessage, isNull);
       expect(notifications, 1);
     });

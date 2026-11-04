@@ -13,4 +13,6 @@ abstract final class AppColors {
   static const textSecondary = Color(0xFF778386);
   static const textMuted = Color(0xFF8A9597);
   static const danger = Color(0xFFB3261E);
+  static const dangerAccent = Color(0xFFC2694F);
+  static const dangerSurface = Color(0xFFFCF3EF);
 }

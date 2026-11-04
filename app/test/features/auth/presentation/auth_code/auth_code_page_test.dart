@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meubuzu/features/auth/data/auth_repository.dart';
 import 'package:meubuzu/features/auth/presentation/auth_code/auth_code_page.dart';
 
 import '../../../../helpers/auth_test_helpers.dart';
@@ -72,10 +73,40 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('Código inválido'), findsOneWidget);
       expect(
-        find.text('Código incorreto ou expirado. Confira e tente novamente.'),
+        find.text(
+          'Confira os 6 dígitos e tente novamente. Se precisar, solicite '
+          'outro código.',
+        ),
         findsOneWidget,
       );
+      expect(
+        find.widgetWithText(FilledButton, 'Tentar novamente'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    });
+
+    testWidgets('recusa o código 123456 do protótipo', (tester) async {
+      await tester.pumpWidget(
+        appWith(
+          const AuthCodePage(
+            email: 'ana.lima@exemplo.com',
+            repository: FakeAuthRepository(latency: Duration.zero),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '123456');
+      await tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Confirmar código'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Código inválido'), findsOneWidget);
     });
 
     testWidgets('não estoura o layout em tela pequena', (tester) async {
@@ -96,6 +127,35 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('não estoura o layout com erro em tela pequena', (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          child: appWith(
+            AuthCodePage(
+              email: 'ana.lima@exemplo.com',
+              repository: RecordingAuthRepository(rejectCode: true),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '123456');
+      await tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Confirmar código'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Código inválido'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

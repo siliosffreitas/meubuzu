@@ -168,22 +168,28 @@ class _AuthCodePageState extends State<AuthCodePage> {
                                   controller: _codeController,
                                   focusNode: _codeFocusNode,
                                   enabled: !_viewModel.isSubmitting,
+                                  hasError: _viewModel.errorMessage != null,
                                   onChanged: _viewModel.setCode,
                                   onSubmitted: (_) => _confirm(),
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _viewModel.errorMessage ??
-                                      'Use o código mais recente enviado ao '
-                                          'seu e-mail.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    color: _viewModel.errorMessage != null
-                                        ? AppColors.danger
-                                        : AppColors.textSecondary,
+                                if (_viewModel.errorMessage != null) ...[
+                                  const SizedBox(height: 20),
+                                  _CodeErrorPanel(
+                                    title: _viewModel.errorTitle,
+                                    message: _viewModel.errorMessage!,
                                   ),
-                                ),
+                                ] else ...[
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Use o código mais recente enviado ao '
+                                    'seu e-mail.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 20),
                                 FilledButton(
                                   onPressed: _viewModel.isBusy
@@ -197,7 +203,11 @@ class _AuthCodePageState extends State<AuthCodePage> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Text('Confirmar código'),
+                                      : Text(
+                                          _viewModel.errorMessage != null
+                                              ? 'Tentar novamente'
+                                              : 'Confirmar código',
+                                        ),
                                 ),
                                 const SizedBox(height: 20),
                                 FilledButton(
@@ -323,6 +333,7 @@ class _CodeInput extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.enabled,
+    required this.hasError,
     required this.onChanged,
     required this.onSubmitted,
   });
@@ -330,6 +341,7 @@ class _CodeInput extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool enabled;
+  final bool hasError;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
 
@@ -359,12 +371,16 @@ class _CodeInput extends StatelessWidget {
                         height: 56,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: digit != null
+                          color: hasError
+                              ? AppColors.dangerSurface
+                              : digit != null
                               ? AppColors.surface
                               : AppColors.codeField,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: isActive
+                            color: hasError
+                                ? AppColors.dangerAccent
+                                : isActive
                                 ? AppColors.primary
                                 : Colors.transparent,
                             width: 1.5,
@@ -410,6 +426,64 @@ class _CodeInput extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Painel de erro do código, com ícone, título opcional e orientação.
+class _CodeErrorPanel extends StatelessWidget {
+  const _CodeErrorPanel({required this.title, required this.message});
+
+  final String? title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.dangerSurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 18,
+            color: AppColors.dangerAccent,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(
+                    title!,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
