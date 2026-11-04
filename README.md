@@ -31,8 +31,7 @@ O MeuBuzu ajuda as pessoas a planejar suas viagens de ônibus, acompanhando veí
 - O código deve expirar e só pode ser usado uma vez. Ele funciona como código de verificação, não como senha permanente.
 - Permitir solicitar um novo código e informar quando o código anterior expirou.
 
-## Planos
-## Assinatura
+## Planos e assinatura
 
 O MeuBuzu não terá um plano gratuito permanente. Novos usuários podem acessar o aplicativo durante um teste de 7 dias, com as mesmas limitações do antigo plano Free. Depois do teste, é necessária uma assinatura paga para continuar usando o serviço.
 
@@ -42,7 +41,7 @@ O MeuBuzu não terá um plano gratuito permanente. Novos usuários podem acessar
 | Rastreamentos iniciados | Até 5 por dia | Sem limite diário |
 | Busca de localidades, linhas e paradas | Não consome a cota de rastreamentos | Não consome a cota de rastreamentos |
 | Anúncios | Exibe anúncios | Sem anúncios |
-| Favoritar linhas | Não incluído | Incluído |
+| Favoritar linhas | 1 linha | Várias |
 | Cache de dados cadastrais de paradas, linhas e ônibus | Baixa os dados novamente ao abrir o app | Mantém os dados em cache local para acelerar consultas e reduzir downloads repetidos |
 
 Pesquisar ou consultar localidades, linhas e paradas não consome a cota. Cada vez que o usuário inicia o rastreamento de uma linha, essa ação conta como um rastreamento, inclusive quando a linha é escolhida para chegar a uma localidade pesquisada. No teste, o usuário pode acompanhar apenas uma linha por vez e iniciar até 5 rastreamentos por dia.
@@ -51,6 +50,18 @@ O cache Premium cobre dados cadastrais que mudam com pouca frequência, como par
 
 - Informar com clareza a data de término do teste, o preço da assinatura e as condições de cobrança antes de iniciar o período de teste.
 - Permitir gerenciar ou cancelar a assinatura e restaurar compras, conforme as regras da plataforma de pagamento.
+
+### Favoritos no teste de 7 dias
+
+O teste permite favoritar **uma linha**. O favorito é o atalho para o trajeto do dia a dia e serve como demonstração do benefício: o usuário sente o valor de ter a linha sempre à mão e, ao tentar favoritar uma segunda, encontra a oferta de assinatura. O limite existe para que o hábito criado no teste não se sustente sem a assinatura.
+
+Regras de comportamento:
+
+- Ao tentar favoritar uma segunda linha, o app não aplica o favorito e apresenta a oferta de assinatura, explicando que o teste inclui apenas uma linha favorita.
+- A oferta deve permitir remover a linha já favoritada e favoritar outra, sem cobrança e sem consumir rastreamento. O usuário nunca fica impedido de trocar de favorito.
+- A linha favoritada não precisa estar sendo rastreada no momento. Favoritar, desfavoritar e abrir a linha favoritada não consome a cota de rastreamentos.
+- O favorito não substitui a regra de uma linha acompanhada por vez. Para acompanhar uma linha diferente da favoritada, o usuário inicia um novo rastreamento, respeitando o limite de 5 por dia.
+- A assinatura paga remove o limite de favoritos e o app deve deixar a diferença explícita na tela de planos, antes do fim do teste.
 
 ## Ideias para evolução
 
@@ -77,7 +88,6 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 - Medir o uso e validar o estado da assinatura de forma consistente entre dispositivos, sem depender apenas de informações locais.
 
 ### Conta e assinatura
-### Conta e assinatura
 
 - Consultar a data de término do teste ou de renovação da assinatura e restaurar compras.
 - Oferecer uma forma clara de cancelar a assinatura.
@@ -99,7 +109,7 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 - Qual será o horário e o fuso de renovação da cota diária de 5 rastreamentos durante o teste?
 - Quais meios de pagamento e regras de renovação serão usados para a assinatura?
 - O teste de 7 dias exigirá o cadastro de um meio de pagamento? Haverá cobrança automática ao final do período?
-- O que acontecerá com os dados do usuário e suas linhas favoritas se o teste terminar sem a contratação de uma assinatura?
+- O que acontecerá com os dados do usuário e sua linha favorita se o teste terminar sem a contratação de uma assinatura? O favorito é mantido, apenas em modo somente leitura, ou removido?
 - O planejador de viagem e os alertas entram no lançamento ou ficam para uma fase posterior?
 
 ## Tecnologia

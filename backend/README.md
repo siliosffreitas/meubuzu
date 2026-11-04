@@ -31,3 +31,7 @@ O estado da assinatura e do acesso do usuário será mantido no **PostgreSQL**, 
 O backend deve validar compras e mudanças na assinatura com o provedor de cobrança ou com a loja da plataforma, por meio de APIs de servidor e notificações verificadas. O app cliente não deve ser a fonte de verdade para conceder acesso. O provedor de cobrança ainda será definido.
 
 O MeuBuzu não armazenará números completos de cartão nem códigos de segurança (CVV). Quando necessário, poderão ser armazenados identificadores ou tokens emitidos pelo provedor, sem dados que permitam recuperar o número do cartão. O processamento dos dados de cartão ficará a cargo do provedor de pagamento ou da loja da plataforma.
+
+### Linhas favoritas
+
+As linhas favoritas serão associadas à conta no PostgreSQL, para que o usuário as encontre em qualquer dispositivo. O limite de **1 linha favorita** durante o teste de 7 dias deve ser validado no backend, e não apenas no app, junto com a checagem do estado da assinatura. O backend deve rejeitar a tentativa de favoritar uma segunda linha informando que o limite do plano foi atingido, permitindo que o app apresente a oferta de assinatura. Favoritar, desfavoritar e remover uma linha favorita não contam como rastreamento e não alteram a cota diária. Após a contratação da assinatura, o limite deixa de ser aplicado.
