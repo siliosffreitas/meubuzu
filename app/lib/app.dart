@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
-import 'features/auth/presentation/auth_email_page.dart';
+import 'features/auth/presentation/auth_email/auth_email_page.dart';
 
 class MeuBuzuApp extends StatelessWidget {
   const MeuBuzuApp({super.key});

@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/app.dart';
 import 'package:meubuzu/core/theme/app_theme.dart';
 import 'package:meubuzu/features/auth/data/auth_repository.dart';
-import 'package:meubuzu/features/auth/presentation/auth_code_page.dart';
-import 'package:meubuzu/features/auth/presentation/auth_email_page.dart';
+import 'package:meubuzu/features/auth/presentation/auth_code/auth_code_page.dart';
+import 'package:meubuzu/features/auth/presentation/auth_email/auth_email_page.dart';
 
 class _RecordingAuthRepository implements AuthRepository {
   _RecordingAuthRepository({this.rejectCode = false});

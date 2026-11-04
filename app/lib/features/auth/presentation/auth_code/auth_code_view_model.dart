@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../data/auth_repository.dart';
+import '../../data/auth_repository.dart';
 
 /// Regras de apresentação da tela de confirmação do código.
 class AuthCodeViewModel extends ChangeNotifier {
