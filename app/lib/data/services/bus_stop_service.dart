@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../domain/contracts/contracts.dart';
 import '../models/bus_stop.dart';
 import '../models/user_coordinates.dart';
+import '../utils/csv_catalog.dart';
+import '../utils/search_normalizer.dart';
 
 /// Raio padrão usado para considerar uma parada próxima do usuário.
 const double nearbyBusStopsRadiusInMeters = 500;
@@ -14,6 +16,9 @@ abstract interface class BusStopService implements Service {
     UserCoordinates position, {
     double maxDistanceInMeters = nearbyBusStopsRadiusInMeters,
   });
+
+  /// Busca paradas por código, denominação ou endereço no catálogo.
+  Future<List<BusStop>> search(String query);
 }
 
 /// Implementação que lê as paradas do catálogo local em CSV.
@@ -41,13 +46,30 @@ class AssetBusStopService implements BusStopService {
         .toList(growable: false);
   }
 
+  @override
+  Future<List<BusStop>> search(String query) async {
+    final stops = await (_stops ??= _loadStops());
+    final normalizedQuery = normalizeSearchText(query);
+    if (normalizedQuery.isEmpty) {
+      return const [];
+    }
+    return stops
+        .where(
+          (stop) =>
+              normalizeSearchText(stop.code).contains(normalizedQuery) ||
+              normalizeSearchText(stop.name).contains(normalizedQuery) ||
+              normalizeSearchText(stop.address).contains(normalizedQuery),
+        )
+        .toList(growable: false);
+  }
+
   Future<List<BusStop>> _loadStops() async {
     final content = await _bundle.loadString(assetPath);
     return List<BusStop>.unmodifiable(_parseStops(content));
   }
 
   List<BusStop> _parseStops(String content) {
-    final rows = _parseRows(content);
+    final rows = parseCsvRows(content);
     if (rows.isEmpty) {
       return const [];
     }
@@ -55,12 +77,12 @@ class AssetBusStopService implements BusStopService {
     final header = rows.first
         .map((column) => column.trim().toLowerCase())
         .toList(growable: false);
-    final idIndex = _columnIndex(header, 'id');
-    final codeIndex = _columnIndex(header, 'codigo');
-    final nameIndex = _columnIndex(header, 'denominacao');
-    final addressIndex = _columnIndex(header, 'endereco');
-    final latitudeIndex = _columnIndex(header, 'lat');
-    final longitudeIndex = _columnIndex(header, 'long');
+    final idIndex = columnIndex(header, 'id', assetPath);
+    final codeIndex = columnIndex(header, 'codigo', assetPath);
+    final nameIndex = columnIndex(header, 'denominacao', assetPath);
+    final addressIndex = columnIndex(header, 'endereco', assetPath);
+    final latitudeIndex = columnIndex(header, 'lat', assetPath);
+    final longitudeIndex = columnIndex(header, 'long', assetPath);
     final requiredColumns = <int>[
       idIndex,
       codeIndex,
@@ -99,62 +121,4 @@ class AssetBusStopService implements BusStopService {
 
     return stops;
   }
-
-  int _columnIndex(List<String> header, String column) {
-    final index = header.indexOf(column);
-    if (index < 0) {
-      throw FormatException('Coluna "$column" ausente em $assetPath');
-    }
-    return index;
-  }
-}
-
-/// Divide o conteúdo CSV em linhas e colunas, respeitando campos entre aspas.
-List<List<String>> _parseRows(String content) {
-  final rows = <List<String>>[];
-  var row = <String>[];
-  final field = StringBuffer();
-  var inQuotes = false;
-
-  for (var index = 0; index < content.length; index++) {
-    final character = content[index];
-
-    if (inQuotes) {
-      if (character == '"') {
-        if (index + 1 < content.length && content[index + 1] == '"') {
-          field.write('"');
-          index++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        field.write(character);
-      }
-      continue;
-    }
-
-    switch (character) {
-      case '"':
-        inQuotes = true;
-      case ',':
-        row.add(field.toString());
-        field.clear();
-      case '\n':
-        row.add(field.toString());
-        field.clear();
-        rows.add(row);
-        row = <String>[];
-      case '\r':
-        break;
-      default:
-        field.write(character);
-    }
-  }
-
-  if (field.isNotEmpty || row.isNotEmpty) {
-    row.add(field.toString());
-    rows.add(row);
-  }
-
-  return rows;
 }

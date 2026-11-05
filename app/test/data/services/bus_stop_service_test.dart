@@ -93,5 +93,50 @@ void main() {
 
       expect(stops, isEmpty);
     });
+
+    test('busca paradas por código', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.search('2362');
+
+      expect(stops, hasLength(1));
+      expect(stops.first.id, '1');
+      expect(stops.first.code, '2362');
+      expect(stops.first.name, 'T-SANTA FÉ');
+    });
+
+    test('busca paradas por denominação ignorando acentuação', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.search('santa fé');
+
+      expect(stops, hasLength(1));
+      expect(stops.first.code, '2362');
+    });
+
+    test('busca paradas por endereço', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.search('Rua B');
+
+      expect(stops, hasLength(1));
+      expect(stops.first.code, '2362');
+    });
+
+    test('retorna lista vazia para consulta sem resultados', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.search('inexistente');
+
+      expect(stops, isEmpty);
+    });
+
+    test('retorna lista vazia para consulta vazia', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.search('   ');
+
+      expect(stops, isEmpty);
+    });
   });
 }

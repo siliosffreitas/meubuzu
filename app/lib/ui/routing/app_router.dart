@@ -1,9 +1,11 @@
 import 'package:go_router/go_router.dart';
 
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/repositories/place_search_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
 import '../features/auth/presentation/auth_email/auth_email_page.dart';
 import '../features/home/presentation/home_page.dart';
+import '../features/home/presentation/widgets/map/map_search_page.dart';
 import 'app_routes.dart';
 
 /// Configura as rotas do aplicativo com GoRouter.
@@ -24,6 +26,16 @@ class AppRouter {
           path: AppRoutes.home,
           name: AppRoutes.homeName,
           builder: (context, state) => const HomePage(),
+        ),
+        GoRoute(
+          path: AppRoutes.mapSearch,
+          name: AppRoutes.mapSearchName,
+          builder: (context, state) {
+            final extra = state.extra;
+            return MapSearchPage(
+              repository: extra is PlaceSearchRepository ? extra : null,
+            );
+          },
         ),
         GoRoute(
           path: AppRoutes.authEmail,

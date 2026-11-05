@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../data/models/user_coordinates.dart';
-import '../../../../../../data/repositories/place_search_repository.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
+import '../../../../../routing/app_routes.dart';
 import 'map_location_state.dart';
 import 'map_location_view_model.dart';
-import 'map_search_view_model.dart';
 import 'map_style.dart';
 import 'nearby_stop_markers.dart';
 import 'widgets/location_notice_card.dart';
 import 'widgets/map_search_bar.dart';
-import 'widgets/search_results_panel.dart';
 
 /// Aba principal com o mapa, a busca e a localização do usuário.
 class MapTab extends StatefulWidget {
@@ -40,14 +39,12 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   static const _initialZoom = 13.2;
   static const _userZoom = 16.0;
 
-  final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode();
-  late final MapSearchViewModel _searchViewModel;
   late final UserLocationRepository _locationRepository;
   late final MapLocationViewModel _locationViewModel;
 
   GoogleMapController? _mapController;
   Marker? _selectedMarker;
+  PlaceSuggestion? _selectedSuggestion;
   bool _centeredOnUser = false;
   bool _ownsLocationRepository = false;
 
@@ -60,13 +57,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     final useInjector = injector.isReady && !hasOverrides;
 
     if (useInjector) {
-      _searchViewModel = injector.getViewModel<MapSearchViewModel>();
       _locationRepository = injector.getRepository<UserLocationRepository>();
       _locationViewModel = injector.getViewModel<MapLocationViewModel>();
     } else {
-      _searchViewModel = MapSearchViewModel(
-        widget.searchRepository ?? const FakePlaceSearchRepository(),
-      );
       _locationRepository =
           widget.locationRepository ??
           DeviceUserLocationRepository(
@@ -78,7 +71,6 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     }
 
     _locationViewModel.addListener(_handleLocationChange);
-    _searchFocusNode.addListener(_handleSearchFocusChange);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -96,11 +88,6 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     if (_ownsLocationRepository) {
       _locationRepository.dispose();
     }
-    _searchFocusNode
-      ..removeListener(_handleSearchFocusChange)
-      ..dispose();
-    _searchController.dispose();
-    _searchViewModel.dispose();
     super.dispose();
   }
 
@@ -124,8 +111,17 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     }
   }
 
-  void _handleSearchFocusChange() {
-    _searchViewModel.setFocused(_searchFocusNode.hasFocus);
+  Future<void> _openSearch() async {
+    final suggestion = await context.pushNamed<PlaceSuggestion>(
+      AppRoutes.mapSearchName,
+      extra: widget.searchRepository,
+    );
+
+    if (!mounted || suggestion == null) {
+      return;
+    }
+
+    await _selectSuggestion(suggestion);
   }
 
   void _handleLocationChange() {
@@ -149,13 +145,13 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   }
 
   Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
-    final target = LatLng(suggestion.latitude, suggestion.longitude);
-
-    _searchController.text = suggestion.title;
-    _searchViewModel.setQuery(suggestion.title);
-    _searchFocusNode.unfocus();
+    final target = LatLng(
+      suggestion.latitude ?? _initialTarget.latitude,
+      suggestion.longitude ?? _initialTarget.longitude,
+    );
 
     setState(() {
+      _selectedSuggestion = suggestion;
       _selectedMarker = Marker(
         markerId: MarkerId('search-${suggestion.id}'),
         position: target,
@@ -201,7 +197,6 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
           ),
           style: kMapStyle,
           markers: markers,
-          onTap: (_) => _searchFocusNode.unfocus(),
           onMapCreated: (controller) {
             _mapController = controller;
             final position = _locationViewModel.position;
@@ -230,50 +225,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  MapSearchBar(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    onChanged: _searchViewModel.setQuery,
-                    onClear: _searchViewModel.clear,
-                  ),
-                  AnimatedBuilder(
-                    animation: _searchViewModel,
-                    builder: (context, _) {
-                      return AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) {
-                          return SizeTransition(
-                            sizeFactor: animation,
-                            alignment: Alignment.topCenter,
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: _searchViewModel.showsResults
-                            ? Padding(
-                                key: const ValueKey('search-results'),
-                                padding: const EdgeInsets.only(top: 10),
-                                child: SearchResultsPanel(
-                                  query: _searchViewModel.query.trim(),
-                                  isLoading: _searchViewModel.isLoading,
-                                  results: _searchViewModel.results,
-                                  onSelected: _selectSuggestion,
-                                ),
-                              )
-                            : const SizedBox.shrink(
-                                key: ValueKey('search-idle'),
-                              ),
-                      );
-                    },
-                  ),
-                ],
+              child: MapSearchBar(
+                text: _selectedSuggestion?.title,
+                onTap: _openSearch,
               ),
             ),
           ),

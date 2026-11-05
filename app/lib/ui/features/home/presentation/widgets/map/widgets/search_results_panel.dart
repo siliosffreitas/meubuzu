@@ -11,12 +11,17 @@ class SearchResultsPanel extends StatelessWidget {
     required this.isLoading,
     required this.results,
     required this.onSelected,
+    this.maxHeight = 352,
   });
 
   final String query;
   final bool isLoading;
   final List<PlaceSuggestion> results;
   final ValueChanged<PlaceSuggestion> onSelected;
+
+  /// Altura máxima do painel. Use `double.infinity` para ocupar todo o espaço
+  /// disponível na tela dedicada de busca.
+  final double maxHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,7 @@ class SearchResultsPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 352),
+        constraints: BoxConstraints(maxHeight: maxHeight),
         child: _buildContent(context),
       ),
     );

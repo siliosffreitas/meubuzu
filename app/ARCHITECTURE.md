@@ -122,13 +122,17 @@ Exemplo atual:
 ```text
 data/
   models/
+    line.dart                       # Line (origem/destino, coordenadas opcionais)
     place_suggestion.dart            # PlaceSuggestion + PlaceSuggestionType
     user_coordinates.dart            # modelo imutável
   repositories/
+    asset_place_search_repository.dart  # AssetPlaceSearchRepository
     auth_repository.dart             # FakeAuthRepository
-    place_search_repository.dart     # FakePlaceSearchRepository
+    place_search_repository.dart     # PlaceSearchRepository
     user_location_repository.dart    # DeviceUserLocationRepository
   services/
+    bus_stop_service.dart            # BusStopService + AssetBusStopService
+    line_search_service.dart        # LineSearchService + AssetLineSearchService
     location_service.dart            # LocationService + DeviceLocationService
 
 domain/
@@ -188,9 +192,10 @@ MapTab (view)
   ◄── view reage e move a câmera do mapa
 ```
 
-O mesmo vale para a busca do mapa: `MapTab` → `MapSearchViewModel` →
-`PlaceSearchRepository` (`FakePlaceSearchRepository` enquanto o backend não
-existe).
+O mesmo vale para a busca do mapa: o campo no `MapTab` abre a `MapSearchPage`,
+que usa o `MapSearchViewModel` → `PlaceSearchRepository`
+(`AssetPlaceSearchRepository` consultando os catálogos locais). Ao escolher uma
+sugestão, a página retorna o item e o mapa exibe o marcador correspondente.
 
 ## Estrutura de pastas
 
@@ -231,6 +236,7 @@ app/lib/
             map/
               map_tab.dart
               map_location_view_model.dart
+              map_search_page.dart
               map_search_view_model.dart
               map_style.dart
               widgets/
@@ -279,7 +285,8 @@ app/test/
   opcionais de repository/view model para permitir fakes em testes, sem
   depender do injetor.
 - O `MapTab` aceita overrides de repository para testes; quando não há override,
-  usa as dependências registradas no injetor.
+  usa as dependências registradas no injetor. A `MapSearchPage` segue o mesmo
+  padrão para o repositório de busca.
 - Dependências com recursos (streams, controllers) são liberadas pelo
   `disposeDependencies()` ou pelo próprio widget quando ele as criou.
 - Não crie novos injetores locais nem registre dependências fora de

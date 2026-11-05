@@ -131,6 +131,11 @@ class _FakeBusStopService implements BusStopService {
   void complete(int index, List<BusStop> stops) {
     _responses[index].complete(stops);
   }
+
+  @override
+  Future<List<BusStop>> search(String query) async {
+    return stops;
+  }
 }
 
 DeviceUserLocationRepository _repository(

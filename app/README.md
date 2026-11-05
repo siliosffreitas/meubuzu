@@ -44,6 +44,15 @@ que obtém uma nova posição e publica no stream `nearbyStops` apenas as parada
 até 500 metros do usuário. O `MapLocationViewModel` transforma essa lista em um
 estado específico e o mapa exibe cada parada como um marcador.
 
+### Busca de linhas e paradas
+
+A busca do mapa abre a tela dedicada em `/search`
+(`MapSearchPage` → `MapSearchViewModel` → `AssetPlaceSearchRepository`). O
+repositório consulta o `LineSearchService` no catálogo `assets/lines.csv`
+(linhas por código ou nome) e o `BusStopService` no catálogo `assets/paradas.csv`
+(paradas por código, denominação ou endereço). Enquanto o backend não expõe a
+busca, os catálogos locais são a fonte de verdade.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as
@@ -55,6 +64,7 @@ rotas. A configuração fica em `lib/ui/routing/`:
 | Rota         | Nome       | Tela                                                  |
 | ------------ | ---------- | ----------------------------------------------------- |
 | `/`          | `home`     | `HomePage` (abas Mapa, Favoritos e Conta)             |
+| `/search`    | `mapSearch` | `MapSearchPage` (busca de linhas e paradas)          |
 | `/auth`      | `auth`     | `AuthEmailPage` (coleta do e-mail)                    |
 | `/auth/code` | `authCode` | `AuthCodePage` (recebe o e-mail por `extra`)          |
 

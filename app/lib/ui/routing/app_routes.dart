@@ -4,6 +4,11 @@ abstract final class AppRoutes {
   static const home = '/';
   static const homeName = 'home';
 
+  /// Busca dedicada de linhas e paradas. Retorna a sugestão escolhida por
+  /// `pop(result)`.
+  static const mapSearch = '/search';
+  static const mapSearchName = 'mapSearch';
+
   /// Primeira etapa da autenticação (e-mail).
   static const authEmail = '/auth';
   static const authEmailName = 'auth';
