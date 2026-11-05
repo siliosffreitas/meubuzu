@@ -47,28 +47,29 @@ Documentação de referência:
 app/lib/
   app.dart                  # MaterialApp e rota inicial
   main.dart
-  core/
-    theme/                  # AppColors, AppTheme
-    widgets/                # widgets compartilhados (EmptyState, TabHeader)
   data/                     # camada de dados compartilhada
     models/                 # modelos imutáveis compartilhados
     repositories/           # contratos + implementações
     services/               # integrações externas
   domain/                   # opcional: use cases compartilhados
-  features/
-    auth/                   # presentation/ (e-mail e código)
-    home/                   # Home com abas Mapa, Favoritos e Conta
-      presentation/
-        home_page.dart
-        widgets/
-          account/          # aba Conta
-          favorites/        # aba Favoritos
-          map/              # aba Mapa (views, view models e widgets)
+  ui/                       # camada de UI
+    core/                   # apenas elementos visuais compartilhados
+      theme/                # AppColors, AppTheme
+      widgets/              # widgets compartilhados (EmptyState, TabHeader)
+    features/
+      auth/                 # presentation/ (e-mail e código)
+      home/                 # Home com abas Mapa, Favoritos e Conta
+        presentation/
+          home_page.dart
+          widgets/
+            account/        # aba Conta
+            favorites/      # aba Favoritos
+            map/            # aba Mapa (views, view models e widgets)
 app/test/                   # espelha a estrutura de lib/
 ```
 
 Atualmente `app/lib/app.dart` inicia direto na `HomePage` para facilitar os
-testes. As telas de autenticação continuam em `features/auth` e a confirmação
+testes. As telas de autenticação continuam em `ui/features/auth` e a confirmação
 do código navega para a Home. Não remova a autenticação ao ajustar a Home.
 
 ## Comandos
@@ -90,7 +91,7 @@ flutter build apk --debug
 flutter build ios --no-codesign --simulator
 
 # Um teste específico
-flutter test test/features/home/presentation/widgets/map/map_location_view_model_test.dart
+flutter test test/ui/features/home/presentation/widgets/map/map_location_view_model_test.dart
 ```
 
 Emulador Android usado no desenvolvimento:
@@ -160,12 +161,12 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
   fakes nos testes. Exemplos: `MapTab`, `MapSearchViewModel` e
   `MapLocationViewModel`.
 - Mantenha modelos imutáveis (`const`/`final`) sempre que possível.
-- Reaproveite os tokens visuais de `core/theme/app_colors.dart`
+- Reaproveite os tokens visuais de `ui/core/theme/app_colors.dart`
   (`AppColors.primary`, `surface`, `border`, `textPrimary` etc.) e os padrões de
   bordas arredondadas já existentes.
 - Ao criar uma feature, siga a estrutura:
   ```text
-  features/<feature>/
+  ui/features/<feature>/
     presentation/
       <feature>_page.dart ou <feature>_tab.dart
       <feature>_view_model.dart
@@ -175,7 +176,7 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
     services/<feature>_service.dart
   ```
   As abas exibidas dentro da Home ficam em
-  `features/home/presentation/widgets/<aba>/`.
+  `ui/features/home/presentation/widgets/<aba>/`.
 
 ## Mapa e localização
 
@@ -203,7 +204,7 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 
 - Os testes ficam em `app/test/` e espelham `app/lib/`.
 - Use fakes que registram chamadas para verificar comportamento, como em
-  `test/features/home/presentation/widgets/map/map_location_view_model_test.dart`
+  `test/ui/features/home/presentation/widgets/map/map_location_view_model_test.dart`
   e `test/data/repositories/user_location_repository_test.dart`.
 - Para telas de autenticação, use o helper `test/helpers/auth_test_helpers.dart`
   (`appWith`, `RecordingAuthRepository`, `tapVisible`).

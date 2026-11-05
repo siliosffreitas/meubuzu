@@ -31,18 +31,24 @@ service nunca conhece um repository.
 
 O app usa **MVVM** na camada de UI e injeção de dependência por construtor. As
 camadas que não pertencem a uma única funcionalidade ficam no topo de `lib/`:
-os dados em `lib/data/` e, quando existir, o domínio em `lib/domain/`. A UI
-continua organizada por funcionalidade em `lib/features/<feature>/presentation/`.
+os dados em `lib/data/` e, quando existir, o domínio em `lib/domain/`. A UI fica
+em `lib/ui/`, reunindo o `core/` visual e as `features/` organizadas por
+funcionalidade.
 
 ## Camada de UI
 
-Local: `lib/features/<feature>/presentation/`.
+Local: `lib/ui/`.
+
+- **`lib/ui/core/`** contém apenas elementos visuais compartilhados: tema
+  (`theme/`) e widgets reutilizáveis (`widgets/`).
+- **`lib/ui/features/<feature>/presentation/`** contém as telas da
+  funcionalidade.
 
 - **Views, pages e tabs** (`*_page.dart`, `*_tab.dart`) exibem o estado e
   encaminham as ações do usuário. Não concentram regra de negócio.
 - **Widgets** (`presentation/widgets/`) são pedaços reutilizáveis da tela.
   Devem ser simples e receber dados/ações por parâmetro. As abas exibidas dentro
-  da Home ficam em `features/home/presentation/widgets/<aba>/`.
+  da Home ficam em `lib/ui/features/home/presentation/widgets/<aba>/`.
 - **View models** (`*_view_model.dart`) estendem `ChangeNotifier`, mantêm
   estado privado, expõem getters e métodos de ação e chamam `notifyListeners()`
   quando o estado muda.
@@ -62,7 +68,7 @@ Regras da camada:
 ## Camada de domínio (opcional)
 
 Local: `lib/domain/` para use cases compartilhados. Um use case que só atende
-uma funcionalidade pode ficar em `lib/features/<feature>/domain/`.
+uma funcionalidade pode ficar em `lib/ui/features/<feature>/domain/`.
 
 - **Use cases** encapsulam uma regra de negócio ou um fluxo que não pertence à
   apresentação. Cada use case tem uma responsabilidade e recebe repositories
@@ -77,7 +83,7 @@ para um repository.
 
 ## Camada de dados
 
-Local: `lib/data/`, fora de `features/`, porque repositórios e services não
+Local: `lib/data/`, fora de `ui/features/`, porque repositórios e services não
 pertencem a uma única funcionalidade.
 
 ```text
@@ -168,33 +174,34 @@ existe).
 app/lib/
   main.dart
   app.dart                      # MaterialApp e rota inicial
-  core/
-    theme/                      # AppColors, AppTheme
-    widgets/                    # widgets compartilhados
   data/                         # camada de dados compartilhada
     models/                     # modelos imutáveis compartilhados
     repositories/               # contratos + implementações
     services/                   # integrações externas
   domain/                       # opcional; use cases compartilhados
-  features/
-    auth/
-      presentation/
-        auth_email/
-        auth_code/
-    home/
-      presentation/
-        home_page.dart
-        widgets/
-          account/
-            account_tab.dart
-          favorites/
-            favorites_tab.dart
-          map/
-            map_tab.dart
-            map_location_view_model.dart
-            map_search_view_model.dart
-            map_style.dart
-            widgets/
+  ui/                           # camada de UI
+    core/                       # apenas elementos visuais compartilhados
+      theme/                    # AppColors, AppTheme
+      widgets/                  # widgets compartilhados
+    features/
+      auth/
+        presentation/
+          auth_email/
+          auth_code/
+      home/
+        presentation/
+          home_page.dart
+          widgets/
+            account/
+              account_tab.dart
+            favorites/
+              favorites_tab.dart
+            map/
+              map_tab.dart
+              map_location_view_model.dart
+              map_search_view_model.dart
+              map_style.dart
+              widgets/
 ```
 
 Os testes em `app/test/` espelham essa estrutura:
@@ -202,8 +209,8 @@ Os testes em `app/test/` espelham essa estrutura:
 ```text
 app/test/
   data/repositories/            # testes de repositório
-  features/auth/presentation/
-  features/home/presentation/widgets/
+  ui/features/auth/presentation/
+  ui/features/home/presentation/widgets/
   helpers/
 ```
 
@@ -260,8 +267,8 @@ app/test/
 | Service     | houver integração com API, banco, plugin ou plataforma             | `lib/data/services/`               |
 | Repository  | houver dados a expor para a UI (mesmo que venham de um service)    | `lib/data/repositories/`           |
 | Use case    | a regra for reutilizada por 2+ view models ou combinar repositories | `lib/domain/` (opcional)           |
-| View model  | a tela tiver estado que muda e ações a coordenar                   | `features/<feature>/presentation/` |
-| Widget      | o trecho de UI se repetir ou a página ficar grande demais          | `features/<feature>/presentation/` |
+| View model  | a tela tiver estado que muda e ações a coordenar                   | `lib/ui/features/<feature>/presentation/` |
+| Widget      | o trecho de UI se repetir ou a página ficar grande demais          | `lib/ui/features/<feature>/presentation/` |
 
 ## Estado atual das features
 
@@ -277,6 +284,8 @@ enquanto.
 | home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
 | home/map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
 | core           | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
+
+Os elementos visuais de `core` ficam em `lib/ui/core/`.
 
 ## Referências
 

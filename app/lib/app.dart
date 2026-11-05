@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'core/theme/app_theme.dart';
-import 'features/home/presentation/home_page.dart';
+import 'ui/core/theme/app_theme.dart';
+import 'ui/features/home/presentation/home_page.dart';
 
 class MeuBuzuApp extends StatelessWidget {
   const MeuBuzuApp({super.key});
