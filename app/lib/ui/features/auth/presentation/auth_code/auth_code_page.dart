@@ -68,6 +68,18 @@ class _AuthCodePageState extends State<AuthCodePage> {
     context.goNamed(AppRoutes.homeName);
   }
 
+  /// Volta para a etapa de e-mail.
+  ///
+  /// Usa o histórico quando a confirmação foi aberta a partir da tela de
+  /// e-mail; caso contrário (link direto), navega para a rota de e-mail.
+  void _backToEmail() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.goNamed(AppRoutes.authEmailName);
+  }
+
   Future<void> _resend() async {
     final sent = await _viewModel.resend();
     if (!mounted || !sent) {
@@ -107,7 +119,7 @@ class _AuthCodePageState extends State<AuthCodePage> {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const _Header(),
+                                _Header(onBack: _backToEmail),
                                 const SizedBox(height: 38),
                                 const _MailBadge(),
                                 const SizedBox(height: 26),
@@ -148,8 +160,7 @@ class _AuthCodePageState extends State<AuthCodePage> {
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).maybePop(),
+                                    onPressed: _backToEmail,
                                     style: TextButton.styleFrom(
                                       foregroundColor: AppColors.primary,
                                       padding: const EdgeInsets.symmetric(
@@ -269,14 +280,16 @@ class _AuthCodePageState extends State<AuthCodePage> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.onBack});
+
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
         InkWell(
-          onTap: () => Navigator.of(context).maybePop(),
+          onTap: onBack,
           borderRadius: BorderRadius.circular(8),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),

@@ -8,8 +8,8 @@ import 'app_routes.dart';
 
 /// Configura as rotas do aplicativo com GoRouter.
 ///
-/// A Home é a rota inicial (`/`) para facilitar os testes. O fluxo de
-/// autenticação começa em `/auth`.
+/// O app inicia no fluxo de autenticação (`/auth`) e, após confirmar o código,
+/// navega para a Home (`/`).
 class AppRouter {
   AppRouter({this.authRepository});
 
@@ -18,7 +18,7 @@ class AppRouter {
 
   GoRouter createRouter() {
     return GoRouter(
-      initialLocation: AppRoutes.home,
+      initialLocation: AppRoutes.authEmail,
       routes: [
         GoRoute(
           path: AppRoutes.home,

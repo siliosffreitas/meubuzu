@@ -32,8 +32,8 @@ class _MeuBuzuAppState extends State<MeuBuzuApp> {
       title: 'MeuBuzu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      // A Home é a rota inicial para facilitar os testes. O fluxo de
-      // autenticação está disponível em /auth (veja ui/routing/app_router.dart).
+      // O fluxo começa na autenticação por e-mail e segue para a Home após a
+      // confirmação do código (veja ui/routing/app_router.dart).
       routerConfig: _router,
     );
   }

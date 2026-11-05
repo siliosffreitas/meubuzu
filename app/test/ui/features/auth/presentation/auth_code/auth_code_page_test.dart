@@ -124,6 +124,77 @@ void main() {
       expect(find.text('Código inválido'), findsOneWidget);
     });
 
+    testWidgets('sem histórico volta para a tela de e-mail', (tester) async {
+      await tester.pumpWidget(
+        appWithRoutes(
+          initialLocation: AppRoutes.authCode,
+          routes: [
+            GoRoute(
+              path: AppRoutes.authCode,
+              name: AppRoutes.authCodeName,
+              builder: (context, state) => AuthCodePage(
+                email: 'ana.lima@exemplo.com',
+                repository: RecordingAuthRepository(),
+              ),
+            ),
+            GoRoute(
+              path: AppRoutes.authEmail,
+              name: AppRoutes.authEmailName,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('E-mail de teste')),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Voltar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('E-mail de teste'), findsOneWidget);
+    });
+
+    testWidgets('alterar e-mail volta ao histórico', (tester) async {
+      await tester.pumpWidget(
+        appWithRoutes(
+          initialLocation: AppRoutes.authEmail,
+          routes: [
+            GoRoute(
+              path: AppRoutes.authEmail,
+              name: AppRoutes.authEmailName,
+              builder: (context, state) => Scaffold(
+                body: TextButton(
+                  onPressed: () => context.pushNamed(
+                    AppRoutes.authCodeName,
+                    extra: 'ana.lima@exemplo.com',
+                  ),
+                  child: const Text('Ir para o código'),
+                ),
+              ),
+            ),
+            GoRoute(
+              path: AppRoutes.authCode,
+              name: AppRoutes.authCodeName,
+              builder: (context, state) => AuthCodePage(
+                email: state.extra! as String,
+                repository: RecordingAuthRepository(),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Ir para o código'));
+      await tester.pumpAndSettle();
+      expect(find.text('Confira seu e-mail'), findsOneWidget);
+
+      await tester.tap(find.text('Alterar e-mail'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ir para o código'), findsOneWidget);
+    });
+
     testWidgets('não estoura o layout em tela pequena', (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;

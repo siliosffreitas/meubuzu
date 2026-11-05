@@ -53,11 +53,9 @@ rotas. A configuração fica em `lib/ui/routing/`:
 O `MaterialApp.router` é montado em `lib/app.dart` e usa o router criado por
 `AppRouter`.
 
-> **Home como rota inicial:** `AppRouter` define
-> `initialLocation: AppRoutes.home` de propósito, para os testes abrirem direto
-> na Home. Para iniciar pela autenticação, troque a rota inicial para
-> `AppRoutes.authEmail` (ou navegue com
-> `context.goNamed(AppRoutes.authEmailName)`).
+> **Autenticação como rota inicial:** `AppRouter` define
+> `initialLocation: AppRoutes.authEmail`; após confirmar o código, o app navega
+> para a Home com `context.goNamed(AppRoutes.homeName)`.
 
 Navegação entre as telas:
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/app.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_email/auth_email_page.dart';
+import 'package:meubuzu/ui/routing/app_router.dart';
 
 import '../../../../../helpers/auth_test_helpers.dart';
 
@@ -46,13 +47,16 @@ void main() {
       expect(find.text('ana.lima@exemplo.com'), findsOneWidget);
     });
 
-    testWidgets('inicia na Home', (tester) async {
-      await tester.pumpWidget(const MeuBuzuApp());
+    testWidgets('inicia na autenticação', (tester) async {
+      final router = AppRouter(authRepository: const FakeAuthRepository())
+          .createRouter();
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MeuBuzuApp(router: router));
       await tester.pumpAndSettle();
 
-      expect(find.text('Mapa'), findsOneWidget);
-      expect(find.text('Favoritos'), findsOneWidget);
-      expect(find.text('Conta'), findsOneWidget);
+      expect(find.text('Seu e-mail'), findsOneWidget);
+      expect(find.text('Receber código por e-mail'), findsOneWidget);
     });
 
     testWidgets('não estoura o layout em tela pequena', (tester) async {

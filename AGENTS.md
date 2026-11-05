@@ -72,9 +72,9 @@ app/lib/
 app/test/                   # espelha a estrutura de lib/
 ```
 
-Atualmente `app/lib/app.dart` inicia direto na `HomePage` para facilitar os
-testes. As telas de autenticação continuam em `ui/features/auth` e a confirmação
-do código navega para a Home. Não remova a autenticação ao ajustar a Home.
+O app inicia no fluxo de autenticação (`/auth`), em `ui/features/auth`, e a
+confirmação do código navega para a Home. Não remova a autenticação ao ajustar
+a Home.
 
 ## Comandos
 
@@ -162,8 +162,8 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - **Modelos** compartilhados ficam em `lib/data/models/`.
 - O fluxo é unidirecional: view → view model → repository → service → estado →
   view.
-- As rotas são gerenciadas pelo GoRouter em `ui/routing/`. A Home é a rota
-  inicial (`/`) para facilitar os testes; a autenticação começa em `/auth`.
+- As rotas são gerenciadas pelo GoRouter em `ui/routing/`. O app inicia na
+  autenticação (`/auth`); após confirmar o código, navega para a Home (`/`).
   Navegue com `context.pushNamed`/`context.goNamed`.
 - Registre services, repositórios e view models compartilhados em
   `lib/di/dependencies.dart`, resolvidos pelo `CustomInjector` (auto_injector).
