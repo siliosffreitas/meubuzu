@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
-import '../data/location_service.dart';
+import '../data/user_coordinates.dart';
+import '../data/user_location_repository.dart';
 
 /// Etapas da obtenção da localização do usuário.
 enum MapLocationStatus {
@@ -14,80 +17,72 @@ enum MapLocationStatus {
   ready,
 }
 
-/// Verifica GPS, permissão e posição do usuário, nessa ordem.
+/// Acompanha a localização publicada pelo [UserLocationRepository].
 class MapLocationViewModel extends ChangeNotifier {
-  MapLocationViewModel(this._service);
+  MapLocationViewModel(this._repository) {
+    _subscription = _repository.location.listen(
+      _handlePosition,
+      onError: _handleError,
+    );
+  }
 
-  final LocationService _service;
+  final UserLocationRepository _repository;
+  late final StreamSubscription<UserCoordinates> _subscription;
 
   MapLocationStatus _status = MapLocationStatus.idle;
   UserCoordinates? _position;
-  bool _isInitializing = false;
 
   MapLocationStatus get status => _status;
   UserCoordinates? get position => _position;
   bool get isReady => _status == MapLocationStatus.ready;
 
-  /// Executa a sequência: hardware de GPS → serviço ligado → permissão →
-  /// posição atual.
+  /// Pede ao repositório a localização atual do dispositivo.
   ///
   /// Use [requestPermission] como `false` para apenas revalidar o estado ao
   /// voltar das configurações, sem abrir o diálogo de permissão novamente.
-  Future<void> initialize({bool requestPermission = true}) async {
-    if (_isInitializing) {
-      return;
-    }
-    _isInitializing = true;
+  Future<void> initialize({bool requestPermission = true}) {
     _position = null;
     _update(MapLocationStatus.checking);
-
-    try {
-      final hasGps = await _service.hasGpsHardware();
-      if (!hasGps) {
-        _update(MapLocationStatus.noGpsHardware);
-        return;
-      }
-
-      final serviceEnabled = await _service.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _update(MapLocationStatus.serviceDisabled);
-        return;
-      }
-
-      var permission = await _service.checkPermission();
-      if (permission == LocationPermissionStatus.denied && requestPermission) {
-        permission = await _service.requestPermission();
-      }
-      if (permission != LocationPermissionStatus.granted) {
-        _update(
-          permission == LocationPermissionStatus.deniedForever
-              ? MapLocationStatus.permissionDeniedForever
-              : MapLocationStatus.permissionDenied,
-        );
-        return;
-      }
-
-      final position = await _service.currentPosition();
-      if (position == null) {
-        _update(MapLocationStatus.unavailable);
-        return;
-      }
-
-      _position = position;
-      _update(MapLocationStatus.ready);
-    } catch (_) {
-      _update(MapLocationStatus.unavailable);
-    } finally {
-      _isInitializing = false;
-    }
+    return _repository.refresh(requestPermission: requestPermission);
   }
 
-  Future<void> openLocationSettings() => _service.openLocationSettings();
+  Future<void> openLocationSettings() => _repository.openLocationSettings();
 
-  Future<void> openAppSettings() => _service.openAppSettings();
+  Future<void> openAppSettings() => _repository.openAppSettings();
+
+  void _handlePosition(UserCoordinates position) {
+    _position = position;
+    _update(MapLocationStatus.ready);
+  }
+
+  void _handleError(Object error, StackTrace stackTrace) {
+    _position = null;
+    _update(_statusFor(error));
+  }
+
+  static MapLocationStatus _statusFor(Object error) {
+    if (error is! UserLocationException) {
+      return MapLocationStatus.unavailable;
+    }
+    return switch (error.failure) {
+      UserLocationFailure.noGpsHardware => MapLocationStatus.noGpsHardware,
+      UserLocationFailure.serviceDisabled => MapLocationStatus.serviceDisabled,
+      UserLocationFailure.permissionDenied =>
+        MapLocationStatus.permissionDenied,
+      UserLocationFailure.permissionDeniedForever =>
+        MapLocationStatus.permissionDeniedForever,
+      UserLocationFailure.unavailable => MapLocationStatus.unavailable,
+    };
+  }
 
   void _update(MapLocationStatus status) {
     _status = status;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

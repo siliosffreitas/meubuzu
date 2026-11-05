@@ -1,50 +1,51 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/features/map/data/location_service.dart';
+import 'package:meubuzu/features/map/data/user_coordinates.dart';
+import 'package:meubuzu/features/map/data/user_location_repository.dart';
 import 'package:meubuzu/features/map/presentation/map_location_view_model.dart';
 
-const _position = UserCoordinates(latitude: -23.5505, longitude: -46.6333);
+const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
 
-class _FakeLocationService implements LocationService {
-  _FakeLocationService({
-    this.hasGps = true,
-    this.serviceEnabled = true,
-    this.permission = LocationPermissionStatus.denied,
-    this.permissionAfterRequest = LocationPermissionStatus.granted,
-    this.position = _position,
-  });
+class _FakeUserLocationRepository implements UserLocationRepository {
+  _FakeUserLocationRepository({this.position, this.failure, this.error});
 
-  bool hasGps;
-  bool serviceEnabled;
-  LocationPermissionStatus permission;
-  LocationPermissionStatus permissionAfterRequest;
   UserCoordinates? position;
+  UserLocationFailure? failure;
+  Object? error;
 
-  bool checkPermissionCalled = false;
-  bool requestPermissionCalled = false;
+  final _controller = StreamController<UserCoordinates>.broadcast();
+
+  bool refreshCalled = false;
+  bool? lastRequestPermission;
   bool openLocationSettingsCalled = false;
   bool openAppSettingsCalled = false;
 
   @override
-  Future<bool> hasGpsHardware() async => hasGps;
+  Stream<UserCoordinates> get location => _controller.stream;
 
   @override
-  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+  Future<void> refresh({bool requestPermission = true}) async {
+    refreshCalled = true;
+    lastRequestPermission = requestPermission;
 
-  @override
-  Future<LocationPermissionStatus> checkPermission() async {
-    checkPermissionCalled = true;
-    return permission;
+    final error = this.error;
+    if (error != null) {
+      _controller.addError(error);
+      return;
+    }
+
+    final failure = this.failure;
+    if (failure != null) {
+      _controller.addError(UserLocationException(failure));
+      return;
+    }
+
+    final position = this.position;
+    if (position != null) {
+      _controller.add(position);
+    }
   }
-
-  @override
-  Future<LocationPermissionStatus> requestPermission() async {
-    requestPermissionCalled = true;
-    permission = permissionAfterRequest;
-    return permissionAfterRequest;
-  }
-
-  @override
-  Future<UserCoordinates?> currentPosition() async => position;
 
   @override
   Future<void> openLocationSettings() async {
@@ -55,121 +56,115 @@ class _FakeLocationService implements LocationService {
   Future<void> openAppSettings() async {
     openAppSettingsCalled = true;
   }
+
+  @override
+  void dispose() {
+    _controller.close();
+  }
 }
 
 void main() {
   group('MapLocationViewModel', () {
-    test('sem GPS não verifica serviço nem permissão', () async {
-      final service = _FakeLocationService(hasGps: false);
-      final viewModel = MapLocationViewModel(service);
+    const failures = {
+      UserLocationFailure.noGpsHardware: MapLocationStatus.noGpsHardware,
+      UserLocationFailure.serviceDisabled: MapLocationStatus.serviceDisabled,
+      UserLocationFailure.permissionDenied: MapLocationStatus.permissionDenied,
+      UserLocationFailure.permissionDeniedForever:
+          MapLocationStatus.permissionDeniedForever,
+      UserLocationFailure.unavailable: MapLocationStatus.unavailable,
+    };
+
+    for (final entry in failures.entries) {
+      test('falha ${entry.key.name} vira ${entry.value.name}', () async {
+        final repository = _FakeUserLocationRepository(failure: entry.key);
+        final viewModel = MapLocationViewModel(repository);
+        addTearDown(viewModel.dispose);
+        addTearDown(repository.dispose);
+
+        await viewModel.initialize();
+        await pumpEventQueue();
+
+        expect(viewModel.status, entry.value);
+        expect(viewModel.position, isNull);
+        expect(viewModel.isReady, isFalse);
+      });
+    }
+
+    test('posição publicada deixa o mapa pronto', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
       await viewModel.initialize();
+      await pumpEventQueue();
 
-      expect(viewModel.status, MapLocationStatus.noGpsHardware);
-      expect(service.checkPermissionCalled, isFalse);
-      expect(service.requestPermissionCalled, isFalse);
-    });
-
-    test('com GPS desligado pede para ligar o serviço', () async {
-      final service = _FakeLocationService(serviceEnabled: false);
-      final viewModel = MapLocationViewModel(service);
-      addTearDown(viewModel.dispose);
-
-      await viewModel.initialize();
-
-      expect(viewModel.status, MapLocationStatus.serviceDisabled);
-      expect(service.checkPermissionCalled, isFalse);
-      expect(service.requestPermissionCalled, isFalse);
-    });
-
-    test('pede permissão quando o GPS está ligado', () async {
-      final service = _FakeLocationService();
-      final viewModel = MapLocationViewModel(service);
-      addTearDown(viewModel.dispose);
-
-      await viewModel.initialize();
-
-      expect(service.requestPermissionCalled, isTrue);
       expect(viewModel.status, MapLocationStatus.ready);
+      expect(viewModel.isReady, isTrue);
       expect(viewModel.position?.latitude, _position.latitude);
       expect(viewModel.position?.longitude, _position.longitude);
     });
 
-    test('permissão negada mantém o aviso para o usuário', () async {
-      final service = _FakeLocationService(
-        permissionAfterRequest: LocationPermissionStatus.denied,
-      );
-      final viewModel = MapLocationViewModel(service);
+    test('initialize sinaliza carregamento antes da resposta', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
-      await viewModel.initialize();
+      final statuses = <MapLocationStatus>[];
+      viewModel.addListener(() => statuses.add(viewModel.status));
 
-      expect(viewModel.status, MapLocationStatus.permissionDenied);
-      expect(viewModel.position, isNull);
+      final future = viewModel.initialize();
+      expect(viewModel.status, MapLocationStatus.checking);
+
+      await future;
+      await pumpEventQueue();
+
+      expect(statuses, [MapLocationStatus.checking, MapLocationStatus.ready]);
     });
 
-    test('permissão negada permanentemente não pede novamente', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.deniedForever,
+    test('revalidar sem pedir permissão repassa ao repositório', () async {
+      final repository = _FakeUserLocationRepository(
+        failure: UserLocationFailure.permissionDenied,
       );
-      final viewModel = MapLocationViewModel(service);
+      final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
-
-      await viewModel.initialize();
-
-      expect(viewModel.status, MapLocationStatus.permissionDeniedForever);
-      expect(service.requestPermissionCalled, isFalse);
-    });
-
-    test('permissão já concedida não abre o diálogo', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
-      );
-      final viewModel = MapLocationViewModel(service);
-      addTearDown(viewModel.dispose);
-
-      await viewModel.initialize();
-
-      expect(service.requestPermissionCalled, isFalse);
-      expect(viewModel.status, MapLocationStatus.ready);
-    });
-
-    test('revalidar sem pedir permissão não abre o diálogo', () async {
-      final service = _FakeLocationService();
-      final viewModel = MapLocationViewModel(service);
-      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
       await viewModel.initialize(requestPermission: false);
+      await pumpEventQueue();
 
-      expect(service.requestPermissionCalled, isFalse);
+      expect(repository.refreshCalled, isTrue);
+      expect(repository.lastRequestPermission, isFalse);
       expect(viewModel.status, MapLocationStatus.permissionDenied);
     });
 
-    test('posição indisponível gera estado de erro', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
-        position: null,
+    test('erro desconhecido gera estado indisponível', () async {
+      final repository = _FakeUserLocationRepository(
+        error: StateError('falha inesperada'),
       );
-      final viewModel = MapLocationViewModel(service);
+      final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
       await viewModel.initialize();
+      await pumpEventQueue();
 
       expect(viewModel.status, MapLocationStatus.unavailable);
       expect(viewModel.position, isNull);
     });
 
     test('abre as configurações de localização e do app', () async {
-      final service = _FakeLocationService();
-      final viewModel = MapLocationViewModel(service);
+      final repository = _FakeUserLocationRepository();
+      final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
       await viewModel.openLocationSettings();
       await viewModel.openAppSettings();
 
-      expect(service.openLocationSettingsCalled, isTrue);
-      expect(service.openAppSettingsCalled, isTrue);
+      expect(repository.openLocationSettingsCalled, isTrue);
+      expect(repository.openAppSettingsCalled, isTrue);
     });
   });
 }

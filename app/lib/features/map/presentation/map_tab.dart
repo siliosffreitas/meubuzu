@@ -4,6 +4,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../data/location_service.dart';
 import '../data/place_search_repository.dart';
+import '../data/user_coordinates.dart';
+import '../data/user_location_repository.dart';
 import 'map_location_view_model.dart';
 import 'map_search_view_model.dart';
 import 'map_style.dart';
@@ -16,11 +18,14 @@ class MapTab extends StatefulWidget {
   const MapTab({
     super.key,
     this.searchRepository = const FakePlaceSearchRepository(),
-    this.locationService = const DeviceLocationService(),
+    this.locationRepository,
   });
 
   final PlaceSearchRepository searchRepository;
-  final LocationService locationService;
+
+  /// Quando não informado, o mapa cria e libera um repositório baseado na
+  /// localização do dispositivo.
+  final UserLocationRepository? locationRepository;
 
   @override
   State<MapTab> createState() => _MapTabState();
@@ -34,6 +39,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
   late final MapSearchViewModel _searchViewModel;
+  late final UserLocationRepository _locationRepository;
   late final MapLocationViewModel _locationViewModel;
   final _markers = <Marker>{};
 
@@ -44,7 +50,10 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _searchViewModel = MapSearchViewModel(widget.searchRepository);
-    _locationViewModel = MapLocationViewModel(widget.locationService)
+    _locationRepository =
+        widget.locationRepository ??
+        DeviceUserLocationRepository(const DeviceLocationService());
+    _locationViewModel = MapLocationViewModel(_locationRepository)
       ..addListener(_handleLocationChange);
     _searchFocusNode.addListener(_handleFocusChange);
     WidgetsBinding.instance.addObserver(this);
@@ -61,6 +70,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     _locationViewModel
       ..removeListener(_handleLocationChange)
       ..dispose();
+    _locationRepository.dispose();
     _searchFocusNode
       ..removeListener(_handleFocusChange)
       ..dispose();

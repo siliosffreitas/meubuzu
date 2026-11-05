@@ -2,13 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
-/// Coordenadas geográficas do usuário.
-class UserCoordinates {
-  const UserCoordinates({required this.latitude, required this.longitude});
-
-  final double latitude;
-  final double longitude;
-}
+import 'user_coordinates.dart';
 
 /// Estado da permissão de localização relevante para o app.
 enum LocationPermissionStatus { granted, denied, deniedForever }
