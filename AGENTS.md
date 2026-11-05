@@ -50,11 +50,15 @@ app/lib/
   core/
     theme/                  # AppColors, AppTheme
     widgets/                # widgets compartilhados (EmptyState, TabHeader)
+  data/                     # camada de dados compartilhada
+    models/                 # modelos imutáveis compartilhados
+    repositories/           # contratos + implementações
+    services/               # integrações externas
+  domain/                   # opcional: use cases compartilhados
   features/
-    auth/                   # data/ e presentation/ (e-mail e código)
+    auth/                   # presentation/ (e-mail e código)
     home/                   # Home com abas Mapa, Favoritos e Conta
     map/
-      data/                 # services e repositories do mapa
       presentation/         # views, view models e widgets
     favorites/
     account/
@@ -136,16 +140,19 @@ MAPS_API_KEY_IOS=<chave-restrita-ao-ios>
 
 ## Arquitetura e convenções do app
 
-O app segue a arquitetura recomendada pelo Flutter, com separação por
-funcionalidade e camadas `data/` e `presentation/` (MVVM):
+O app segue a arquitetura recomendada pelo Flutter, com as camadas de UI
+(`presentation/`, MVVM) e de dados (`lib/data/`) separadas. Repositórios e
+services ficam em `lib/data/` porque não pertencem a uma única feature:
 
 - **Views/widgets** exibem estado e encaminham ações; não concentram regras de
   negócio.
 - **ViewModels** estendem `ChangeNotifier`, mantêm estado privado, expõem
   getters e notificam a view.
-- **Repositories/Services** isolam acesso a dados e recursos de plataforma.
-  Defina uma interface e uma implementação real.
-- O fluxo é unidirecional: view → view model → repository/service → estado →
+- **Repositories/Services** ficam em `lib/data/repositories/` e
+  `lib/data/services/`. Isolam acesso a dados e recursos de plataforma. Defina
+  uma interface e uma implementação real.
+- **Modelos** compartilhados ficam em `lib/data/models/`.
+- O fluxo é unidirecional: view → view model → repository → service → estado →
   view.
 - Use injeção de dependência por construtor, com valor padrão, para permitir
   fakes nos testes. Exemplos: `MapTab`, `MapSearchViewModel` e
@@ -157,13 +164,13 @@ funcionalidade e camadas `data/` e `presentation/` (MVVM):
 - Ao criar uma feature, siga a estrutura:
   ```text
   features/<feature>/
-    data/
-      <feature>_repository.dart
-      <feature>_service.dart
     presentation/
       <feature>_page.dart ou <feature>_tab.dart
       <feature>_view_model.dart
       widgets/
+  data/
+    repositories/<feature>_repository.dart
+    services/<feature>_service.dart
   ```
 
 ## Mapa e localização
@@ -184,14 +191,16 @@ funcionalidade e camadas `data/` e `presentation/` (MVVM):
   foi concedida, para evitar exceções de segurança.
 - Ao voltar das configurações do sistema, revalide o estado sem abrir o diálogo
   de permissão repetidamente.
-- Em testes, injete um `LocationService` fake. Não chame plugins reais
+- Em testes, injete um `UserLocationRepository` fake nos view models e um
+  `LocationService` fake nos testes do repositório. Não chame plugins reais
   (`geolocator`, Google Maps) em testes unitários/widget.
 
 ## Testes
 
 - Os testes ficam em `app/test/` e espelham `app/lib/`.
 - Use fakes que registram chamadas para verificar comportamento, como em
-  `test/features/map/presentation/map_location_view_model_test.dart`.
+  `test/features/map/presentation/map_location_view_model_test.dart` e
+  `test/data/repositories/user_location_repository_test.dart`.
 - Para telas de autenticação, use o helper `test/helpers/auth_test_helpers.dart`
   (`appWith`, `RecordingAuthRepository`, `tapVisible`).
 - O view model de busca do mapa usa debounce de 320 ms; em testes, avance o

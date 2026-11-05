@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../data/auth_repository.dart';
+import '../../../../data/repositories/auth_repository.dart';
 
 /// Regras de apresentação da tela de entrada por e-mail.
 class AuthEmailViewModel extends ChangeNotifier {

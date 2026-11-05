@@ -54,6 +54,7 @@ Essa separação segue o padrão **MVVM** (Model-View-ViewModel).
 
 - **Repositories** são a fonte única de verdade dos dados utilizados pelo app e isolam a interface e as regras da aplicação dos detalhes de acesso aos dados.
 - **Services** encapsulam integrações com fontes de dados, como a API do backend, armazenamento local e recursos da plataforma.
+- Repositórios, services e modelos compartilhados ficam em `lib/data/` (com `repositories/`, `services/` e `models/`), fora de `features/`, porque não pertencem a uma única funcionalidade.
 
 ### Camada de domínio
 

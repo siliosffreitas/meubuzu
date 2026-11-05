@@ -29,8 +29,10 @@ As dependências apontam sempre para baixo: a UI conhece o domínio e os dados, 
 domínio conhece os dados, mas os dados não conhecem a UI nem o domínio. Um
 service nunca conhece um repository.
 
-O app usa **MVVM** na camada de UI e injeção de dependência por construtor. A
-organização é por funcionalidade (`features/`), cada uma com suas camadas.
+O app usa **MVVM** na camada de UI e injeção de dependência por construtor. As
+camadas que não pertencem a uma única funcionalidade ficam no topo de `lib/`:
+os dados em `lib/data/` e, quando existir, o domínio em `lib/domain/`. A UI
+continua organizada por funcionalidade em `lib/features/<feature>/presentation/`.
 
 ## Camada de UI
 
@@ -58,7 +60,8 @@ Regras da camada:
 
 ## Camada de domínio (opcional)
 
-Local: `lib/features/<feature>/domain/`.
+Local: `lib/domain/` para use cases compartilhados. Um use case que só atende
+uma funcionalidade pode ficar em `lib/features/<feature>/domain/`.
 
 - **Use cases** encapsulam uma regra de negócio ou um fluxo que não pertence à
   apresentação. Cada use case tem uma responsabilidade e recebe repositories
@@ -73,7 +76,15 @@ para um repository.
 
 ## Camada de dados
 
-Local: `lib/features/<feature>/data/`.
+Local: `lib/data/`, fora de `features/`, porque repositórios e services não
+pertencem a uma única funcionalidade.
+
+```text
+lib/data/
+  models/         # modelos imutáveis compartilhados
+  repositories/   # contratos + implementações
+  services/       # integrações externas
+```
 
 - **Repositories** são a fonte única de verdade dos dados usados pela
   apresentação. Isolam a UI e as regras da aplicação dos detalhes de acesso.
@@ -87,16 +98,22 @@ Local: `lib/features/<feature>/data/`.
   armazenamento local, plugins e recursos de plataforma. Não contêm regra de
   negócio nem conhecem a UI.
 - **Modelos** (`UserCoordinates`, `PlaceSuggestion`, `InvalidCodeException`)
-  são imutáveis (`const`/`final`) e ficam próximos de quem os expõe.
+  são imutáveis (`const`/`final`) e ficam em `models/` quando compartilhados
+  por mais de uma funcionalidade; caso contrário, podem ficar junto do
+  repository que os expõe.
 
 Exemplo atual:
 
 ```text
-features/map/data/
-  location_service.dart          # LocationService + DeviceLocationService
-  user_location_repository.dart  # UserLocationRepository + DeviceUserLocationRepository
-  user_coordinates.dart          # modelo imutável
-  place_search_repository.dart   # PlaceSearchRepository + FakePlaceSearchRepository
+data/
+  models/
+    user_coordinates.dart            # modelo imutável
+  repositories/
+    auth_repository.dart             # AuthRepository + FakeAuthRepository
+    place_search_repository.dart     # PlaceSearchRepository + FakePlaceSearchRepository
+    user_location_repository.dart    # UserLocationRepository + DeviceUserLocationRepository
+  services/
+    location_service.dart            # LocationService + DeviceLocationService
 ```
 
 ## Regras de dependência
@@ -153,13 +170,13 @@ app/lib/
   core/
     theme/                      # AppColors, AppTheme
     widgets/                    # widgets compartilhados
+  data/                         # camada de dados compartilhada
+    models/                     # modelos imutáveis compartilhados
+    repositories/               # contratos + implementações
+    services/                   # integrações externas
+  domain/                       # opcional; use cases compartilhados
   features/
     <feature>/
-      data/
-        <feature>_repository.dart   # contrato + implementação
-        <feature>_service.dart      # integração externa
-      domain/                       # opcional
-        <feature>_use_case.dart
       presentation/
         <feature>_page.dart
         <feature>_tab.dart
@@ -171,7 +188,7 @@ Os testes em `app/test/` espelham essa estrutura:
 
 ```text
 app/test/
-  features/<feature>/data/
+  data/repositories/            # testes de repositório
   features/<feature>/presentation/
   helpers/
 ```
@@ -224,24 +241,28 @@ app/test/
 
 ## Quando criar cada componente
 
-| Componente  | Crie quando                                                        |
-| ----------- | ------------------------------------------------------------------ |
-| Service     | houver integração com API, banco, plugin ou plataforma             |
-| Repository  | houver dados a expor para a UI (mesmo que venham de um service)    |
-| Use case    | a regra for reutilizada por 2+ view models ou combinar repositories |
-| View model  | a tela tiver estado que muda e ações a coordenar                   |
-| Widget      | o trecho de UI se repetir ou a página ficar grande demais          |
+| Componente  | Crie quando                                                        | Onde fica                          |
+| ----------- | ------------------------------------------------------------------ | ---------------------------------- |
+| Service     | houver integração com API, banco, plugin ou plataforma             | `lib/data/services/`               |
+| Repository  | houver dados a expor para a UI (mesmo que venham de um service)    | `lib/data/repositories/`           |
+| Use case    | a regra for reutilizada por 2+ view models ou combinar repositories | `lib/domain/` (opcional)           |
+| View model  | a tela tiver estado que muda e ações a coordenar                   | `features/<feature>/presentation/` |
+| Widget      | o trecho de UI se repetir ou a página ficar grande demais          | `features/<feature>/presentation/` |
 
 ## Estado atual das features
 
-| Feature   | Data                                                                                        | Domain | Presentation                                                            |
-| --------- | ------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| auth      | `AuthRepository` + `FakeAuthRepository`                                                     | —      | e-mail e código, com view models                                        |
-| home      | —                                                                                           | —      | `HomePage` e navegação por abas                                         |
-| map       | `LocationService`, `UserLocationRepository`, `PlaceSearchRepository`, `UserCoordinates`      | —      | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets          |
-| favorites | —                                                                                           | —      | `FavoritesTab`                                                          |
-| account   | —                                                                                           | —      | `AccountTab`                                                            |
-| core      | —                                                                                           | —      | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`                      |
+Os dados compartilhados ficam em `lib/data/`; a tabela abaixo mostra quais
+deles cada funcionalidade usa. Nenhuma feature tem camada de domínio por
+enquanto.
+
+| Feature   | Presentation                                                   | Dados usados                                                                                | Domain |
+| --------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
+| auth      | e-mail e código, com view models                               | `AuthRepository` + `FakeAuthRepository`                                                     | —      |
+| home      | `HomePage` e navegação por abas                                | —                                                                                           | —      |
+| map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
+| favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
+| account   | `AccountTab`                                                   | —                                                                                           | —      |
+| core      | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
 
 ## Referências
 

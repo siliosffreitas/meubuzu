@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/features/auth/data/auth_repository.dart';
+import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/features/auth/presentation/auth_code/auth_code_page.dart';
 
 import '../../../../helpers/auth_test_helpers.dart';

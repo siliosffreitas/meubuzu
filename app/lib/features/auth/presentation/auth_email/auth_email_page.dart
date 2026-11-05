@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../data/auth_repository.dart';
+import '../../../../data/repositories/auth_repository.dart';
 import '../auth_code/auth_code_page.dart';
 import 'auth_email_view_model.dart';
 

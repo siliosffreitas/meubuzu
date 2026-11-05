@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../home/presentation/home_page.dart';
-import '../../data/auth_repository.dart';
+import '../../../../data/repositories/auth_repository.dart';
 import 'auth_code_view_model.dart';
 
 /// Segunda etapa do fluxo: confirmação do código enviado por e-mail.

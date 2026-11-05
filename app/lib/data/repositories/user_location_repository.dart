@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'location_service.dart';
-import 'user_coordinates.dart';
+import '../models/user_coordinates.dart';
+import '../services/location_service.dart';
 
 /// Motivos pelos quais a localização do usuário não pôde ser obtida.
 enum UserLocationFailure {

@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../data/user_coordinates.dart';
-import '../data/user_location_repository.dart';
+import '../../../data/models/user_coordinates.dart';
+import '../../../data/repositories/user_location_repository.dart';
 
 /// Etapas da obtenção da localização do usuário.
 enum MapLocationStatus {

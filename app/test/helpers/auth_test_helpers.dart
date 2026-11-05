@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/core/theme/app_theme.dart';
-import 'package:meubuzu/features/auth/data/auth_repository.dart';
+import 'package:meubuzu/data/repositories/auth_repository.dart';
 
 /// Repositório que registra as chamadas recebidas durante o teste.
 ///

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/features/auth/data/auth_repository.dart';
+import 'package:meubuzu/data/repositories/auth_repository.dart';
 
 void main() {
   group('FakeAuthRepository', () {
