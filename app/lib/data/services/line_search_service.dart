@@ -34,7 +34,10 @@ class AssetLineSearchService implements LineSearchService {
         .where(
           (line) =>
               normalizeSearchText(line.id).contains(normalizedQuery) ||
-              normalizeSearchText(line.name).contains(normalizedQuery),
+              normalizeSearchText(line.name).contains(normalizedQuery) ||
+              (line.boardingCode != null &&
+                  normalizeSearchText(line.boardingCode!)
+                      .contains(normalizedQuery)),
         )
         .toList(growable: false);
   }
@@ -53,6 +56,7 @@ class AssetLineSearchService implements LineSearchService {
     final nameIndex = columnIndex(header, 'nomelinha', assetPath);
     final originIndex = columnIndex(header, 'getorigemida', assetPath);
     final destinationIndex = columnIndex(header, 'destinoida', assetPath);
+    final boardingIndex = columnIndex(header, 'sglinha', assetPath);
 
     final lines = <Line>[];
     for (final row in rows.skip(1)) {
@@ -71,6 +75,9 @@ class AssetLineSearchService implements LineSearchService {
           destination: destinationIndex < row.length
               ? row[destinationIndex].trim()
               : '',
+          boardingCode: boardingIndex < row.length
+              ? row[boardingIndex].trim()
+              : null,
         ),
       );
     }

@@ -21,6 +21,7 @@ void main() {
 codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
 875A-10,PERDIZES ↔ TERMINAL LAPA,PERDIZES,TERMINAL LAPA,0001
 8000-1,VILA BANDEIRANTE-PLANALTO ININGA,VILA BANDEIRANTE,VILA BANDEIRANTE,0402
+46,MOCAMBINHO DUQUE DE CAXIAS,MOCAMBINHO,MOCAMBINHO,0301
 ''';
 
     test('busca linhas por código', () async {
@@ -51,6 +52,22 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
 
       expect(lines, isEmpty);
     });
+
+    test(
+      'busca por código de embarque sem exigir correspondência exata',
+      () async {
+        final service = AssetLineSearchService(
+          bundle: _FakeAssetBundle(catalog),
+        );
+
+        final lines = await service.search('301');
+
+        expect(lines, hasLength(1));
+        expect(lines.first.id, '46');
+        expect(lines.first.name, 'MOCAMBINHO DUQUE DE CAXIAS');
+        expect(lines.first.boardingCode, '0301');
+      },
+    );
 
     test('retorna lista vazia para consulta vazia', () async {
       final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
