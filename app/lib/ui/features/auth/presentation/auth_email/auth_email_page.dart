@@ -1,10 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../../data/repositories/auth_repository.dart';
-import '../auth_code/auth_code_page.dart';
+import '../../../../routing/app_routes.dart';
 import 'auth_email_view_model.dart';
 
 /// Primeira etapa do fluxo de autenticação: coleta do e-mail.
@@ -54,13 +55,9 @@ class _AuthEmailPageState extends State<AuthEmailPage> {
     if (!mounted || !sent) {
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => AuthCodePage(
-          email: _viewModel.email.trim(),
-          repository: widget.repository,
-        ),
-      ),
+    await context.pushNamed(
+      AppRoutes.authCodeName,
+      extra: _viewModel.email.trim(),
     );
   }
 

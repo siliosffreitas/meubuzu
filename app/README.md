@@ -36,6 +36,42 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
 - **iOS:** a descrição de uso `NSLocationWhenInUseUsageDescription` está no
   `Info.plist`.
 
+## Navegação
+
+O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as
+rotas. A configuração fica em `lib/ui/routing/`:
+
+- `app_routes.dart`: caminhos e nomes das rotas.
+- `app_router.dart`: criação do `GoRouter` e injeção do `AuthRepository`.
+
+| Rota         | Nome       | Tela                                                  |
+| ------------ | ---------- | ----------------------------------------------------- |
+| `/`          | `home`     | `HomePage` (abas Mapa, Favoritos e Conta)             |
+| `/auth`      | `auth`     | `AuthEmailPage` (coleta do e-mail)                    |
+| `/auth/code` | `authCode` | `AuthCodePage` (recebe o e-mail por `extra`)          |
+
+O `MaterialApp.router` é montado em `lib/app.dart` e usa o router criado por
+`AppRouter`.
+
+> **Home como rota inicial:** `AppRouter` define
+> `initialLocation: AppRoutes.home` de propósito, para os testes abrirem direto
+> na Home. Para iniciar pela autenticação, troque a rota inicial para
+> `AppRoutes.authEmail` (ou navegue com
+> `context.goNamed(AppRoutes.authEmailName)`).
+
+Navegação entre as telas:
+
+```dart
+// Abre a confirmação de código levando o e-mail.
+context.pushNamed(AppRoutes.authCodeName, extra: email);
+
+// Volta para a Home limpando a pilha após confirmar o código.
+context.goNamed(AppRoutes.homeName);
+```
+
+Em testes de widget, use `appWith` ou `appWithRoutes` de
+`test/helpers/auth_test_helpers.dart` para montar um `MaterialApp.router`.
+
 ## Arquitetura
 
 O projeto seguirá a arquitetura recomendada pela equipe do Flutter, conforme a [documentação oficial de arquitetura de aplicações](https://docs.flutter.dev/app-architecture). A organização separa responsabilidades em camadas e por funcionalidade.

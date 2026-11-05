@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/ui/core/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
+import 'package:meubuzu/ui/core/theme/app_theme.dart';
+import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
+import 'package:meubuzu/ui/routing/app_routes.dart';
 
 /// Repositório que registra as chamadas recebidas durante o teste.
 ///
@@ -58,8 +61,41 @@ class RecordingAuthRepository implements AuthRepository {
 }
 
 /// Envolve [home] no app mínimo usado pelos testes de widget.
+///
+/// Usa GoRouter com a Home em `/` e a confirmação de código em `/auth/code`.
 Widget appWith(Widget home) {
-  return MaterialApp(theme: AppTheme.light(), home: home);
+  return appWithRoutes(
+    initialLocation: AppRoutes.home,
+    routes: [
+      GoRoute(
+        path: AppRoutes.home,
+        name: AppRoutes.homeName,
+        builder: (context, state) => home,
+      ),
+      GoRoute(
+        path: AppRoutes.authCode,
+        name: AppRoutes.authCodeName,
+        builder: (context, state) => AuthCodePage(
+          email: state.extra! as String,
+          repository: FakeAuthRepository(latency: Duration.zero),
+        ),
+      ),
+    ],
+  );
+}
+
+/// Envolve [routes] em um app com GoRouter para testar navegação.
+Widget appWithRoutes({
+  required String initialLocation,
+  required List<RouteBase> routes,
+}) {
+  return MaterialApp.router(
+    theme: AppTheme.light(),
+    routerConfig: GoRouter(
+      initialLocation: initialLocation,
+      routes: routes,
+    ),
+  );
 }
 
 /// Garante que o alvo esteja visível antes de tocar.

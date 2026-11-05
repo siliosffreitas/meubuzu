@@ -41,6 +41,9 @@ Local: `lib/ui/`.
 
 - **`lib/ui/core/`** contém apenas elementos visuais compartilhados: tema
   (`theme/`) e widgets reutilizáveis (`widgets/`).
+- **`lib/ui/routing/`** concentra as rotas do GoRouter: `app_router.dart` cria o
+  router e `app_routes.dart` define caminhos e nomes. As páginas navegam com
+  `context.pushNamed`/`context.goNamed`.
 - **`lib/ui/features/<feature>/presentation/`** contém as telas da
   funcionalidade.
 
@@ -183,6 +186,9 @@ app/lib/
     core/                       # apenas elementos visuais compartilhados
       theme/                    # AppColors, AppTheme
       widgets/                  # widgets compartilhados
+    routing/
+      app_router.dart           # GoRouter e injeção do AuthRepository
+      app_routes.dart           # caminhos e nomes das rotas
     features/
       auth/
         presentation/

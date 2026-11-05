@@ -56,6 +56,7 @@ app/lib/
     core/                   # apenas elementos visuais compartilhados
       theme/                # AppColors, AppTheme
       widgets/              # widgets compartilhados (EmptyState, TabHeader)
+    routing/                # GoRouter (app_router.dart e app_routes.dart)
     features/
       auth/                 # presentation/ (e-mail e código)
       home/                 # Home com abas Mapa, Favoritos e Conta
@@ -157,6 +158,9 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - **Modelos** compartilhados ficam em `lib/data/models/`.
 - O fluxo é unidirecional: view → view model → repository → service → estado →
   view.
+- As rotas são gerenciadas pelo GoRouter em `ui/routing/`. A Home é a rota
+  inicial (`/`) para facilitar os testes; a autenticação começa em `/auth`.
+  Navegue com `context.pushNamed`/`context.goNamed`.
 - Use injeção de dependência por construtor, com valor padrão, para permitir
   fakes nos testes. Exemplos: `MapTab`, `MapSearchViewModel` e
   `MapLocationViewModel`.

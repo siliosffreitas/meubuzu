@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../home/presentation/home_page.dart';
 import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../routing/app_routes.dart';
 import 'auth_code_view_model.dart';
 
 /// Segunda etapa do fluxo: confirmação do código enviado por e-mail.
@@ -12,14 +13,10 @@ class AuthCodePage extends StatefulWidget {
     super.key,
     required this.email,
     required this.repository,
-    this.nextPageBuilder,
   });
 
   final String email;
   final AuthRepository repository;
-
-  /// Permite substituir a tela aberta após a confirmação em testes.
-  final WidgetBuilder? nextPageBuilder;
 
   @override
   State<AuthCodePage> createState() => _AuthCodePageState();
@@ -55,12 +52,7 @@ class _AuthCodePageState extends State<AuthCodePage> {
     if (!mounted || !confirmed) {
       return;
     }
-    await Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        builder: widget.nextPageBuilder ?? (context) => const HomePage(),
-      ),
-      (route) => false,
-    );
+    context.goNamed(AppRoutes.homeName);
   }
 
   Future<void> _resend() async {

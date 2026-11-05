@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
+import 'package:meubuzu/ui/routing/app_routes.dart';
 
 import '../../../../../helpers/auth_test_helpers.dart';
 
@@ -30,12 +32,24 @@ void main() {
       final repository = RecordingAuthRepository();
 
       await tester.pumpWidget(
-        appWith(
-          AuthCodePage(
-            email: 'ana.lima@exemplo.com',
-            repository: repository,
-            nextPageBuilder: (_) => const Scaffold(body: Text('Home de teste')),
-          ),
+        appWithRoutes(
+          initialLocation: AppRoutes.authCode,
+          routes: [
+            GoRoute(
+              path: AppRoutes.authCode,
+              name: AppRoutes.authCodeName,
+              builder: (context, state) => AuthCodePage(
+                email: 'ana.lima@exemplo.com',
+                repository: repository,
+              ),
+            ),
+            GoRoute(
+              path: AppRoutes.home,
+              name: AppRoutes.homeName,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('Home de teste')),
+            ),
+          ],
         ),
       );
       await tester.pumpAndSettle();
