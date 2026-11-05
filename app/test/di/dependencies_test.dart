@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/data/repositories/place_search_repository.dart';
 import 'package:meubuzu/data/repositories/user_location_repository.dart';
+import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/location_service.dart';
 import 'package:meubuzu/di/dependencies.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
@@ -23,6 +24,7 @@ void main() {
       injector.getService<LocationService>(),
       isA<DeviceLocationService>(),
     );
+    expect(injector.getService<BusStopService>(), isA<AssetBusStopService>());
     expect(injector.getRepository<AuthRepository>(), isA<FakeAuthRepository>());
     expect(
       injector.getRepository<PlaceSearchRepository>(),

@@ -36,6 +36,13 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
 - **iOS:** a descrição de uso `NSLocationWhenInUseUsageDescription` está no
   `Info.plist`.
 
+### Paradas próximas
+
+O catálogo local de paradas fica em `assets/paradas.csv` e é lido pelo
+`AssetBusStopService`. O `UserLocationRepository` consulta esse service sempre
+que obtém uma nova posição e publica no stream `nearbyStops` apenas as paradas a
+até 100 metros do usuário. Essa lista ainda não é exibida na interface.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

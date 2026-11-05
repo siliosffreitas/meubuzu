@@ -1,6 +1,7 @@
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/place_search_repository.dart';
 import '../data/repositories/user_location_repository.dart';
+import '../data/services/bus_stop_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
@@ -20,13 +21,17 @@ final injector = CustomInjector();
 /// resolver suas dependências pelo [injector].
 Future<void> setupDependencies() async {
   injector.addService<LocationService>(DeviceLocationService.new);
+  injector.addService<BusStopService>(AssetBusStopService.new);
 
   injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
   injector.addRepository<PlaceSearchRepository>(
     () => const FakePlaceSearchRepository(),
   );
   injector.addRepository<UserLocationRepository>(
-    () => DeviceUserLocationRepository(injector.getService<LocationService>()),
+    () => DeviceUserLocationRepository(
+      injector.getService<LocationService>(),
+      injector.getService<BusStopService>(),
+    ),
   );
 
   injector.addViewModel<AuthEmailViewModel>(

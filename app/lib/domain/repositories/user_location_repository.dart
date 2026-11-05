@@ -1,3 +1,4 @@
+import '../../data/models/bus_stop.dart';
 import '../../data/models/user_coordinates.dart';
 import '../contracts/contracts.dart';
 
@@ -28,6 +29,13 @@ abstract interface class UserLocationRepository implements Repository {
   /// localização não pode ser obtida, o stream publica um
   /// [UserLocationException].
   Stream<UserCoordinates> get location;
+
+  /// Paradas de ônibus próximas da última localização obtida.
+  ///
+  /// Considera as paradas a até 100 metros do usuário. A última lista obtida é
+  /// reemitida para novos ouvintes. Quando o catálogo de paradas não pode ser
+  /// consultado, o stream publica o erro correspondente.
+  Stream<List<BusStop>> get nearbyStops;
 
   /// Busca a localização atual no dispositivo.
   ///

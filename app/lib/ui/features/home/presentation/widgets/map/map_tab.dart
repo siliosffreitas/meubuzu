@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/user_coordinates.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
+import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
@@ -51,7 +52,10 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     } else {
       _locationRepository =
           widget.locationRepository ??
-          DeviceUserLocationRepository(const DeviceLocationService());
+          DeviceUserLocationRepository(
+            const DeviceLocationService(),
+            AssetBusStopService(),
+          );
       _ownsLocationRepository = widget.locationRepository == null;
       _locationViewModel = MapLocationViewModel(_locationRepository);
     }

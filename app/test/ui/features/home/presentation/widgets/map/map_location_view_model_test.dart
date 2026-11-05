@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meubuzu/data/models/bus_stop.dart';
 import 'package:meubuzu/data/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_state.dart';
@@ -24,6 +25,9 @@ class _FakeUserLocationRepository implements UserLocationRepository {
 
   @override
   Stream<UserCoordinates> get location => _controller.stream;
+
+  @override
+  Stream<List<BusStop>> get nearbyStops => const Stream.empty();
 
   @override
   Future<void> refresh({bool requestPermission = true}) async {
