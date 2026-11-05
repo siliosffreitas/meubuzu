@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../di/dependencies.dart';
 import '../../../../routing/app_routes.dart';
 import 'auth_code_view_model.dart';
 
@@ -12,11 +13,17 @@ class AuthCodePage extends StatefulWidget {
   const AuthCodePage({
     super.key,
     required this.email,
-    required this.repository,
+    this.repository,
+    this.viewModel,
   });
 
   final String email;
-  final AuthRepository repository;
+
+  /// Permite injetar um repositório fake em testes.
+  final AuthRepository? repository;
+
+  /// Permite injetar um view model pronto em testes.
+  final AuthCodeViewModel? viewModel;
 
   @override
   State<AuthCodePage> createState() => _AuthCodePageState();
@@ -30,7 +37,13 @@ class _AuthCodePageState extends State<AuthCodePage> {
   @override
   void initState() {
     super.initState();
-    _viewModel = AuthCodeViewModel(widget.repository, email: widget.email);
+    _viewModel =
+        widget.viewModel ??
+        (widget.repository != null
+            ? AuthCodeViewModel(widget.repository!, email: widget.email)
+            : injector.getViewModelParam<AuthCodeViewModel, String>(
+                widget.email,
+              ));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _codeFocusNode.requestFocus();
@@ -413,9 +426,7 @@ class _CodeInput extends StatelessWidget {
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(6),
                     ],
-                    decoration: const InputDecoration.collapsed(
-                      hintText: '',
-                    ),
+                    decoration: const InputDecoration.collapsed(hintText: ''),
                     onChanged: onChanged,
                     onSubmitted: onSubmitted,
                   ),

@@ -29,11 +29,14 @@ As dependências apontam sempre para baixo: a UI conhece o domínio e os dados, 
 domínio conhece os dados, mas os dados não conhecem a UI nem o domínio. Um
 service nunca conhece um repository.
 
-O app usa **MVVM** na camada de UI e injeção de dependência por construtor. As
-camadas que não pertencem a uma única funcionalidade ficam no topo de `lib/`:
-os dados em `lib/data/` e, quando existir, o domínio em `lib/domain/`. A UI fica
-em `lib/ui/`, reunindo o `core/` visual e as `features/` organizadas por
-funcionalidade.
+O app usa **MVVM** na camada de UI e injeção de dependência com
+[`auto_injector`](https://pub.dev/packages/auto_injector), encapsulado pelo
+`CustomInjector`. As dependências compartilhadas são registradas uma única vez
+em `lib/di/dependencies.dart` e resolvidas pelas páginas e widgets. As camadas
+que não pertencem a uma única funcionalidade ficam no topo de `lib/`: os dados
+em `lib/data/`, os contratos base em `lib/domain/contracts/` e o injetor em
+`lib/di/`. A UI fica em `lib/ui/`, reunindo o `core/` visual e as `features/`
+organizadas por funcionalidade.
 
 ## Camada de UI
 
@@ -128,22 +131,31 @@ data/
 
 ## Regras de dependência
 
-| Camada        | Pode importar                          | Não deve importar                          |
-| ------------- | -------------------------------------- | ------------------------------------------ |
-| UI            | domínio, contratos de repository, core | implementações de service                  |
-| Domínio       | contratos de repository                | UI, services, plugins                      |
-| Dados         | services, modelos, core                | UI, view models, domínio                   |
+| Camada   | Pode importar                                      | Não deve importar              |
+| -------- | -------------------------------------------------- | ------------------------------ |
+| UI       | domínio, contratos de repository, `di`, core       | implementações de service      |
+| Domínio  | contratos de repository                            | UI, services, plugins          |
+| Dados    | services, modelos, core, contratos base do domínio | UI, view models, use cases     |
+| `di/`    | dados, domínio, UI (view models)                   | — (é a raiz de composição)     |
 
-A única exceção fica na **raiz de composição** da funcionalidade: o widget que
-cria o view model também instancia o repository e, para isso, a implementação
-concreta do service. Nenhum outro widget nem view model importa services.
-Exemplo em `map_tab.dart`:
+A **raiz de composição** fica em `lib/di/dependencies.dart`. É o único lugar
+que instancia implementações concretas de service e repository e as registra no
+`CustomInjector`. As páginas e widgets recebem as dependências pelo injetor, mas
+continuam aceitando overrides opcionais no construtor para testes.
 
 ```dart
-_locationRepository =
-    widget.locationRepository ??
-    DeviceUserLocationRepository(const DeviceLocationService());
-_locationViewModel = MapLocationViewModel(_locationRepository);
+// lib/di/dependencies.dart
+injector.addService<LocationService>(DeviceLocationService.new);
+injector.addRepository<UserLocationRepository>(
+  () => DeviceUserLocationRepository(
+    injector.getService<LocationService>(),
+  ),
+);
+injector.addViewModel<MapLocationViewModel>(
+  () => MapLocationViewModel(
+    injector.getRepository<UserLocationRepository>(),
+  ),
+);
 ```
 
 O `MapLocationViewModel` conhece apenas `UserLocationRepository`; quem instancia
@@ -181,7 +193,11 @@ app/lib/
     models/                     # modelos imutáveis compartilhados
     repositories/               # contratos + implementações
     services/                   # integrações externas
-  domain/                       # opcional; use cases compartilhados
+  di/                           # composição e injeção de dependências
+    custom_injector.dart        # wrapper do auto_injector
+    dependencies.dart           # registro de services, repositórios e view models
+  domain/
+    contracts/                  # contratos base (Repository, Service, ViewmodelBase)
   ui/                           # camada de UI
     core/                       # apenas elementos visuais compartilhados
       theme/                    # AppColors, AppTheme
@@ -241,14 +257,22 @@ app/test/
 
 ## Injeção de dependência
 
-- Sempre por construtor: `MapSearchViewModel(repository)`,
-  `MapLocationViewModel(repository)`, `AuthEmailViewModel(repository)`.
-- Nos widgets, a dependência é um parâmetro opcional (com valor padrão `const`
-  quando possível), para permitir fakes. Exemplos: `MapTab(searchRepository:)` e
-  `MapTab(locationRepository:)`.
-- Não use localizadores globais (service locator) nem singletons escondidos.
-- O widget que cria uma dependência com recursos (streams, controllers) também
-  é responsável por liberá-la em `dispose()`.
+- As dependências compartilhadas são registradas em `lib/di/dependencies.dart`
+  e resolvidas pelo `injector`. `setupDependencies()` é chamado em `main.dart`
+  antes do `runApp`.
+- O `CustomInjector` usa `addService` para singletons, `addRepository` para lazy
+  singletons com `dispose` automático e `addViewModel` para factories. View
+  models que recebem parâmetros usam `addViewModelParam` e
+  `getViewModelParam`.
+- As páginas resolvem seus view models pelo injetor. Elas mantêm parâmetros
+  opcionais de repository/view model para permitir fakes em testes, sem
+  depender do injetor.
+- O `MapTab` aceita overrides de repository para testes; quando não há override,
+  usa as dependências registradas no injetor.
+- Dependências com recursos (streams, controllers) são liberadas pelo
+  `disposeDependencies()` ou pelo próprio widget quando ele as criou.
+- Não crie novos injetores locais nem registre dependências fora de
+  `lib/di/dependencies.dart`.
 
 ## Testes
 

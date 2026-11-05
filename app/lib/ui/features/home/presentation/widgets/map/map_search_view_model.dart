@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../../../../../../data/repositories/place_search_repository.dart';
+import '../../../../../../domain/contracts/contracts.dart';
 
 /// Estado da busca exibida sobre o mapa.
-class MapSearchViewModel extends ChangeNotifier {
+class MapSearchViewModel extends ViewmodelBase {
   MapSearchViewModel(this._repository);
 
   final PlaceSearchRepository _repository;

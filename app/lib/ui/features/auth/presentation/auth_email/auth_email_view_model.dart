@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
-
 import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../domain/contracts/contracts.dart';
 
 /// Regras de apresentação da tela de entrada por e-mail.
-class AuthEmailViewModel extends ChangeNotifier {
+class AuthEmailViewModel extends ViewmodelBase {
   AuthEmailViewModel(this._repository);
 
   final AuthRepository _repository;

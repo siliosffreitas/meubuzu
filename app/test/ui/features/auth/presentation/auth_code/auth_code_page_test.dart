@@ -145,7 +145,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('não estoura o layout com erro em tela pequena', (tester) async {
+    testWidgets('não estoura o layout com erro em tela pequena', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../domain/contracts/contracts.dart';
 import '../models/user_coordinates.dart';
 import '../services/location_service.dart';
 
@@ -23,7 +24,7 @@ class UserLocationException implements Exception {
 }
 
 /// Contrato de acesso à localização do usuário.
-abstract interface class UserLocationRepository {
+abstract interface class UserLocationRepository implements Repository {
   /// Localização atual do usuário e suas atualizações.
   ///
   /// A última posição obtida é reemitida para novos ouvintes. Quando a
@@ -45,6 +46,7 @@ abstract interface class UserLocationRepository {
   Future<void> openAppSettings();
 
   /// Libera os recursos do repositório.
+  @override
   void dispose();
 }
 

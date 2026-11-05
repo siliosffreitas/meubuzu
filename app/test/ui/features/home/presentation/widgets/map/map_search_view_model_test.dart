@@ -3,6 +3,9 @@ import 'package:meubuzu/data/repositories/place_search_repository.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
 class _RecordingSearchRepository implements PlaceSearchRepository {
+  @override
+  void dispose() {}
+
   _RecordingSearchRepository(this.results);
 
   final List<PlaceSuggestion> results;

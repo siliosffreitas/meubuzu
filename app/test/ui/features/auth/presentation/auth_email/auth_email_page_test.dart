@@ -35,9 +35,7 @@ void main() {
     testWidgets('vai para a confirmação com e-mail válido', (tester) async {
       final repository = RecordingAuthRepository();
 
-      await tester.pumpWidget(
-        appWith(AuthEmailPage(repository: repository)),
-      );
+      await tester.pumpWidget(appWith(AuthEmailPage(repository: repository)));
 
       await tester.enterText(find.byType(TextField), 'ana.lima@exemplo.com');
       await tapVisible(tester, find.byType(FilledButton));
@@ -65,9 +63,7 @@ void main() {
       await tester.pumpWidget(
         MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
-          child: appWith(
-            const AuthEmailPage(repository: FakeAuthRepository()),
-          ),
+          child: appWith(const AuthEmailPage(repository: FakeAuthRepository())),
         ),
       );
       await tester.pumpAndSettle();

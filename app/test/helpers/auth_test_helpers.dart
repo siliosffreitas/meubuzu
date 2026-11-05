@@ -58,6 +58,9 @@ class RecordingAuthRepository implements AuthRepository {
     verifiedEmails.add(email);
     confirmed.add(code);
   }
+
+  @override
+  void dispose() {}
 }
 
 /// Envolve [home] no app mínimo usado pelos testes de widget.
@@ -91,10 +94,7 @@ Widget appWithRoutes({
 }) {
   return MaterialApp.router(
     theme: AppTheme.light(),
-    routerConfig: GoRouter(
-      initialLocation: initialLocation,
-      routes: routes,
-    ),
+    routerConfig: GoRouter(initialLocation: initialLocation, routes: routes),
   );
 }
 

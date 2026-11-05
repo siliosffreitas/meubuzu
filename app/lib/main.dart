@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
+import 'di/dependencies.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupDependencies();
   runApp(const MeuBuzuApp());
 }

@@ -107,4 +107,7 @@ O fluxo será unidirecional: as Views enviam ações aos ViewModels; os ViewMode
 - Manter modelos de dados imutáveis sempre que apropriado.
 - Testar Views, ViewModels, Repositories e Services de forma isolada e em conjunto.
 
-A estratégia de gerenciamento de estado e as bibliotecas de navegação e injeção de dependências serão definidas durante a implementação, seguindo as necessidades do projeto e as recomendações oficiais.
+O gerenciamento de estado usa `ChangeNotifier` nos ViewModels, a navegação usa
+GoRouter e a injeção de dependências usa `auto_injector`, encapsulado em
+`lib/di/custom_injector.dart`. As dependências compartilhadas são registradas em
+`lib/di/dependencies.dart` e `setupDependencies()` é chamado antes do `runApp`.

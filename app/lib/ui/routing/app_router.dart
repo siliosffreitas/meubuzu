@@ -11,10 +11,10 @@ import 'app_routes.dart';
 /// A Home é a rota inicial (`/`) para facilitar os testes. O fluxo de
 /// autenticação começa em `/auth`.
 class AppRouter {
-  AppRouter({AuthRepository? authRepository})
-    : _authRepository = authRepository ?? const FakeAuthRepository();
+  AppRouter({this.authRepository});
 
-  final AuthRepository _authRepository;
+  /// Quando não informado, as páginas resolvem o repositório pelo injetor.
+  final AuthRepository? authRepository;
 
   GoRouter createRouter() {
     return GoRouter(
@@ -29,7 +29,7 @@ class AppRouter {
           path: AppRoutes.authEmail,
           name: AppRoutes.authEmailName,
           builder: (context, state) =>
-              AuthEmailPage(repository: _authRepository),
+              AuthEmailPage(repository: authRepository),
         ),
         GoRoute(
           path: AppRoutes.authCode,
@@ -43,7 +43,7 @@ class AppRouter {
           },
           builder: (context, state) => AuthCodePage(
             email: state.extra! as String,
-            repository: _authRepository,
+            repository: authRepository,
           ),
         ),
       ],

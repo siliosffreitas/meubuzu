@@ -1,3 +1,5 @@
+import '../../domain/contracts/contracts.dart';
+
 /// Tipos de sugestão exibidos na busca do mapa.
 enum PlaceSuggestionType { line, stop }
 
@@ -58,7 +60,7 @@ class PlaceSuggestion {
 }
 
 /// Contrato de busca de linhas e paradas.
-abstract interface class PlaceSearchRepository {
+abstract interface class PlaceSearchRepository implements Repository {
   Future<List<PlaceSuggestion>> search(String query);
 }
 
@@ -146,4 +148,7 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
     }
     return _catalog.where((suggestion) => suggestion.matches(trimmed)).toList();
   }
+
+  @override
+  void dispose() {}
 }

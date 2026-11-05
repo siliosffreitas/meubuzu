@@ -2,13 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
+import '../../domain/contracts/contracts.dart';
 import '../models/user_coordinates.dart';
 
 /// Estado da permissão de localização relevante para o app.
 enum LocationPermissionStatus { granted, denied, deniedForever }
 
 /// Contrato de acesso aos recursos de localização do dispositivo.
-abstract interface class LocationService {
+abstract interface class LocationService implements Service {
   /// Indica se o dispositivo possui hardware de GPS.
   Future<bool> hasGpsHardware();
 

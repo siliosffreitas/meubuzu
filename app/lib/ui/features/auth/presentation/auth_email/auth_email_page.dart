@@ -5,14 +5,19 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../di/dependencies.dart';
 import '../../../../routing/app_routes.dart';
 import 'auth_email_view_model.dart';
 
 /// Primeira etapa do fluxo de autenticação: coleta do e-mail.
 class AuthEmailPage extends StatefulWidget {
-  const AuthEmailPage({super.key, required this.repository});
+  const AuthEmailPage({super.key, this.repository, this.viewModel});
 
-  final AuthRepository repository;
+  /// Permite injetar um repositório fake em testes.
+  final AuthRepository? repository;
+
+  /// Permite injetar um view model pronto em testes.
+  final AuthEmailViewModel? viewModel;
 
   @override
   State<AuthEmailPage> createState() => _AuthEmailPageState();
@@ -27,7 +32,11 @@ class _AuthEmailPageState extends State<AuthEmailPage> {
   @override
   void initState() {
     super.initState();
-    _viewModel = AuthEmailViewModel(widget.repository);
+    _viewModel =
+        widget.viewModel ??
+        (widget.repository != null
+            ? AuthEmailViewModel(widget.repository!)
+            : injector.getViewModel<AuthEmailViewModel>());
     _termsRecognizer = TapGestureRecognizer()
       ..onTap = () => _showInfo('Termos de uso');
     _privacyRecognizer = TapGestureRecognizer()
@@ -376,10 +385,7 @@ class _TrialNote extends StatelessWidget {
           child: Text(
             'Novos usuários podem testar por 7 dias.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
           ),
         ),
       ],

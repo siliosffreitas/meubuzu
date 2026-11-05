@@ -6,6 +6,7 @@ import '../../../../../../data/models/user_coordinates.dart';
 import '../../../../../../data/repositories/place_search_repository.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/location_service.dart';
+import '../../../../../../di/dependencies.dart';
 import 'map_location_view_model.dart';
 import 'map_search_view_model.dart';
 import 'map_style.dart';
@@ -15,16 +16,13 @@ import 'widgets/search_results_panel.dart';
 
 /// Aba principal com o mapa e a busca de linhas e paradas.
 class MapTab extends StatefulWidget {
-  const MapTab({
-    super.key,
-    this.searchRepository = const FakePlaceSearchRepository(),
-    this.locationRepository,
-  });
+  const MapTab({super.key, this.searchRepository, this.locationRepository});
 
-  final PlaceSearchRepository searchRepository;
+  /// Permite injetar um repositório fake em testes.
+  final PlaceSearchRepository? searchRepository;
 
-  /// Quando não informado, o mapa cria e libera um repositório baseado na
-  /// localização do dispositivo.
+  /// Permite injetar um repositório fake em testes. Quando não informado, o
+  /// mapa usa o repositório registrado no injetor.
   final UserLocationRepository? locationRepository;
 
   @override
@@ -45,16 +43,32 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
 
   GoogleMapController? _mapController;
   bool _centeredOnUser = false;
+  bool _ownsLocationRepository = false;
 
   @override
   void initState() {
     super.initState();
-    _searchViewModel = MapSearchViewModel(widget.searchRepository);
-    _locationRepository =
-        widget.locationRepository ??
-        DeviceUserLocationRepository(const DeviceLocationService());
-    _locationViewModel = MapLocationViewModel(_locationRepository)
-      ..addListener(_handleLocationChange);
+
+    final hasOverrides =
+        widget.searchRepository != null || widget.locationRepository != null;
+    final useInjector = injector.isReady && !hasOverrides;
+
+    if (useInjector) {
+      _searchViewModel = injector.getViewModel<MapSearchViewModel>();
+      _locationRepository = injector.getRepository<UserLocationRepository>();
+      _locationViewModel = injector.getViewModel<MapLocationViewModel>();
+    } else {
+      _searchViewModel = MapSearchViewModel(
+        widget.searchRepository ?? const FakePlaceSearchRepository(),
+      );
+      _locationRepository =
+          widget.locationRepository ??
+          DeviceUserLocationRepository(const DeviceLocationService());
+      _ownsLocationRepository = widget.locationRepository == null;
+      _locationViewModel = MapLocationViewModel(_locationRepository);
+    }
+
+    _locationViewModel.addListener(_handleLocationChange);
     _searchFocusNode.addListener(_handleFocusChange);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,7 +84,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     _locationViewModel
       ..removeListener(_handleLocationChange)
       ..dispose();
-    _locationRepository.dispose();
+    if (_ownsLocationRepository) {
+      _locationRepository.dispose();
+    }
     _searchFocusNode
       ..removeListener(_handleFocusChange)
       ..dispose();

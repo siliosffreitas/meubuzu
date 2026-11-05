@@ -161,9 +161,12 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - As rotas são gerenciadas pelo GoRouter em `ui/routing/`. A Home é a rota
   inicial (`/`) para facilitar os testes; a autenticação começa em `/auth`.
   Navegue com `context.pushNamed`/`context.goNamed`.
-- Use injeção de dependência por construtor, com valor padrão, para permitir
-  fakes nos testes. Exemplos: `MapTab`, `MapSearchViewModel` e
-  `MapLocationViewModel`.
+- Registre services, repositórios e view models compartilhados em
+  `lib/di/dependencies.dart`, resolvidos pelo `CustomInjector` (auto_injector).
+  `setupDependencies()` é chamado em `main.dart` antes do `runApp`.
+- Mantenha injeção por construtor com parâmetros opcionais nas páginas/widgets
+  para permitir fakes nos testes. Exemplos: `MapTab`, `AuthEmailPage`,
+  `AuthCodePage`, `MapSearchViewModel` e `MapLocationViewModel`.
 - Mantenha modelos imutáveis (`const`/`final`) sempre que possível.
 - Reaproveite os tokens visuais de `ui/core/theme/app_colors.dart`
   (`AppColors.primary`, `surface`, `border`, `textPrimary` etc.) e os padrões de

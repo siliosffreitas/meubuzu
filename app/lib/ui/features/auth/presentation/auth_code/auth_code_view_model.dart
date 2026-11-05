@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
-
 import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../domain/contracts/contracts.dart';
 
 /// Regras de apresentação da tela de confirmação do código.
-class AuthCodeViewModel extends ChangeNotifier {
+class AuthCodeViewModel extends ViewmodelBase {
   AuthCodeViewModel(this._repository, {required this.email});
 
   final AuthRepository _repository;

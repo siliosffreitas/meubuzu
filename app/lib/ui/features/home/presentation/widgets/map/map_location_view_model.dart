@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../../../../../../data/models/user_coordinates.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
+import '../../../../../../domain/contracts/contracts.dart';
 
 /// Etapas da obtenção da localização do usuário.
 enum MapLocationStatus {
@@ -18,7 +17,7 @@ enum MapLocationStatus {
 }
 
 /// Acompanha a localização publicada pelo [UserLocationRepository].
-class MapLocationViewModel extends ChangeNotifier {
+class MapLocationViewModel extends ViewmodelBase {
   MapLocationViewModel(this._repository) {
     _subscription = _repository.location.listen(
       _handlePosition,

@@ -1,5 +1,7 @@
+import '../../domain/contracts/contracts.dart';
+
 /// Contrato de autenticação por e-mail com código temporário.
-abstract interface class AuthRepository {
+abstract interface class AuthRepository implements Repository {
   /// Solicita o envio de um código de verificação para [email].
   ///
   /// Também é usado quando o usuário pede para reenviar o código.
@@ -20,9 +22,7 @@ class InvalidCodeException implements Exception {
 /// Enquanto o backend não existe, o código [prototypeInvalidCode] sempre é
 /// recusado para permitir exercitar o estado de erro do protótipo.
 class FakeAuthRepository implements AuthRepository {
-  const FakeAuthRepository({
-    this.latency = const Duration(milliseconds: 700),
-  });
+  const FakeAuthRepository({this.latency = const Duration(milliseconds: 700)});
 
   /// Código reservado para simular um código inválido no protótipo.
   static const prototypeInvalidCode = '123456';
@@ -44,4 +44,7 @@ class FakeAuthRepository implements AuthRepository {
       throw const InvalidCodeException();
     }
   }
+
+  @override
+  void dispose() {}
 }
