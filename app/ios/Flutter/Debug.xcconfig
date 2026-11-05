@@ -1,3 +1,5 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
 #include? "Secrets.xcconfig"
+// Chave do Google Maps (app/.env, fora do git). Sobrescreve Secrets.xcconfig.
+#include? "../../.env"

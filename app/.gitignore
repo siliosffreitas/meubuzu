@@ -24,6 +24,9 @@ migrate_working_dir/
 #.vscode/
 
 # Chaves locais (Google Maps)
+.env
+.env.*
+!.env.example
 android/local.properties
 ios/Flutter/Secrets.xcconfig
 

@@ -6,13 +6,24 @@ O aplicativo será desenvolvido com **Flutter** e **Dart**, compartilhando a mai
 
 ## Mapa (Google Maps)
 
-A tela Home usa o Google Maps. A chave de API **não** é versionada:
+A tela Home usa o Google Maps. As chaves de API **não** são versionadas e ficam
+em `app/.env`, uma para cada plataforma:
 
-- **Android:** adicione `MAPS_API_KEY=<sua-chave>` em `android/local.properties`.
-- **iOS:** copie `ios/Flutter/Secrets.xcconfig.example` para
-  `ios/Flutter/Secrets.xcconfig` e preencha `GOOGLE_MAPS_API_KEY=<sua-chave>`.
+```sh
+cp .env.example .env
+# edite .env e preencha:
+MAPS_API_KEY_ANDROID=<chave-restrita-ao-android>
+MAPS_API_KEY_IOS=<chave-restrita-ao-ios>
+```
 
-Sem a chave, o app abre normalmente, mas o mapa fica sem os blocos de ruas.
+O mesmo arquivo `.env` é consumido pelos builds nativos de Android (Gradle) e
+iOS (xcconfig). O Android usa `MAPS_API_KEY_ANDROID` e o iOS usa
+`MAPS_API_KEY_IOS`, então não é necessário configurar as chaves em
+`android/local.properties` nem em `ios/Flutter/Secrets.xcconfig`. Esses dois
+arquivos continuam funcionando como fallback opcional (com a variável
+`MAPS_API_KEY`).
+
+Sem as chaves, o app abre normalmente, mas o mapa fica sem os blocos de ruas.
 
 ## Arquitetura
 O projeto seguirá a arquitetura recomendada pela equipe do Flutter, conforme a [documentação oficial de arquitetura de aplicações](https://docs.flutter.dev/app-architecture). A organização separa responsabilidades em camadas e por funcionalidade.
