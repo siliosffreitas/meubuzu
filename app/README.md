@@ -37,7 +37,10 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
   `Info.plist`.
 
 ## Arquitetura
+
 O projeto seguirá a arquitetura recomendada pela equipe do Flutter, conforme a [documentação oficial de arquitetura de aplicações](https://docs.flutter.dev/app-architecture). A organização separa responsabilidades em camadas e por funcionalidade.
+
+O detalhamento das camadas (UI, domínio e dados), das regras de dependência, da estrutura de pastas e dos testes está em [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ### Camada de interface (UI)
 
