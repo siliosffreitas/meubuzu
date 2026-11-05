@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
+import 'package:meubuzu/data/models/user_coordinates.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_state.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/widgets/location_notice_card.dart';
+
+const _readyPosition = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
 
 Widget _wrap(Widget child) {
   return MaterialApp(home: Scaffold(body: child));
 }
 
 LocationNoticeCard _card(
-  MapLocationStatus status, {
+  MapLocationState state, {
   VoidCallback? onOpenLocationSettings,
   VoidCallback? onRequestPermission,
   VoidCallback? onOpenAppSettings,
   VoidCallback? onRetry,
 }) {
   return LocationNoticeCard(
-    status: status,
+    state: state,
     onOpenLocationSettings: onOpenLocationSettings ?? () {},
     onRequestPermission: onRequestPermission ?? () {},
     onOpenAppSettings: onOpenAppSettings ?? () {},
@@ -26,7 +29,7 @@ LocationNoticeCard _card(
 void main() {
   group('LocationNoticeCard', () {
     testWidgets('sem GPS mostra erro e não oferece ação', (tester) async {
-      await tester.pumpWidget(_wrap(_card(MapLocationStatus.noGpsHardware)));
+      await tester.pumpWidget(_wrap(_card(const MapLocationNoGpsHardware())));
 
       expect(find.text('GPS indisponível'), findsOneWidget);
       expect(find.textContaining('não possui GPS'), findsOneWidget);
@@ -38,7 +41,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           _card(
-            MapLocationStatus.serviceDisabled,
+            const MapLocationServiceDisabled(),
             onOpenLocationSettings: () => opened = true,
           ),
         ),
@@ -55,7 +58,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           _card(
-            MapLocationStatus.permissionDenied,
+            const MapLocationPermissionDenied(),
             onRequestPermission: () => requested = true,
           ),
         ),
@@ -75,7 +78,7 @@ void main() {
       await tester.pumpWidget(
         _wrap(
           _card(
-            MapLocationStatus.permissionDeniedForever,
+            const MapLocationPermissionDeniedForever(),
             onOpenAppSettings: () => opened = true,
           ),
         ),
@@ -86,7 +89,9 @@ void main() {
     });
 
     testWidgets('posição pronta não exibe aviso', (tester) async {
-      await tester.pumpWidget(_wrap(_card(MapLocationStatus.ready)));
+      await tester.pumpWidget(
+        _wrap(_card(const MapLocationReady(_readyPosition))),
+      );
 
       expect(find.byType(FilledButton), findsNothing);
       expect(find.textContaining('GPS'), findsNothing);

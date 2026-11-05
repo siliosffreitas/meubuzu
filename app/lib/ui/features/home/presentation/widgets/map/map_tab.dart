@@ -7,6 +7,7 @@ import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
+import 'map_location_state.dart';
 import 'map_location_view_model.dart';
 import 'map_style.dart';
 import 'widgets/location_notice_card.dart';
@@ -85,11 +86,11 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     // Ao voltar das configurações, revalida o estado sem abrir novamente o
     // diálogo de permissão. Se o GPS estava desligado, tenta a sequência
     // completa para pedir a permissão assim que ele estiver ligado.
-    switch (_locationViewModel.status) {
-      case MapLocationStatus.serviceDisabled:
+    switch (_locationViewModel.state) {
+      case MapLocationServiceDisabled():
         _locationViewModel.initialize();
-      case MapLocationStatus.permissionDenied:
-      case MapLocationStatus.permissionDeniedForever:
+      case MapLocationPermissionDenied():
+      case MapLocationPermissionDeniedForever():
         _locationViewModel.initialize(requestPermission: false);
       default:
         break;
@@ -103,7 +104,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     setState(() {});
 
     final position = _locationViewModel.position;
-    if (_locationViewModel.isReady && position != null && !_centeredOnUser) {
+    if (position != null && !_centeredOnUser) {
       _centeredOnUser = true;
       _moveToUser(position);
     }
@@ -118,7 +119,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final locationStatus = _locationViewModel.status;
+    final locationState = _locationViewModel.state;
     final isLocationReady = _locationViewModel.isReady;
 
     return Stack(
@@ -155,7 +156,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
           right: 16,
           bottom: 16,
           child: LocationNoticeCard(
-            status: locationStatus,
+            state: locationState,
             onOpenLocationSettings: _locationViewModel.openLocationSettings,
             onRequestPermission: _locationViewModel.initialize,
             onOpenAppSettings: _locationViewModel.openAppSettings,

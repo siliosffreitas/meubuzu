@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_colors.dart';
-import '../map_location_view_model.dart';
+import '../map_location_state.dart';
 
 /// Aviso sobre GPS/permissão exibido sobre o mapa.
 class LocationNoticeCard extends StatelessWidget {
   const LocationNoticeCard({
     super.key,
-    required this.status,
+    required this.state,
     required this.onOpenLocationSettings,
     required this.onRequestPermission,
     required this.onOpenAppSettings,
     required this.onRetry,
   });
 
-  final MapLocationStatus status;
+  final MapLocationState state;
   final VoidCallback onOpenLocationSettings;
   final VoidCallback onRequestPermission;
   final VoidCallback onOpenAppSettings;
@@ -22,7 +22,7 @@ class LocationNoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final notice = _noticeFor(status);
+    final notice = _noticeFor(state);
     if (notice == null) {
       return const SizedBox.shrink();
     }
@@ -110,15 +110,15 @@ class LocationNoticeCard extends StatelessWidget {
     );
   }
 
-  _NoticeContent? _noticeFor(MapLocationStatus status) {
-    return switch (status) {
-      MapLocationStatus.noGpsHardware => _NoticeContent(
+  _NoticeContent? _noticeFor(MapLocationState state) {
+    return switch (state) {
+      MapLocationNoGpsHardware() => _NoticeContent(
         icon: Icons.location_off_rounded,
         title: 'GPS indisponível',
         message: 'Este dispositivo não possui GPS, então não é possível mostrar sua localização no mapa.',
         isError: true,
       ),
-      MapLocationStatus.serviceDisabled => _NoticeContent(
+      MapLocationServiceDisabled() => _NoticeContent(
         icon: Icons.gps_off_rounded,
         title: 'Ligue o GPS',
         message:
@@ -127,21 +127,21 @@ class LocationNoticeCard extends StatelessWidget {
         onAction: onOpenLocationSettings,
         isError: true,
       ),
-      MapLocationStatus.permissionDenied => _NoticeContent(
+      MapLocationPermissionDenied() => _NoticeContent(
         icon: Icons.location_searching_rounded,
         title: 'Localização desativada',
         message: 'O app funciona melhor com a sua localização. Permita o acesso para ver onde você está.',
         actionLabel: 'Permitir localização',
         onAction: onRequestPermission,
       ),
-      MapLocationStatus.permissionDeniedForever => _NoticeContent(
+      MapLocationPermissionDeniedForever() => _NoticeContent(
         icon: Icons.location_searching_rounded,
         title: 'Localização desativada',
         message: 'O app funciona melhor com a sua localização. Ative o acesso nas configurações do aparelho.',
         actionLabel: 'Abrir configurações',
         onAction: onOpenAppSettings,
       ),
-      MapLocationStatus.unavailable => _NoticeContent(
+      MapLocationUnavailable() => _NoticeContent(
         icon: Icons.wrong_location_rounded,
         title: 'Não foi possível obter sua localização',
         message: 'Verifique se o GPS está funcionando e tente novamente.',

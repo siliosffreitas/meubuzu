@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_state.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 
 const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
@@ -66,16 +67,16 @@ class _FakeUserLocationRepository implements UserLocationRepository {
 void main() {
   group('MapLocationViewModel', () {
     const failures = {
-      UserLocationFailure.noGpsHardware: MapLocationStatus.noGpsHardware,
-      UserLocationFailure.serviceDisabled: MapLocationStatus.serviceDisabled,
-      UserLocationFailure.permissionDenied: MapLocationStatus.permissionDenied,
+      UserLocationFailure.noGpsHardware: MapLocationNoGpsHardware(),
+      UserLocationFailure.serviceDisabled: MapLocationServiceDisabled(),
+      UserLocationFailure.permissionDenied: MapLocationPermissionDenied(),
       UserLocationFailure.permissionDeniedForever:
-          MapLocationStatus.permissionDeniedForever,
-      UserLocationFailure.unavailable: MapLocationStatus.unavailable,
+          MapLocationPermissionDeniedForever(),
+      UserLocationFailure.unavailable: MapLocationUnavailable(),
     };
 
     for (final entry in failures.entries) {
-      test('falha ${entry.key.name} vira ${entry.value.name}', () async {
+      test('falha ${entry.key.name} vira ${entry.value.runtimeType}', () async {
         final repository = _FakeUserLocationRepository(failure: entry.key);
         final viewModel = MapLocationViewModel(repository);
         addTearDown(viewModel.dispose);
@@ -84,7 +85,7 @@ void main() {
         await viewModel.initialize();
         await pumpEventQueue();
 
-        expect(viewModel.status, entry.value);
+        expect(viewModel.state.runtimeType, entry.value.runtimeType);
         expect(viewModel.position, isNull);
         expect(viewModel.isReady, isFalse);
       });
@@ -99,7 +100,7 @@ void main() {
       await viewModel.initialize();
       await pumpEventQueue();
 
-      expect(viewModel.status, MapLocationStatus.ready);
+      expect(viewModel.state, isA<MapLocationReady>());
       expect(viewModel.isReady, isTrue);
       expect(viewModel.position?.latitude, _position.latitude);
       expect(viewModel.position?.longitude, _position.longitude);
@@ -111,16 +112,18 @@ void main() {
       addTearDown(viewModel.dispose);
       addTearDown(repository.dispose);
 
-      final statuses = <MapLocationStatus>[];
-      viewModel.addListener(() => statuses.add(viewModel.status));
+      final states = <MapLocationState>[];
+      viewModel.addListener(() => states.add(viewModel.state));
 
       final future = viewModel.initialize();
-      expect(viewModel.status, MapLocationStatus.checking);
+      expect(viewModel.state, isA<MapLocationChecking>());
 
       await future;
       await pumpEventQueue();
 
-      expect(statuses, [MapLocationStatus.checking, MapLocationStatus.ready]);
+      expect(states, hasLength(2));
+      expect(states.first, isA<MapLocationChecking>());
+      expect(states.last, isA<MapLocationReady>());
     });
 
     test('revalidar sem pedir permissão repassa ao repositório', () async {
@@ -136,7 +139,7 @@ void main() {
 
       expect(repository.refreshCalled, isTrue);
       expect(repository.lastRequestPermission, isFalse);
-      expect(viewModel.status, MapLocationStatus.permissionDenied);
+      expect(viewModel.state, isA<MapLocationPermissionDenied>());
     });
 
     test('erro desconhecido gera estado indisponível', () async {
@@ -150,7 +153,7 @@ void main() {
       await viewModel.initialize();
       await pumpEventQueue();
 
-      expect(viewModel.status, MapLocationStatus.unavailable);
+      expect(viewModel.state, isA<MapLocationUnavailable>());
       expect(viewModel.position, isNull);
     });
 
