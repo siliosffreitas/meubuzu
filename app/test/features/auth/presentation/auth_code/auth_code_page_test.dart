@@ -34,6 +34,7 @@ void main() {
           AuthCodePage(
             email: 'ana.lima@exemplo.com',
             repository: repository,
+            nextPageBuilder: (_) => const Scaffold(body: Text('Home de teste')),
           ),
         ),
       );
@@ -52,7 +53,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.confirmed, ['123456']);
-      expect(find.text('Código confirmado.'), findsOneWidget);
+      expect(find.text('Home de teste'), findsOneWidget);
     });
 
     testWidgets('mostra erro para código recusado', (tester) async {

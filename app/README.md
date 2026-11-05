@@ -4,8 +4,17 @@
 
 O aplicativo será desenvolvido com **Flutter** e **Dart**, compartilhando a maior parte do código entre Android, iOS e web.
 
-## Arquitetura
+## Mapa (Google Maps)
 
+A tela Home usa o Google Maps. A chave de API **não** é versionada:
+
+- **Android:** adicione `MAPS_API_KEY=<sua-chave>` em `android/local.properties`.
+- **iOS:** copie `ios/Flutter/Secrets.xcconfig.example` para
+  `ios/Flutter/Secrets.xcconfig` e preencha `GOOGLE_MAPS_API_KEY=<sua-chave>`.
+
+Sem a chave, o app abre normalmente, mas o mapa fica sem os blocos de ruas.
+
+## Arquitetura
 O projeto seguirá a arquitetura recomendada pela equipe do Flutter, conforme a [documentação oficial de arquitetura de aplicações](https://docs.flutter.dev/app-architecture). A organização separa responsabilidades em camadas e por funcionalidade.
 
 ### Camada de interface (UI)

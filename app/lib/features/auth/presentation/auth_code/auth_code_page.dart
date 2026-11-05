@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../home/presentation/home_page.dart';
 import '../../data/auth_repository.dart';
 import 'auth_code_view_model.dart';
 
@@ -11,10 +12,14 @@ class AuthCodePage extends StatefulWidget {
     super.key,
     required this.email,
     required this.repository,
+    this.nextPageBuilder,
   });
 
   final String email;
   final AuthRepository repository;
+
+  /// Permite substituir a tela aberta após a confirmação em testes.
+  final WidgetBuilder? nextPageBuilder;
 
   @override
   State<AuthCodePage> createState() => _AuthCodePageState();
@@ -50,10 +55,12 @@ class _AuthCodePageState extends State<AuthCodePage> {
     if (!mounted || !confirmed) {
       return;
     }
-    // Próxima etapa do fluxo (abrir o mapa) será ligada aqui.
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text('Código confirmado.')));
+    await Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: widget.nextPageBuilder ?? (context) => const HomePage(),
+      ),
+      (route) => false,
+    );
   }
 
   Future<void> _resend() async {
