@@ -11,6 +11,7 @@ import '../../../../../../domain/repositories/user_location_repository.dart';
 import 'map_location_state.dart';
 import 'map_location_view_model.dart';
 import 'map_style.dart';
+import 'nearby_stop_markers.dart';
 import 'widgets/location_notice_card.dart';
 
 /// Aba principal com o mapa e a localização do usuário.
@@ -135,6 +136,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
             zoom: _initialZoom,
           ),
           style: kMapStyle,
+          markers: buildNearbyStopMarkers(locationState.nearbyStops),
           onMapCreated: (controller) {
             _mapController = controller;
             final position = _locationViewModel.position;

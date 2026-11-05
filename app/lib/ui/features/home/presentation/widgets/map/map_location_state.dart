@@ -1,3 +1,4 @@
+import '../../../../../../data/models/bus_stop.dart';
 import '../../../../../../data/models/user_coordinates.dart';
 
 /// Estado da localização do usuário exibido no mapa.
@@ -9,6 +10,9 @@ abstract class MapLocationState {
 
   /// Coordenadas da localização atual (se houver).
   UserCoordinates? get position => null;
+
+  /// Paradas próximas que devem ser exibidas no mapa.
+  List<BusStop> get nearbyStops => const [];
 
   /// Indica se a localização está disponível.
   bool get isReady => position != null;
@@ -30,6 +34,18 @@ class MapLocationReady extends MapLocationState {
 
   @override
   final UserCoordinates position;
+}
+
+/// A localização do usuário está disponível e as paradas próximas foram
+/// carregadas.
+class MapLocationNearbyStopsReady extends MapLocationReady {
+  const MapLocationNearbyStopsReady({
+    required UserCoordinates position,
+    required this.nearbyStops,
+  }) : super(position);
+
+  @override
+  final List<BusStop> nearbyStops;
 }
 
 /// O dispositivo não possui hardware de GPS.

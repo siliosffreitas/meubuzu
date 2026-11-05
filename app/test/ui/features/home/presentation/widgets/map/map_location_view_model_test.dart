@@ -8,6 +8,14 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_s
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 
 const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
+const _busStop = BusStop(
+  id: '1',
+  code: '2362',
+  name: 'T-SANTA FÉ',
+  address: 'Rua B, Teresina - PI',
+  latitude: -5.0629,
+  longitude: -42.7932,
+);
 
 class _FakeUserLocationRepository implements UserLocationRepository {
   _FakeUserLocationRepository({this.position, this.failure, this.error});
@@ -15,8 +23,10 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   UserCoordinates? position;
   UserLocationFailure? failure;
   Object? error;
+  Completer<void>? refreshGate;
 
   final _controller = StreamController<UserCoordinates>.broadcast();
+  final _nearbyStopsController = StreamController<List<BusStop>>.broadcast();
 
   bool refreshCalled = false;
   bool? lastRequestPermission;
@@ -27,12 +37,25 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   Stream<UserCoordinates> get location => _controller.stream;
 
   @override
-  Stream<List<BusStop>> get nearbyStops => const Stream.empty();
+  Stream<List<BusStop>> get nearbyStops => _nearbyStopsController.stream;
+
+  void emitNearbyStops(List<BusStop> stops) {
+    _nearbyStopsController.add(stops);
+  }
+
+  void emitNearbyStopsError(Object error) {
+    _nearbyStopsController.addError(error);
+  }
 
   @override
   Future<void> refresh({bool requestPermission = true}) async {
     refreshCalled = true;
     lastRequestPermission = requestPermission;
+
+    final gate = refreshGate;
+    if (gate != null) {
+      await gate.future;
+    }
 
     final error = this.error;
     if (error != null) {
@@ -65,6 +88,7 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   @override
   void dispose() {
     _controller.close();
+    _nearbyStopsController.close();
   }
 }
 
@@ -108,6 +132,86 @@ void main() {
       expect(viewModel.isReady, isTrue);
       expect(viewModel.position?.latitude, _position.latitude);
       expect(viewModel.position?.longitude, _position.longitude);
+    });
+
+    test('paradas próximas geram um estado específico', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      await viewModel.initialize();
+      await pumpEventQueue();
+
+      repository.emitNearbyStops(const [_busStop]);
+      await pumpEventQueue();
+
+      expect(viewModel.state, isA<MapLocationNearbyStopsReady>());
+      expect(viewModel.state, isA<MapLocationReady>());
+      expect(viewModel.nearbyStops, const [_busStop]);
+      expect(viewModel.position, same(_position));
+      expect(viewModel.isReady, isTrue);
+    });
+
+    test('lista vazia de paradas mantém apenas a localização pronta', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      await viewModel.initialize();
+      await pumpEventQueue();
+
+      repository.emitNearbyStops(const []);
+      await pumpEventQueue();
+
+      expect(viewModel.state.runtimeType, MapLocationReady);
+      expect(viewModel.nearbyStops, isEmpty);
+      expect(viewModel.isReady, isTrue);
+    });
+
+    test(
+      'paradas recebidas antes da posição aparecem quando ela chega',
+      () async {
+        final gate = Completer<void>();
+        final repository = _FakeUserLocationRepository(position: _position)
+          ..refreshGate = gate;
+        final viewModel = MapLocationViewModel(repository);
+        addTearDown(viewModel.dispose);
+        addTearDown(repository.dispose);
+
+        final initialization = viewModel.initialize();
+
+        repository.emitNearbyStops(const [_busStop]);
+        await pumpEventQueue();
+
+        expect(viewModel.state, isA<MapLocationChecking>());
+        expect(viewModel.nearbyStops, isEmpty);
+
+        gate.complete();
+        await initialization;
+        await pumpEventQueue();
+
+        expect(viewModel.state, isA<MapLocationNearbyStopsReady>());
+        expect(viewModel.nearbyStops, const [_busStop]);
+      },
+    );
+
+    test('erro nas paradas não invalida a localização', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      await viewModel.initialize();
+      await pumpEventQueue();
+
+      repository.emitNearbyStopsError(StateError('catálogo indisponível'));
+      await pumpEventQueue();
+
+      expect(viewModel.position, same(_position));
+      expect(viewModel.nearbyStops, isEmpty);
+      expect(viewModel.isReady, isTrue);
     });
 
     test('initialize sinaliza carregamento antes da resposta', () async {
