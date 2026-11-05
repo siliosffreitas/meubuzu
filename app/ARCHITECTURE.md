@@ -50,6 +50,7 @@ Local: `lib/ui/`.
 - **`lib/ui/features/<feature>/presentation/`** contém as telas da
   funcionalidade.
 
+- ViewModels usam **State Pattern**: emitem estados abstratos com classes concretas. A UI observa esses estados e reage aos eventos.
 - **Views, pages e tabs** (`*_page.dart`, `*_tab.dart`) exibem o estado e
   encaminham as ações do usuário. Não concentram regra de negócio.
 - **Widgets** (`presentation/widgets/`) são pedaços reutilizáveis da tela.
@@ -260,8 +261,9 @@ app/test/
 
 - A camada de dados traduz exceções de plugins/HTTP para erros da aplicação
   (`UserLocationException` com `UserLocationFailure`, `InvalidCodeException`).
-- O view model converte esses erros em estados de UI (`MapLocationStatus`,
-  mensagens de erro) e nunca expõe a exceção crua para a view.
+- **State Pattern (Padrão de Estado)**. Os ViewModels emitem estados para a UI que refletem o comportamento da tela. Cada estado é uma classe abstrata com implementações concretas, e a UI observa esses estados para se comportar corretamente.
+- O view model emite estados para a UI para controle de comportamento visual e interativo.
+- A UI não faz chamadas diretas aos ViewModels nem serviços; ela apenas observa os estados.
 - Cada fluxo deve ter estados explícitos de carregamento, sucesso, vazio e erro.
 
 ## Injeção de dependência
