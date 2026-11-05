@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../../../core/theme/app_colors.dart';
 import '../map_location_view_model.dart';
 
 /// Aviso sobre GPS/permissão exibido sobre o mapa.

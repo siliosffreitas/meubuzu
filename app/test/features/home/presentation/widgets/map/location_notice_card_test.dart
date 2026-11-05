@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/features/map/presentation/map_location_view_model.dart';
-import 'package:meubuzu/features/map/presentation/widgets/location_notice_card.dart';
+import 'package:meubuzu/features/home/presentation/widgets/map/map_location_view_model.dart';
+import 'package:meubuzu/features/home/presentation/widgets/map/widgets/location_notice_card.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(home: Scaffold(body: child));

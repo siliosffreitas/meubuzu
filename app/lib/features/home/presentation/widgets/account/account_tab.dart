@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/tab_header.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/empty_state.dart';
+import '../../../../../core/widgets/tab_header.dart';
 
 /// Aba de conta. A gestão de dados, plano e assinatura entra nas próximas
 /// etapas.

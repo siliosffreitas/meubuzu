@@ -58,10 +58,12 @@ app/lib/
   features/
     auth/                   # presentation/ (e-mail e código)
     home/                   # Home com abas Mapa, Favoritos e Conta
-    map/
-      presentation/         # views, view models e widgets
-    favorites/
-    account/
+      presentation/
+        home_page.dart
+        widgets/
+          account/          # aba Conta
+          favorites/        # aba Favoritos
+          map/              # aba Mapa (views, view models e widgets)
 app/test/                   # espelha a estrutura de lib/
 ```
 
@@ -88,7 +90,7 @@ flutter build apk --debug
 flutter build ios --no-codesign --simulator
 
 # Um teste específico
-flutter test test/features/map/presentation/map_location_view_model_test.dart
+flutter test test/features/home/presentation/widgets/map/map_location_view_model_test.dart
 ```
 
 Emulador Android usado no desenvolvimento:
@@ -172,6 +174,8 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
     repositories/<feature>_repository.dart
     services/<feature>_service.dart
   ```
+  As abas exibidas dentro da Home ficam em
+  `features/home/presentation/widgets/<aba>/`.
 
 ## Mapa e localização
 
@@ -199,8 +203,8 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 
 - Os testes ficam em `app/test/` e espelham `app/lib/`.
 - Use fakes que registram chamadas para verificar comportamento, como em
-  `test/features/map/presentation/map_location_view_model_test.dart` e
-  `test/data/repositories/user_location_repository_test.dart`.
+  `test/features/home/presentation/widgets/map/map_location_view_model_test.dart`
+  e `test/data/repositories/user_location_repository_test.dart`.
 - Para telas de autenticação, use o helper `test/helpers/auth_test_helpers.dart`
   (`appWith`, `RecordingAuthRepository`, `tapVisible`).
 - O view model de busca do mapa usa debounce de 320 ms; em testes, avance o

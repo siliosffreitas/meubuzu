@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../account/presentation/account_tab.dart';
-import '../../favorites/presentation/favorites_tab.dart';
-import '../../map/presentation/map_tab.dart';
+import 'widgets/account/account_tab.dart';
+import 'widgets/favorites/favorites_tab.dart';
+import 'widgets/map/map_tab.dart';
 
 /// Tela principal com as abas Mapa, Favoritos e Conta.
 class HomePage extends StatefulWidget {

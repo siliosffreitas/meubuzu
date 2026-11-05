@@ -41,7 +41,8 @@ Local: `lib/features/<feature>/presentation/`.
 - **Views, pages e tabs** (`*_page.dart`, `*_tab.dart`) exibem o estado e
   encaminham as ações do usuário. Não concentram regra de negócio.
 - **Widgets** (`presentation/widgets/`) são pedaços reutilizáveis da tela.
-  Devem ser simples e receber dados/ações por parâmetro.
+  Devem ser simples e receber dados/ações por parâmetro. As abas exibidas dentro
+  da Home ficam em `features/home/presentation/widgets/<aba>/`.
 - **View models** (`*_view_model.dart`) estendem `ChangeNotifier`, mantêm
   estado privado, expõem getters e métodos de ação e chamam `notifyListeners()`
   quando o estado muda.
@@ -176,12 +177,24 @@ app/lib/
     services/                   # integrações externas
   domain/                       # opcional; use cases compartilhados
   features/
-    <feature>/
+    auth/
       presentation/
-        <feature>_page.dart
-        <feature>_tab.dart
-        <feature>_view_model.dart
+        auth_email/
+        auth_code/
+    home/
+      presentation/
+        home_page.dart
         widgets/
+          account/
+            account_tab.dart
+          favorites/
+            favorites_tab.dart
+          map/
+            map_tab.dart
+            map_location_view_model.dart
+            map_search_view_model.dart
+            map_style.dart
+            widgets/
 ```
 
 Os testes em `app/test/` espelham essa estrutura:
@@ -189,7 +202,8 @@ Os testes em `app/test/` espelham essa estrutura:
 ```text
 app/test/
   data/repositories/            # testes de repositório
-  features/<feature>/presentation/
+  features/auth/presentation/
+  features/home/presentation/widgets/
   helpers/
 ```
 
@@ -255,14 +269,14 @@ Os dados compartilhados ficam em `lib/data/`; a tabela abaixo mostra quais
 deles cada funcionalidade usa. Nenhuma feature tem camada de domínio por
 enquanto.
 
-| Feature   | Presentation                                                   | Dados usados                                                                                | Domain |
-| --------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
-| auth      | e-mail e código, com view models                               | `AuthRepository` + `FakeAuthRepository`                                                     | —      |
-| home      | `HomePage` e navegação por abas                                | —                                                                                           | —      |
-| map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
-| favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
-| account   | `AccountTab`                                                   | —                                                                                           | —      |
-| core      | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
+| Feature        | Presentation                                                   | Dados usados                                                                                | Domain |
+| -------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
+| auth           | e-mail e código, com view models                               | `AuthRepository` + `FakeAuthRepository`                                                     | —      |
+| home           | `HomePage` e navegação por abas                                | —                                                                                           | —      |
+| home/account   | `AccountTab`                                                   | —                                                                                           | —      |
+| home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
+| home/map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
+| core           | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
 
 ## Referências
 
