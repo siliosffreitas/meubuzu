@@ -48,11 +48,13 @@ void main() {
       expect(find.text('ana.lima@exemplo.com'), findsOneWidget);
     });
 
-    testWidgets('inicia na tela de e-mail', (tester) async {
+    testWidgets('inicia na Home', (tester) async {
       await tester.pumpWidget(const MeuBuzuApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Menos espera.\nMais caminho.'), findsOneWidget);
+      expect(find.text('Mapa'), findsOneWidget);
+      expect(find.text('Favoritos'), findsOneWidget);
+      expect(find.text('Conta'), findsOneWidget);
     });
 
     testWidgets('não estoura o layout em tela pequena', (tester) async {

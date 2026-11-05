@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
-import 'features/auth/data/auth_repository.dart';
-import 'features/auth/presentation/auth_email/auth_email_page.dart';
+import 'features/home/presentation/home_page.dart';
 
 class MeuBuzuApp extends StatelessWidget {
   const MeuBuzuApp({super.key});
@@ -13,7 +12,9 @@ class MeuBuzuApp extends StatelessWidget {
       title: 'MeuBuzu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const AuthEmailPage(repository: FakeAuthRepository()),
+      // A autenticação continua disponível em features/auth. A Home é a tela
+      // inicial temporária para facilitar os testes.
+      home: const HomePage(),
     );
   }
 }
