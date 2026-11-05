@@ -25,6 +25,17 @@ arquivos continuam funcionando como fallback opcional (com a variável
 
 Sem as chaves, o app abre normalmente, mas o mapa fica sem os blocos de ruas.
 
+### Localização do usuário
+
+O app verifica o hardware de GPS, o estado do serviço de localização e a
+permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
+
+- **Android:** as permissões `ACCESS_FINE_LOCATION` e `ACCESS_COARSE_LOCATION`
+  estão declaradas no manifesto, e o `MainActivity` expõe a checagem de GPS via
+  canal nativo (`FEATURE_LOCATION_GPS`).
+- **iOS:** a descrição de uso `NSLocationWhenInUseUsageDescription` está no
+  `Info.plist`.
+
 ## Arquitetura
 O projeto seguirá a arquitetura recomendada pela equipe do Flutter, conforme a [documentação oficial de arquitetura de aplicações](https://docs.flutter.dev/app-architecture). A organização separa responsabilidades em camadas e por funcionalidade.
 
