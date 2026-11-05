@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../di/dependencies.dart';
 import '../../../../routing/app_routes.dart';
 import 'auth_code_view_model.dart';

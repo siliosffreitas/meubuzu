@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import '../../../../../../data/repositories/place_search_repository.dart';
+import '../../../../../../data/models/place_suggestion.dart';
+import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
 
 /// Estado da busca exibida sobre o mapa.

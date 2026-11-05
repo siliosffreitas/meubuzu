@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../../../../../data/models/user_coordinates.dart';
-import '../../../../../../data/repositories/user_location_repository.dart';
+import '../../../../../../domain/repositories/user_location_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
 
 /// Etapas da obtenção da localização do usuário.

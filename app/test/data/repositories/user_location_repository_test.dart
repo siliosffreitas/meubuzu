@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/models/user_coordinates.dart';
 import 'package:meubuzu/data/repositories/user_location_repository.dart';
 import 'package:meubuzu/data/services/location_service.dart';
+import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 
 const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
 

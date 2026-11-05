@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
 
-import '../../data/repositories/auth_repository.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
 import '../features/auth/presentation/auth_email/auth_email_page.dart';
 import '../features/home/presentation/home_page.dart';

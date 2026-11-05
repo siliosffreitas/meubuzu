@@ -1,20 +1,4 @@
-import '../../domain/contracts/contracts.dart';
-
-/// Contrato de autenticação por e-mail com código temporário.
-abstract interface class AuthRepository implements Repository {
-  /// Solicita o envio de um código de verificação para [email].
-  ///
-  /// Também é usado quando o usuário pede para reenviar o código.
-  Future<void> requestEmailCode(String email);
-
-  /// Confirma o código recebido. Lança [InvalidCodeException] quando o código
-  /// está incorreto, expirado ou já foi utilizado.
-  Future<void> verifyEmailCode({required String email, required String code});
-}
-
-class InvalidCodeException implements Exception {
-  const InvalidCodeException();
-}
+import '../../domain/repositories/auth_repository.dart';
 
 /// Implementação temporária usada enquanto o backend não está integrado.
 ///

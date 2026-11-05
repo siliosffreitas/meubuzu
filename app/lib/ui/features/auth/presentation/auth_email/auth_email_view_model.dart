@@ -1,4 +1,4 @@
-import '../../../../../data/repositories/auth_repository.dart';
+import '../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../domain/contracts/contracts.dart';
 
 /// Regras de apresentação da tela de entrada por e-mail.

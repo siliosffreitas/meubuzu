@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/repositories/place_search_repository.dart';
+import 'package:meubuzu/data/models/place_suggestion.dart';
+import 'package:meubuzu/domain/repositories/place_search_repository.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
 class _RecordingSearchRepository implements PlaceSearchRepository {

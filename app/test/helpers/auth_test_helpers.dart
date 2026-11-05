@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
+import 'package:meubuzu/domain/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
 import 'package:meubuzu/ui/routing/app_routes.dart';

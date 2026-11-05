@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../../data/repositories/place_search_repository.dart';
+import '../../../../../../../data/models/place_suggestion.dart';
 
 /// Cartão com os resultados da busca de linhas e paradas.
 class SearchResultsPanel extends StatelessWidget {

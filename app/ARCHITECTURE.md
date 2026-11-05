@@ -95,15 +95,16 @@ pertencem a uma única funcionalidade.
 ```text
 lib/data/
   models/         # modelos imutáveis compartilhados
-  repositories/   # contratos + implementações
+  repositories/   # implementações dos repositórios
   services/       # integrações externas
 ```
 
 - **Repositories** são a fonte única de verdade dos dados usados pela
   apresentação. Isolam a UI e as regras da aplicação dos detalhes de acesso.
-  - O contrato é declarado como `abstract interface class <Feature>Repository`.
-  - A implementação fica no mesmo arquivo ou em um arquivo próprio, com prefixo
-    que indica a origem: `Device...`, `Api...`, `Local...` ou `Fake...`.
+  - O contrato é declarado em `lib/domain/repositories/` como
+    `abstract interface class <Feature>Repository`.
+  - A implementação fica em `lib/data/repositories/`, com prefixo que indica a
+    origem: `Device...`, `Api...`, `Local...` ou `Fake...`.
   - Podem expor `Future` (operações pontuais) ou `Stream` (dados que mudam),
     guardar o último valor conhecido e traduzir erros das fontes externas para
     erros da aplicação.
@@ -120,23 +121,30 @@ Exemplo atual:
 ```text
 data/
   models/
+    place_suggestion.dart            # PlaceSuggestion + PlaceSuggestionType
     user_coordinates.dart            # modelo imutável
   repositories/
-    auth_repository.dart             # AuthRepository + FakeAuthRepository
-    place_search_repository.dart     # PlaceSearchRepository + FakePlaceSearchRepository
-    user_location_repository.dart    # UserLocationRepository + DeviceUserLocationRepository
+    auth_repository.dart             # FakeAuthRepository
+    place_search_repository.dart     # FakePlaceSearchRepository
+    user_location_repository.dart    # DeviceUserLocationRepository
   services/
     location_service.dart            # LocationService + DeviceLocationService
+
+domain/
+  repositories/
+    auth_repository.dart             # AuthRepository + InvalidCodeException
+    place_search_repository.dart     # PlaceSearchRepository
+    user_location_repository.dart    # UserLocationRepository + erros
 ```
 
 ## Regras de dependência
 
-| Camada   | Pode importar                                      | Não deve importar              |
-| -------- | -------------------------------------------------- | ------------------------------ |
-| UI       | domínio, contratos de repository, `di`, core       | implementações de service      |
-| Domínio  | contratos de repository                            | UI, services, plugins          |
-| Dados    | services, modelos, core, contratos base do domínio | UI, view models, use cases     |
-| `di/`    | dados, domínio, UI (view models)                   | — (é a raiz de composição)     |
+| Camada   | Pode importar                                          | Não deve importar          |
+| -------- | ------------------------------------------------------ | -------------------------- |
+| UI       | domínio, contratos de repository, `di`, core           | implementações de service  |
+| Domínio  | contratos de repository, modelos de dados              | UI, services, plugins      |
+| Dados    | services, modelos, core, contratos de repositório      | UI, view models, use cases |
+| `di/`    | dados, domínio, UI (view models)                       | — (é a raiz de composição) |
 
 A **raiz de composição** fica em `lib/di/dependencies.dart`. É o único lugar
 que instancia implementações concretas de service e repository e as registra no
@@ -191,13 +199,14 @@ app/lib/
   app.dart                      # MaterialApp e rota inicial
   data/                         # camada de dados compartilhada
     models/                     # modelos imutáveis compartilhados
-    repositories/               # contratos + implementações
+    repositories/               # implementações dos repositórios
     services/                   # integrações externas
   di/                           # composição e injeção de dependências
     custom_injector.dart        # wrapper do auto_injector
     dependencies.dart           # registro de services, repositórios e view models
   domain/
     contracts/                  # contratos base (Repository, Service, ViewmodelBase)
+    repositories/               # contratos (classes abstratas) dos repositórios
   ui/                           # camada de UI
     core/                       # apenas elementos visuais compartilhados
       theme/                    # AppColors, AppTheme
@@ -295,7 +304,7 @@ app/test/
 | Componente  | Crie quando                                                        | Onde fica                          |
 | ----------- | ------------------------------------------------------------------ | ---------------------------------- |
 | Service     | houver integração com API, banco, plugin ou plataforma             | `lib/data/services/`               |
-| Repository  | houver dados a expor para a UI (mesmo que venham de um service)    | `lib/data/repositories/`           |
+| Repository  | houver dados a expor para a UI (mesmo que venham de um service)    | contrato em `lib/domain/repositories/`; implementação em `lib/data/repositories/` |
 | Use case    | a regra for reutilizada por 2+ view models ou combinar repositories | `lib/domain/` (opcional)           |
 | View model  | a tela tiver estado que muda e ações a coordenar                   | `lib/ui/features/<feature>/presentation/` |
 | Widget      | o trecho de UI se repetir ou a página ficar grande demais          | `lib/ui/features/<feature>/presentation/` |

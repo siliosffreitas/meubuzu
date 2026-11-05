@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../data/models/user_coordinates.dart';
 import '../../../../../../data/repositories/place_search_repository.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../di/dependencies.dart';
+import '../../../../../../domain/repositories/place_search_repository.dart';
+import '../../../../../../domain/repositories/user_location_repository.dart';
 import 'map_location_view_model.dart';
 import 'map_search_view_model.dart';
 import 'map_style.dart';

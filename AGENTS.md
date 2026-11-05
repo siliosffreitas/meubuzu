@@ -49,9 +49,12 @@ app/lib/
   main.dart
   data/                     # camada de dados compartilhada
     models/                 # modelos imutáveis compartilhados
-    repositories/           # contratos + implementações
+    repositories/           # implementações dos repositórios
     services/               # integrações externas
-  domain/                   # opcional: use cases compartilhados
+  di/                       # CustomInjector e registro de dependências
+  domain/                   # contratos e, quando necessário, use cases
+    contracts/              # Repository, Service, ViewmodelBase
+    repositories/           # contratos (classes abstratas) dos repositórios
   ui/                       # camada de UI
     core/                   # apenas elementos visuais compartilhados
       theme/                # AppColors, AppTheme
@@ -152,7 +155,8 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
   negócio.
 - **ViewModels** estendem `ChangeNotifier`, mantêm estado privado, expõem
   getters e notificam a view.
-- **Repositories/Services** ficam em `lib/data/repositories/` e
+- **Repositories** têm o contrato em `lib/domain/repositories/` e a
+  implementação em `lib/data/repositories/`. **Services** ficam em
   `lib/data/services/`. Isolam acesso a dados e recursos de plataforma. Defina
   uma interface e uma implementação real.
 - **Modelos** compartilhados ficam em `lib/data/models/`.
