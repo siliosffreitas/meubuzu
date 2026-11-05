@@ -11,7 +11,7 @@ const _csv =
     '"id","codigo","denominacao","endereco","lat","long","created_at","updated_at"\n'
     '1,"2362","T-SANTA FÉ","Rua B, Loteamento Mário Covas, Teresina - PI",-5.165446,-42.791169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
     '2,"1848","CONJUNTO BENTINHO 1","Rua Seis, 8831 - Angelim, Teresina - PI",-5.165446,-42.790369,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
-    '3,"1850","PARADA DISTANTE","Rua Distante",-5.165446,-42.789169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
+    '3,"1850","PARADA DISTANTE","Rua Distante",-5.165446,-42.786169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
     '4,"1851","PARADA INVÁLIDA","Rua Inválida",nao,-42.789,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n';
 
 class _FakeAssetBundle extends AssetBundle {
@@ -29,7 +29,7 @@ class _FakeAssetBundle extends AssetBundle {
 
 void main() {
   group('AssetBusStopService', () {
-    test('retorna apenas paradas em até 100 metros', () async {
+    test('retorna apenas paradas em até 500 metros', () async {
       final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
 
       final stops = await service.findNearby(_position);
@@ -45,7 +45,11 @@ void main() {
       expect(stops.first.latitude, -5.165446);
       expect(stops.first.longitude, -42.791169);
       expect(
-        stops.every((stop) => stop.distanceInMetersTo(_position) <= 100),
+        stops.every(
+          (stop) =>
+              stop.distanceInMetersTo(_position) <=
+              nearbyBusStopsRadiusInMeters,
+        ),
         isTrue,
       );
     });
@@ -55,7 +59,7 @@ void main() {
 
       final stops = await service.findNearby(
         _position,
-        maxDistanceInMeters: 300,
+        maxDistanceInMeters: 600,
       );
 
       expect(stops.map((stop) => stop.id), ['1', '2', '3']);

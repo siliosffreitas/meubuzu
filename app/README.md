@@ -41,7 +41,7 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
 O catálogo local de paradas fica em `assets/paradas.csv` e é lido pelo
 `AssetBusStopService`. O `UserLocationRepository` consulta esse service sempre
 que obtém uma nova posição e publica no stream `nearbyStops` apenas as paradas a
-até 100 metros do usuário. O `MapLocationViewModel` transforma essa lista em um
+até 500 metros do usuário. O `MapLocationViewModel` transforma essa lista em um
 estado específico e o mapa exibe cada parada como um marcador.
 
 ## Navegação

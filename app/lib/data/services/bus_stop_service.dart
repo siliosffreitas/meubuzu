@@ -5,7 +5,7 @@ import '../models/bus_stop.dart';
 import '../models/user_coordinates.dart';
 
 /// Raio padrão usado para considerar uma parada próxima do usuário.
-const double nearbyBusStopsRadiusInMeters = 100;
+const double nearbyBusStopsRadiusInMeters = 500;
 
 /// Contrato de consulta às paradas de ônibus disponíveis no app.
 abstract interface class BusStopService implements Service {
