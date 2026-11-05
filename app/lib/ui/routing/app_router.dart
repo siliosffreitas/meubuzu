@@ -18,7 +18,7 @@ class AppRouter {
 
   GoRouter createRouter() {
     return GoRouter(
-      initialLocation: AppRoutes.authEmail,
+      initialLocation: AppRoutes.home,
       routes: [
         GoRoute(
           path: AppRoutes.home,
