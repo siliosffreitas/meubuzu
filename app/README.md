@@ -56,7 +56,7 @@ busca, os catálogos locais são a fonte de verdade.
 Os resultados são exibidos em seções separadas: **LINHAS • N** e
 **PARADAS • N**, com um resumo da quantidade no topo. As linhas são ordenadas
 pelo `sgLinha` (com o `codigoLinha` como fallback). Cada linha recebe uma cor
-própria, calculada a partir do `sgLinha`, exibida no fundo do bloco do código.
+própria, calculada a partir do `sgLinha` e do nome da linha, exibida no fundo do bloco do código.
 As paradas mostram o código antes do endereço. A linha atualmente exibida no
 mapa recebe o selo **Acompanhando no mapa**; o cabeçalho também reserva espaço
 para a cota diária de rastreamentos quando o backend fornecer esse dado. Ao

@@ -2,10 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/models/line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 
-Line _line({String id = '1', String? boardingCode}) {
+Line _line({
+  String id = '1',
+  String name = 'LINHA TESTE',
+  String? boardingCode,
+}) {
   return Line(
     id: id,
-    name: 'LINHA TESTE',
+    name: name,
     origin: 'ORIGEM',
     destination: 'DESTINO',
     boardingCode: boardingCode,
@@ -14,50 +18,93 @@ Line _line({String id = '1', String? boardingCode}) {
 
 void main() {
   group('lineMapColor', () {
-    test('é determinística para o mesmo código', () {
-      expect(lineMapColor('0301'), lineMapColor('0301'));
-      expect(lineMapColor(' 0301 '), lineMapColor('0301'));
+    test('é determinística para o mesmo código e nome', () {
+      expect(
+        lineMapColor('0301', 'MOCAMBINHO'),
+        lineMapColor('0301', 'MOCAMBINHO'),
+      );
+      expect(
+        lineMapColor(' 0301 ', ' MOCAMBINHO '),
+        lineMapColor('0301', 'MOCAMBINHO'),
+      );
     });
 
     test('gera cores diferentes para códigos diferentes', () {
       const codes = ['0001', '0002', '0004', '0301', '0402', '1003'];
-      final colors = codes.map(lineMapColor).toSet();
+      final colors = codes.map((code) => lineMapColor(code, 'LINHA')).toSet();
 
       expect(colors, hasLength(codes.length));
     });
 
+    test('gera cores diferentes para nomes diferentes no mesmo código', () {
+      final first = lineMapColor('0301', 'MOCAMBINHO DUQUE DE CAXIAS');
+      final second = lineMapColor('0301', 'MOCAMBINHO VIA CENTRO');
+
+      expect(first, isNot(second));
+    });
+
+    test('ignora diferenças de caixa e espaços no nome', () {
+      expect(
+        lineMapColor('0301', 'Mocambinho Duque de Caxias'),
+        lineMapColor('0301', 'MOCAMBINHO DUQUE DE CAXIAS'),
+      );
+    });
+
     test('mantém contraste para texto branco', () {
-      const codes = ['0001', '0301', '0402', '1003', 'T832', '999999'];
-      for (final code in codes) {
-        expect(lineMapColor(code).computeLuminance(), lessThan(0.2));
+      const combinations = [
+        ('0001', 'CENTRO'),
+        ('0301', 'MOCAMBINHO DUQUE DE CAXIAS'),
+        ('0402', 'VILA DO SOL'),
+        ('1003', 'CIRCULAR PARQUE'),
+        ('T832', 'TERMINAL CENTRAL'),
+        ('999999', 'LINHA LONGA'),
+      ];
+      for (final (code, name) in combinations) {
+        expect(lineMapColor(code, name).computeLuminance(), lessThan(0.2));
       }
     });
   });
 
   group('LineMapColor', () {
-    test('deriva a cor do boardingCode', () {
-      final line = _line(id: '46', boardingCode: '0301');
+    test('deriva a cor do boardingCode e do nome', () {
+      final line = _line(
+        id: '46',
+        name: 'MOCAMBINHO DUQUE DE CAXIAS',
+        boardingCode: '0301',
+      );
 
-      expect(line.mapColor, lineMapColor('0301'));
+      expect(line.mapColor, lineMapColor('0301', 'MOCAMBINHO DUQUE DE CAXIAS'));
     });
 
-    test('usa o mesmo código de embarque para linhas diferentes', () {
-      final first = _line(id: '46', boardingCode: '0301');
-      final second = _line(id: '999', boardingCode: '0301');
+    test('diferencia linhas com o mesmo código de embarque', () {
+      final first = _line(
+        id: '46',
+        name: 'MOCAMBINHO DUQUE DE CAXIAS',
+        boardingCode: '0301',
+      );
+      final second = _line(
+        id: '999',
+        name: 'MOCAMBINHO VIA CENTRO',
+        boardingCode: '0301',
+      );
 
-      expect(first.mapColor, second.mapColor);
+      expect(first.mapColor, isNot(second.mapColor));
     });
 
     test('usa o id quando não há boardingCode', () {
-      final line = _line(id: '408');
+      final line = _line(id: '408', name: 'BELAVISTA VIA S.MARIA');
 
-      expect(line.mapColor, lineMapColor('408'));
+      expect(line.mapColor, lineMapColor('408', 'BELAVISTA VIA S.MARIA'));
     });
 
     test('usa o id quando o boardingCode está vazio', () {
-      final line = _line(id: '408', boardingCode: '  ');
+      final line = _line(
+        id: '408',
+        name: 'BELAVISTA VIA S.MARIA',
+        boardingCode: '  ',
+      );
 
-      expect(line.mapColor, lineMapColor('408'));
+      expect(line.mapColor, lineMapColor('408', 'BELAVISTA VIA S.MARIA'));
     });
   });
 }

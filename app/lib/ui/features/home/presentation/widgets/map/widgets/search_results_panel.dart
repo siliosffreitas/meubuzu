@@ -253,7 +253,7 @@ class _LineSuggestionTile extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 13, 4, 13),
         child: Row(
           children: [
-            _LineCodeBadge(code: suggestion.code),
+            _LineCodeBadge(code: suggestion.code, name: suggestion.title),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -387,9 +387,10 @@ class _StopSuggestionTile extends StatelessWidget {
 
 /// Código da linha em bloco, como no layout de referência.
 class _LineCodeBadge extends StatelessWidget {
-  const _LineCodeBadge({required this.code});
+  const _LineCodeBadge({required this.code, required this.name});
 
   final String code;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
@@ -397,7 +398,7 @@ class _LineCodeBadge extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 52),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: lineMapColor(code),
+        color: lineMapColor(code, name),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

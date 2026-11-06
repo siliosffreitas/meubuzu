@@ -64,7 +64,10 @@ void main() {
             .ancestor(of: find.text('0301'), matching: find.byType(Container))
             .first,
       );
-      expect((badge.decoration! as BoxDecoration).color, lineMapColor('0301'));
+      expect(
+        (badge.decoration! as BoxDecoration).color,
+        lineMapColor('0301', 'MOCAMBINHO DUQUE DE CAXIAS'),
+      );
 
       await tester.tap(find.text('0301'));
       await tester.pump();
