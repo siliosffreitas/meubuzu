@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/models/line.dart';
+import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 
 Line _line({

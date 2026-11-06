@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/models/line.dart';
+import '../../../domain/models/line.dart';
 
 /// Cor de identificação visual das linhas.
 extension LineMapColor on Line {

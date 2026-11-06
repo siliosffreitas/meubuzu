@@ -1,6 +1,6 @@
 import '../../domain/repositories/place_search_repository.dart';
-import '../models/bus_stop.dart';
-import '../models/line.dart';
+import '../../domain/models/bus_stop.dart';
+import '../../domain/models/line.dart';
 import '../models/place_suggestion.dart';
 import '../services/bus_stop_service.dart';
 import '../services/line_search_service.dart';

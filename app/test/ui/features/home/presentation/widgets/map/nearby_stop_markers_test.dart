@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/models/bus_stop.dart';
+import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/nearby_stop_markers.dart';
 
 const _busStop = BusStop(

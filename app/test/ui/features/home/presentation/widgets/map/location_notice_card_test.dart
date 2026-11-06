@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/models/user_coordinates.dart';
+import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_state.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/widgets/location_notice_card.dart';
 

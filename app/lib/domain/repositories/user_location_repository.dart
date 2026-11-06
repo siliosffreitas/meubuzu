@@ -1,5 +1,5 @@
-import '../../data/models/bus_stop.dart';
-import '../../data/models/user_coordinates.dart';
+import '../models/bus_stop.dart';
+import '../models/user_coordinates.dart';
 import '../contracts/contracts.dart';
 
 /// Motivos pelos quais a localização do usuário não pôde ser obtida.

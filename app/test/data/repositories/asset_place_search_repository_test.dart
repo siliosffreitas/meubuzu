@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/models/bus_stop.dart';
-import 'package:meubuzu/data/models/line.dart';
+import 'package:meubuzu/domain/models/bus_stop.dart';
+import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/data/models/place_suggestion.dart';
-import 'package:meubuzu/data/models/user_coordinates.dart';
+import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/data/repositories/asset_place_search_repository.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';

@@ -1,5 +1,5 @@
-import '../../../../../../data/models/bus_stop.dart';
-import '../../../../../../data/models/user_coordinates.dart';
+import '../../../../../../domain/models/bus_stop.dart';
+import '../../../../../../domain/models/user_coordinates.dart';
 
 /// Estado da localização do usuário exibido no mapa.
 ///

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../domain/contracts/contracts.dart';
-import '../models/user_coordinates.dart';
+import '../../domain/models/user_coordinates.dart';
 
 /// Estado da permissão de localização relevante para o app.
 enum LocationPermissionStatus { granted, denied, deniedForever }

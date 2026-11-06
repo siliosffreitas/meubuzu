@@ -1,8 +1,8 @@
 import 'package:flutter/services.dart';
 
 import '../../domain/contracts/contracts.dart';
-import '../models/bus_stop.dart';
-import '../models/user_coordinates.dart';
+import '../../domain/models/bus_stop.dart';
+import '../../domain/models/user_coordinates.dart';
 import '../utils/csv_catalog.dart';
 import '../utils/search_normalizer.dart';
 

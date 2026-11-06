@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import '../../domain/repositories/user_location_repository.dart';
-import '../models/bus_stop.dart';
-import '../models/user_coordinates.dart';
+import '../../domain/models/bus_stop.dart';
+import '../../domain/models/user_coordinates.dart';
 import '../services/bus_stop_service.dart';
 import '../services/location_service.dart';
 

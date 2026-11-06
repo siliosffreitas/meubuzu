@@ -1,6 +1,6 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../../../../data/models/bus_stop.dart';
+import '../../../../../../domain/models/bus_stop.dart';
 
 /// Cria os marcadores das paradas próximas exibidas no mapa.
 Set<Marker> buildNearbyStopMarkers(Iterable<BusStop> stops) {

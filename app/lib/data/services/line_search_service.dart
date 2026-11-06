@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 import '../../domain/contracts/contracts.dart';
-import '../models/line.dart';
+import '../../domain/models/line.dart';
 import '../utils/csv_catalog.dart';
 import '../utils/search_normalizer.dart';
 

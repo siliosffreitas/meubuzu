@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meubuzu/data/models/bus_stop.dart';
-import 'package:meubuzu/data/models/user_coordinates.dart';
+import 'package:meubuzu/domain/models/bus_stop.dart';
+import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/data/repositories/user_location_repository.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/location_service.dart';

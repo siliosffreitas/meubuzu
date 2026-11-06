@@ -4,7 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/place_suggestion.dart';
-import '../../../../../../data/models/user_coordinates.dart';
+import '../../../../../../domain/models/user_coordinates.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';

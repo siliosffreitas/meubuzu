@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../../../../../data/models/bus_stop.dart';
-import '../../../../../../data/models/user_coordinates.dart';
+import '../../../../../../domain/models/bus_stop.dart';
+import '../../../../../../domain/models/user_coordinates.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
 import 'map_location_state.dart';
