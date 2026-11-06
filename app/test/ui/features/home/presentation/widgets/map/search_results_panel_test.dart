@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/models/place_suggestion.dart';
+import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/widgets/search_results_panel.dart';
 
@@ -55,6 +56,13 @@ void main() {
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
       expect(find.text('Circular • MOCAMBINHO'), findsOneWidget);
       expect(find.text('T-SANTA FÉ'), findsOneWidget);
+
+      final badge = tester.widget<Container>(
+        find
+            .ancestor(of: find.text('0301'), matching: find.byType(Container))
+            .first,
+      );
+      expect((badge.decoration! as BoxDecoration).color, lineMapColor('0301'));
 
       await tester.tap(find.text('0301'));
       await tester.pump();

@@ -215,6 +215,7 @@ app/lib/
     repositories/               # contratos (classes abstratas) dos repositórios
   ui/                           # camada de UI
     core/                       # apenas elementos visuais compartilhados
+      extensions/               # extensões de UI (ex.: cor das linhas)
       theme/                    # AppColors, AppTheme
       widgets/                  # widgets compartilhados
     routing/

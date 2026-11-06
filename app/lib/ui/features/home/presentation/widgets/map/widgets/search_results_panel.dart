@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../../core/extensions/line_map_color.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../../data/models/place_suggestion.dart';
 
@@ -331,7 +332,7 @@ class _LineCodeBadge extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 50),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: lineMapColor(code),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
