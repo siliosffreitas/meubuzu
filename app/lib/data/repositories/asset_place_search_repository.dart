@@ -34,10 +34,11 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
   }
 
   PlaceSuggestion _lineToSuggestion(Line line) {
+    final code = line.boardingCode ?? line.id;
     return PlaceSuggestion(
-      id: line.id,
+      id: code,
       type: PlaceSuggestionType.line,
-      title: line.id,
+      title: code,
       subtitle: line.name,
       latitude: line.latitude,
       longitude: line.longitude,

@@ -44,10 +44,11 @@ class _FakeBusStopService implements BusStopService {
 void main() {
   group('AssetPlaceSearchRepository', () {
     final line = Line(
-      id: '875A-10',
-      name: 'PERDIZES ↔ TERMINAL LAPA',
-      origin: 'PERDIZES',
-      destination: 'TERMINAL LAPA',
+      id: '46',
+      name: 'MOCAMBINHO DUQUE DE CAXIAS',
+      origin: 'MOCAMBINHO',
+      destination: 'MOCAMBINHO',
+      boardingCode: '0301',
     );
     final stop = BusStop(
       id: '1',
@@ -91,9 +92,9 @@ void main() {
 
         final lineSuggestion = suggestions.first;
         expect(lineSuggestion.type, PlaceSuggestionType.line);
-        expect(lineSuggestion.id, '875A-10');
-        expect(lineSuggestion.title, '875A-10');
-        expect(lineSuggestion.subtitle, 'PERDIZES ↔ TERMINAL LAPA');
+        expect(lineSuggestion.id, '0301');
+        expect(lineSuggestion.title, '0301');
+        expect(lineSuggestion.subtitle, 'MOCAMBINHO DUQUE DE CAXIAS');
         expect(lineSuggestion.latitude, isNull);
         expect(lineSuggestion.longitude, isNull);
 
