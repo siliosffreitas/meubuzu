@@ -50,12 +50,14 @@ void main() {
         ),
       );
 
-      expect(find.text('Linhas'), findsOneWidget);
-      expect(find.text('Paradas'), findsOneWidget);
+      expect(find.text('LINHAS • 1'), findsOneWidget);
+      expect(find.text('PARADAS • 1'), findsOneWidget);
+      expect(find.text('2 resultados'), findsOneWidget);
       expect(find.text('0301'), findsOneWidget);
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
       expect(find.text('Circular • MOCAMBINHO'), findsOneWidget);
       expect(find.text('T-SANTA FÉ'), findsOneWidget);
+      expect(find.text('2362 • Rua B, Loteamento Mário Covas'), findsOneWidget);
 
       final badge = tester.widget<Container>(
         find
@@ -68,6 +70,26 @@ void main() {
       await tester.pump();
 
       expect(selected, _line);
+    });
+
+    testWidgets('destaca a linha que está sendo acompanhada no mapa', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SearchResultsPanel(
+            query: '301',
+            isLoading: false,
+            results: const [_line],
+            activeSuggestionId: _line.id,
+            statusLabel: '2 de 5 rastreamentos hoje',
+            onSelected: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
+      expect(find.text('2 de 5 rastreamentos hoje'), findsOneWidget);
     });
 
     testWidgets('mostra o estado vazio', (tester) async {

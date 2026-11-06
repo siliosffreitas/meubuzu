@@ -4,7 +4,10 @@ import '../../../../../../core/extensions/line_map_color.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../../data/models/place_suggestion.dart';
 
-/// Cartão com os resultados da busca de linhas e paradas.
+/// Lista de resultados da busca de linhas e paradas.
+///
+/// Segue o layout de referência: resumo no topo, seções em destaque e itens
+/// com código colorido, nome, complemento e chevron.
 class SearchResultsPanel extends StatelessWidget {
   const SearchResultsPanel({
     super.key,
@@ -13,6 +16,8 @@ class SearchResultsPanel extends StatelessWidget {
     required this.results,
     required this.onSelected,
     this.maxHeight = 352,
+    this.activeSuggestionId,
+    this.statusLabel,
   });
 
   final String query;
@@ -24,18 +29,18 @@ class SearchResultsPanel extends StatelessWidget {
   /// disponível na tela dedicada de busca.
   final double maxHeight;
 
+  /// Linha atualmente exibida no mapa. Recebe o selo "Acompanhando no mapa".
+  final String? activeSuggestionId;
+
+  /// Texto opcional exibido no selo do cabeçalho, como a cota diária de
+  /// rastreamentos.
+  final String? statusLabel;
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      elevation: 12,
-      shadowColor: const Color(0x242E3C3E),
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: _buildContent(context),
-      ),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: _buildContent(context),
     );
   }
 
@@ -118,11 +123,13 @@ class SearchResultsPanel extends StatelessWidget {
         .toList(growable: false);
 
     final items = <Widget>[
+      _ResultsSummary(count: results.length, statusLabel: statusLabel),
       if (lines.isNotEmpty) ...[
         _SectionHeader(title: 'Linhas', count: lines.length),
         ...lines.map(
           (suggestion) => _LineSuggestionTile(
             suggestion: suggestion,
+            isActive: suggestion.id == activeSuggestionId,
             onTap: () => onSelected(suggestion),
           ),
         ),
@@ -138,25 +145,66 @@ class SearchResultsPanel extends StatelessWidget {
       ],
     ];
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: ListView.separated(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: 8),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const Divider(
-              height: 1,
-              thickness: 0.6,
-              indent: 72,
-              endIndent: 16,
-              color: AppColors.border,
+    return ListView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.only(left: 4, right: 4, bottom: 12),
+      itemCount: items.length,
+      itemBuilder: (context, index) => items[index],
+    );
+  }
+}
+
+/// Cabeçalho com a quantidade de resultados e, quando disponível, a cota
+/// diária de rastreamentos.
+class _ResultsSummary extends StatelessWidget {
+  const _ResultsSummary({required this.count, this.statusLabel});
+
+  final int count;
+  final String? statusLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$count ${count == 1 ? 'resultado' : 'resultados'}',
+              style: const TextStyle(
+                fontSize: 13.5,
+                color: AppColors.textSecondary,
+              ),
             ),
-            itemBuilder: (context, index) => items[index],
           ),
+          if (statusLabel != null) _StatusPill(label: statusLabel!),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.attentionSurface,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
         ),
-      ],
+      ),
     );
   }
 }
@@ -170,42 +218,39 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            '$count ${count == 1 ? 'resultado' : 'resultados'}',
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 6),
+      child: Text(
+        '${title.toUpperCase()} • $count',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.9,
+          color: AppColors.primaryPressed,
+        ),
       ),
     );
   }
 }
 
-/// Item de linha: código em destaque, nome e trajeto.
+/// Item de linha: código em destaque, nome, trajeto e chevron.
 class _LineSuggestionTile extends StatelessWidget {
-  const _LineSuggestionTile({required this.suggestion, required this.onTap});
+  const _LineSuggestionTile({
+    required this.suggestion,
+    required this.isActive,
+    required this.onTap,
+  });
 
   final PlaceSuggestion suggestion;
+  final bool isActive;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        padding: const EdgeInsets.fromLTRB(8, 13, 4, 13),
         child: Row(
           children: [
             _LineCodeBadge(code: suggestion.code),
@@ -219,20 +264,31 @@ class _LineSuggestionTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   if (suggestion.subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       suggestion.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
                         color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (isActive) ...[
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Acompanhando no mapa',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryPressed,
                       ),
                     ),
                   ],
@@ -243,7 +299,7 @@ class _LineSuggestionTile extends StatelessWidget {
             const Icon(
               Icons.chevron_right_rounded,
               size: 22,
-              color: AppColors.textMuted,
+              color: AppColors.textSecondary,
             ),
           ],
         ),
@@ -252,35 +308,43 @@ class _LineSuggestionTile extends StatelessWidget {
   }
 }
 
-/// Item de parada: ícone, nome e endereço.
+/// Item de parada: ícone, nome, código e endereço.
 class _StopSuggestionTile extends StatelessWidget {
   const _StopSuggestionTile({required this.suggestion, required this.onTap});
 
   final PlaceSuggestion suggestion;
   final VoidCallback onTap;
 
+  String get _description {
+    final code = suggestion.code.trim();
+    final subtitle = suggestion.subtitle.trim();
+    if (code.isEmpty) {
+      return subtitle;
+    }
+    if (subtitle.startsWith('$code ')) {
+      return subtitle;
+    }
+    return subtitle.isEmpty ? code : '$code • $subtitle';
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 11, 10, 11),
+        padding: const EdgeInsets.fromLTRB(8, 12, 4, 12),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.place_rounded,
-                size: 21,
-                color: AppColors.primary,
+            const SizedBox(
+              width: 24,
+              child: Icon(
+                Icons.location_on_rounded,
+                size: 22,
+                color: AppColors.primaryPressed,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 6),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,28 +354,29 @@ class _StopSuggestionTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
-                    suggestion.subtitle,
+                    _description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13,
                       color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             const Icon(
               Icons.chevron_right_rounded,
-              size: 20,
-              color: AppColors.textMuted,
+              size: 22,
+              color: AppColors.textSecondary,
             ),
           ],
         ),
@@ -329,11 +394,11 @@ class _LineCodeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 50),
+      constraints: const BoxConstraints(minWidth: 52),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: lineMapColor(code),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         code,

@@ -5,6 +5,7 @@ import '../../domain/repositories/place_search_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
 import '../features/auth/presentation/auth_email/auth_email_page.dart';
 import '../features/home/presentation/home_page.dart';
+import '../features/home/presentation/widgets/map/map_search_arguments.dart';
 import '../features/home/presentation/widgets/map/map_search_page.dart';
 import 'app_routes.dart';
 
@@ -32,6 +33,12 @@ class AppRouter {
           name: AppRoutes.mapSearchName,
           builder: (context, state) {
             final extra = state.extra;
+            if (extra is MapSearchPageArguments) {
+              return MapSearchPage(
+                repository: extra.repository,
+                activeSuggestionId: extra.activeSuggestionId,
+              );
+            }
             return MapSearchPage(
               repository: extra is PlaceSearchRepository ? extra : null,
             );

@@ -53,11 +53,14 @@ repositório consulta o `LineSearchService` no catálogo `assets/lines.csv`
 (paradas por código, denominação ou endereço). Enquanto o backend não expõe a
 busca, os catálogos locais são a fonte de verdade.
 
-Os resultados são exibidos em seções separadas: **Linhas** e **Paradas**. As
-linhas são ordenadas pelo `sgLinha` (com o `codigoLinha` como fallback). Cada
-linha recebe uma cor própria, calculada a partir do `sgLinha`, exibida no fundo
-do bloco do código. Ao escolher uma sugestão, a tela retorna o item e o mapa
-exibe o marcador.
+Os resultados são exibidos em seções separadas: **LINHAS • N** e
+**PARADAS • N**, com um resumo da quantidade no topo. As linhas são ordenadas
+pelo `sgLinha` (com o `codigoLinha` como fallback). Cada linha recebe uma cor
+própria, calculada a partir do `sgLinha`, exibida no fundo do bloco do código.
+As paradas mostram o código antes do endereço. A linha atualmente exibida no
+mapa recebe o selo **Acompanhando no mapa**; o cabeçalho também reserva espaço
+para a cota diária de rastreamentos quando o backend fornecer esse dado. Ao
+escolher uma sugestão, a tela retorna o item e o mapa exibe o marcador.
 
 ## Navegação
 

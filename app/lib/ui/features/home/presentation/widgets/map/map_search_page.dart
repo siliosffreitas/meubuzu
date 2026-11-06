@@ -13,13 +13,21 @@ import 'widgets/search_results_panel.dart';
 /// Ao escolher uma sugestão, fecha a tela devolvendo o item selecionado para
 /// que o mapa exiba o marcador correspondente.
 class MapSearchPage extends StatefulWidget {
-  const MapSearchPage({super.key, this.repository, this.viewModel});
+  const MapSearchPage({
+    super.key,
+    this.repository,
+    this.viewModel,
+    this.activeSuggestionId,
+  });
 
   /// Permite injetar um repositório de busca fake em testes.
   final PlaceSearchRepository? repository;
 
   /// Permite injetar um view model pronto em testes.
   final MapSearchViewModel? viewModel;
+
+  /// Linha atualmente exibida no mapa, destacada na lista de resultados.
+  final String? activeSuggestionId;
 
   @override
   State<MapSearchPage> createState() => _MapSearchPageState();
@@ -104,6 +112,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
                       isLoading: _viewModel.isLoading,
                       results: _viewModel.results,
                       maxHeight: double.infinity,
+                      activeSuggestionId: widget.activeSuggestionId,
                       onSelected: _selectSuggestion,
                     ),
                   );

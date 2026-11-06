@@ -14,6 +14,7 @@ import '../../../../../../domain/repositories/user_location_repository.dart';
 import '../../../../../routing/app_routes.dart';
 import 'map_location_state.dart';
 import 'map_location_view_model.dart';
+import 'map_search_arguments.dart';
 import 'map_style.dart';
 import 'nearby_stop_markers.dart';
 import 'widgets/location_notice_card.dart';
@@ -112,9 +113,15 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   }
 
   Future<void> _openSearch() async {
+    final activeSuggestion = _selectedSuggestion;
     final suggestion = await context.pushNamed<PlaceSuggestion>(
       AppRoutes.mapSearchName,
-      extra: widget.searchRepository,
+      extra: MapSearchPageArguments(
+        repository: widget.searchRepository,
+        activeSuggestionId: activeSuggestion?.type == PlaceSuggestionType.line
+            ? activeSuggestion!.id
+            : null,
+      ),
     );
 
     if (!mounted || suggestion == null) {
