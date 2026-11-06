@@ -120,7 +120,7 @@ class SearchResultsPanel extends StatelessWidget {
       if (lines.isNotEmpty) ...[
         _SectionHeader(title: 'Linhas', count: lines.length),
         ...lines.map(
-          (suggestion) => _SuggestionTile(
+          (suggestion) => _LineSuggestionTile(
             suggestion: suggestion,
             onTap: () => onSelected(suggestion),
           ),
@@ -129,7 +129,7 @@ class SearchResultsPanel extends StatelessWidget {
       if (stops.isNotEmpty) ...[
         _SectionHeader(title: 'Paradas', count: stops.length),
         ...stops.map(
-          (suggestion) => _SuggestionTile(
+          (suggestion) => _StopSuggestionTile(
             suggestion: suggestion,
             onTap: () => onSelected(suggestion),
           ),
@@ -192,15 +192,74 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _SuggestionTile extends StatelessWidget {
-  const _SuggestionTile({required this.suggestion, required this.onTap});
+/// Item de linha: código em destaque, nome e trajeto.
+class _LineSuggestionTile extends StatelessWidget {
+  const _LineSuggestionTile({required this.suggestion, required this.onTap});
 
   final PlaceSuggestion suggestion;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final isLine = suggestion.type == PlaceSuggestionType.line;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        child: Row(
+          children: [
+            _LineCodeBadge(code: suggestion.code),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    suggestion.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  if (suggestion.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      suggestion.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: AppColors.textMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Item de parada: ícone, nome e endereço.
+class _StopSuggestionTile extends StatelessWidget {
+  const _StopSuggestionTile({required this.suggestion, required this.onTap});
+
+  final PlaceSuggestion suggestion;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -214,10 +273,8 @@ class _SuggestionTile extends StatelessWidget {
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                isLine
-                    ? Icons.directions_bus_filled_rounded
-                    : Icons.place_rounded,
+              child: const Icon(
+                Icons.place_rounded,
                 size: 21,
                 color: AppColors.primary,
               ),
@@ -227,23 +284,15 @@ class _SuggestionTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          suggestion.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _TypeBadge(isLine: isLine),
-                    ],
+                  Text(
+                    suggestion.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -270,25 +319,31 @@ class _SuggestionTile extends StatelessWidget {
   }
 }
 
-class _TypeBadge extends StatelessWidget {
-  const _TypeBadge({required this.isLine});
+/// Código da linha em bloco, como no layout de referência.
+class _LineCodeBadge extends StatelessWidget {
+  const _LineCodeBadge({required this.code});
 
-  final bool isLine;
+  final String code;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      constraints: const BoxConstraints(minWidth: 50),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        isLine ? 'Linha' : 'Parada',
+        code,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+          color: Colors.white,
         ),
       ),
     );

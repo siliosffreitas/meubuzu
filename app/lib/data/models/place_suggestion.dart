@@ -7,6 +7,7 @@ enum PlaceSuggestionType { line, stop }
 class PlaceSuggestion {
   const PlaceSuggestion({
     required this.id,
+    required this.code,
     required this.type,
     required this.title,
     required this.subtitle,
@@ -15,8 +16,17 @@ class PlaceSuggestion {
   });
 
   final String id;
+
+  /// Código curto exibido em destaque (por exemplo, `sgLinha` da linha ou o
+  /// código da parada).
+  final String code;
+
   final PlaceSuggestionType type;
+
+  /// Texto principal da sugestão (nome da linha ou da parada).
   final String title;
+
+  /// Texto secundário (trajeto da linha ou endereço da parada).
   final String subtitle;
 
   /// Coordenadas da sugestão. Linhas ainda não possuem coordenadas no
@@ -25,7 +35,7 @@ class PlaceSuggestion {
   final double? longitude;
 
   bool matches(String query) {
-    return normalizeSearchText('$title $subtitle $id')
+    return normalizeSearchText('$code $title $subtitle $id')
         .contains(normalizeSearchText(query));
   }
 }

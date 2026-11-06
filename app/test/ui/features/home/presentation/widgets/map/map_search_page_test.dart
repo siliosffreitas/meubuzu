@@ -24,9 +24,10 @@ class _FakeSearchRepository implements PlaceSearchRepository {
 
 const _line = PlaceSuggestion(
   id: '875A-10',
+  code: '875A-10',
   type: PlaceSuggestionType.line,
-  title: '875A-10',
-  subtitle: 'Perdizes ↔ Terminal Lapa',
+  title: 'Perdizes ↔ Terminal Lapa',
+  subtitle: 'Perdizes → Terminal Lapa',
   latitude: -23.537,
   longitude: -46.676,
 );

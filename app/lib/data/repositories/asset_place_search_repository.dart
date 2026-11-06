@@ -34,12 +34,15 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
   }
 
   PlaceSuggestion _lineToSuggestion(Line line) {
-    final code = line.boardingCode ?? line.id;
+    final code = line.boardingCode?.isNotEmpty == true
+        ? line.boardingCode!
+        : line.id;
     return PlaceSuggestion(
-      id: code,
+      id: line.id,
+      code: code,
       type: PlaceSuggestionType.line,
-      title: code,
-      subtitle: line.name,
+      title: line.name,
+      subtitle: _lineRoute(line),
       latitude: line.latitude,
       longitude: line.longitude,
     );
@@ -48,12 +51,29 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
   PlaceSuggestion _stopToSuggestion(BusStop stop) {
     return PlaceSuggestion(
       id: stop.code,
+      code: stop.code,
       type: PlaceSuggestionType.stop,
       title: stop.name,
       subtitle: stop.address,
       latitude: stop.latitude,
       longitude: stop.longitude,
     );
+  }
+
+  /// Monta o texto secundário da linha a partir da origem e do destino.
+  String _lineRoute(Line line) {
+    final origin = line.origin.trim();
+    final destination = line.destination.trim();
+    if (origin.isEmpty) {
+      return destination;
+    }
+    if (destination.isEmpty) {
+      return origin;
+    }
+    if (origin == destination) {
+      return 'Circular • $origin';
+    }
+    return '$origin → $destination';
   }
 
   @override

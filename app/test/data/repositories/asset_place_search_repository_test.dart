@@ -92,21 +92,59 @@ void main() {
 
         final lineSuggestion = suggestions.first;
         expect(lineSuggestion.type, PlaceSuggestionType.line);
-        expect(lineSuggestion.id, '0301');
-        expect(lineSuggestion.title, '0301');
-        expect(lineSuggestion.subtitle, 'MOCAMBINHO DUQUE DE CAXIAS');
+        expect(lineSuggestion.id, '46');
+        expect(lineSuggestion.code, '0301');
+        expect(lineSuggestion.title, 'MOCAMBINHO DUQUE DE CAXIAS');
+        expect(lineSuggestion.subtitle, 'Circular • MOCAMBINHO');
         expect(lineSuggestion.latitude, isNull);
         expect(lineSuggestion.longitude, isNull);
 
         final stopSuggestion = suggestions[1];
         expect(stopSuggestion.type, PlaceSuggestionType.stop);
         expect(stopSuggestion.id, '2362');
+        expect(stopSuggestion.code, '2362');
         expect(stopSuggestion.title, 'T-SANTA FÉ');
         expect(stopSuggestion.subtitle, 'Rua B, Loteamento Mário Covas');
         expect(stopSuggestion.latitude, -5.165446);
         expect(stopSuggestion.longitude, -42.791169);
       },
     );
+
+    test('monta o trajeto quando origem e destino são diferentes', () async {
+      const line = Line(
+        id: '1',
+        name: 'CENTRO / SHOPPING',
+        origin: 'CENTRO',
+        destination: 'SHOPPING',
+        boardingCode: '0101',
+      );
+      final repository = AssetPlaceSearchRepository(
+        lineSearchService: _FakeLineSearchService([line]),
+        busStopService: _FakeBusStopService([]),
+      );
+
+      final suggestions = await repository.search('centro');
+
+      expect(suggestions.single.code, '0101');
+      expect(suggestions.single.subtitle, 'CENTRO → SHOPPING');
+    });
+
+    test('usa o código da linha quando não há código de embarque', () async {
+      const line = Line(
+        id: '408',
+        name: 'BELAVISTA VIA S.MARIA',
+        origin: 'TERMINAL 1',
+        destination: 'TERMINAL 1',
+      );
+      final repository = AssetPlaceSearchRepository(
+        lineSearchService: _FakeLineSearchService([line]),
+        busStopService: _FakeBusStopService([]),
+      );
+
+      final suggestions = await repository.search('belavista');
+
+      expect(suggestions.single.code, '408');
+    });
 
     test('dispose libera os recursos do repositório', () {
       final repository = AssetPlaceSearchRepository(

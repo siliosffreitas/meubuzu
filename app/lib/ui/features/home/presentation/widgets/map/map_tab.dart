@@ -170,7 +170,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     }
 
     final message = suggestion.type == PlaceSuggestionType.line
-        ? 'Acompanhamento da linha ${suggestion.title} em breve.'
+        ? 'Acompanhamento da linha ${suggestion.code} em breve.'
         : 'Parada ${suggestion.title} exibida no mapa.';
 
     ScaffoldMessenger.of(context)
@@ -226,7 +226,11 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               child: MapSearchBar(
-                text: _selectedSuggestion?.title,
+                text: _selectedSuggestion == null
+                    ? null
+                    : _selectedSuggestion!.type == PlaceSuggestionType.line
+                    ? _selectedSuggestion!.code
+                    : _selectedSuggestion!.title,
                 onTap: _openSearch,
               ),
             ),

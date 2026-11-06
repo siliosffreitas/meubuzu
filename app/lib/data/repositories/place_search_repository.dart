@@ -1,7 +1,8 @@
 import '../../domain/repositories/place_search_repository.dart';
 import '../models/place_suggestion.dart';
 
-/// Implementação temporária enquanto o backend não expõe a busca.
+/// Implementação temporária com dados de exemplo, útil para previews e testes
+/// manuais quando o catálogo local não está disponível.
 class FakePlaceSearchRepository implements PlaceSearchRepository {
   const FakePlaceSearchRepository({
     this.latency = const Duration(milliseconds: 420),
@@ -12,38 +13,43 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
   static const _catalog = <PlaceSuggestion>[
     PlaceSuggestion(
       id: '875A-10',
+      code: '875A-10',
       type: PlaceSuggestionType.line,
-      title: '875A-10',
-      subtitle: 'Perdizes ↔ Terminal Lapa',
+      title: 'Perdizes ↔ Terminal Lapa',
+      subtitle: 'Perdizes → Terminal Lapa',
       latitude: -23.537,
       longitude: -46.676,
     ),
     PlaceSuggestion(
       id: '8000-1',
+      code: '8000-1',
       type: PlaceSuggestionType.line,
-      title: '8000-1',
-      subtitle: 'Terminal Lapa ↔ Praça Ramos',
+      title: 'Terminal Lapa ↔ Praça Ramos',
+      subtitle: 'Terminal Lapa → Praça Ramos',
       latitude: -23.522,
       longitude: -46.701,
     ),
     PlaceSuggestion(
       id: '918P-10',
+      code: '918P-10',
       type: PlaceSuggestionType.line,
-      title: '918P-10',
-      subtitle: 'Vila Nova Cachoeirinha ↔ Lapa',
+      title: 'Vila Nova Cachoeirinha ↔ Lapa',
+      subtitle: 'Vila Nova Cachoeirinha → Lapa',
       latitude: -23.506,
       longitude: -46.674,
     ),
     PlaceSuggestion(
       id: '101',
+      code: '101',
       type: PlaceSuggestionType.line,
-      title: '101',
-      subtitle: 'Terminal Pinheiros ↔ Centro',
+      title: 'Terminal Pinheiros ↔ Centro',
+      subtitle: 'Terminal Pinheiros → Centro',
       latitude: -23.567,
       longitude: -46.694,
     ),
     PlaceSuggestion(
       id: 'parada-se',
+      code: 'SE',
       type: PlaceSuggestionType.stop,
       title: 'Praça da Sé',
       subtitle: 'Parada · Sé',
@@ -52,6 +58,7 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
     ),
     PlaceSuggestion(
       id: 'parada-luz',
+      code: 'LUZ',
       type: PlaceSuggestionType.stop,
       title: 'Estação da Luz',
       subtitle: 'Parada · Luz',
@@ -60,6 +67,7 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
     ),
     PlaceSuggestion(
       id: 'parada-lapa',
+      code: 'LAPA',
       type: PlaceSuggestionType.stop,
       title: 'Terminal Lapa',
       subtitle: 'Parada · Lapa',
@@ -68,6 +76,7 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
     ),
     PlaceSuggestion(
       id: 'parada-masp',
+      code: 'MASP',
       type: PlaceSuggestionType.stop,
       title: 'MASP',
       subtitle: 'Parada · Avenida Paulista',
