@@ -23,7 +23,8 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
       return const [];
     }
 
-    final lines = await _lineSearchService.search(trimmed);
+    final lines = [...await _lineSearchService.search(trimmed)]
+      ..sort(_compareLines);
     final stops = await _busStopService.search(trimmed);
 
     final suggestions = <PlaceSuggestion>[
@@ -34,18 +35,32 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
   }
 
   PlaceSuggestion _lineToSuggestion(Line line) {
-    final code = line.boardingCode?.isNotEmpty == true
-        ? line.boardingCode!
-        : line.id;
     return PlaceSuggestion(
       id: line.id,
-      code: code,
+      code: _displayCode(line),
       type: PlaceSuggestionType.line,
       title: line.name,
       subtitle: _lineRoute(line),
       latitude: line.latitude,
       longitude: line.longitude,
     );
+  }
+
+  /// Código exibido da linha: o `sgLinha` quando existe, senão o `codigoLinha`.
+  String _displayCode(Line line) {
+    final code = line.boardingCode?.trim();
+    return code == null || code.isEmpty ? line.id : code;
+  }
+
+  /// Ordena as linhas pelo `sgLinha` (fallback para o código interno).
+  int _compareLines(Line first, Line second) {
+    final codeComparison = _displayCode(first)
+        .toLowerCase()
+        .compareTo(_displayCode(second).toLowerCase());
+    if (codeComparison != 0) {
+      return codeComparison;
+    }
+    return first.name.toLowerCase().compareTo(second.name.toLowerCase());
   }
 
   PlaceSuggestion _stopToSuggestion(BusStop stop) {

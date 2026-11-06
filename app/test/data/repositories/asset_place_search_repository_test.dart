@@ -146,6 +146,99 @@ void main() {
       expect(suggestions.single.code, '408');
     });
 
+    test('ordena as linhas pelo sgLinha', () async {
+      const lines = [
+        Line(
+          id: '46',
+          name: 'MOCAMBINHO DUQUE DE CAXIAS',
+          origin: 'MOCAMBINHO',
+          destination: 'MOCAMBINHO',
+          boardingCode: '0301',
+        ),
+        Line(
+          id: '1',
+          name: 'CENTRO / SHOPPING',
+          origin: 'CENTRO',
+          destination: 'SHOPPING',
+          boardingCode: '0101',
+        ),
+        Line(
+          id: '10',
+          name: 'TERMINAL / UNIVERSIDADE',
+          origin: 'TERMINAL',
+          destination: 'UNIVERSIDADE',
+          boardingCode: 'T0100',
+        ),
+      ];
+      final repository = AssetPlaceSearchRepository(
+        lineSearchService: _FakeLineSearchService(lines),
+        busStopService: _FakeBusStopService([]),
+      );
+
+      final suggestions = await repository.search('terminal');
+
+      expect(suggestions.map((suggestion) => suggestion.code), [
+        '0101',
+        '0301',
+        'T0100',
+      ]);
+    });
+
+    test('ordena usando o código interno quando não há sgLinha', () async {
+      const lines = [
+        Line(
+          id: '408',
+          name: 'BELAVISTA VIA S.MARIA',
+          origin: 'TERMINAL 1',
+          destination: 'TERMINAL 1',
+        ),
+        Line(
+          id: '205',
+          name: 'CENTRO / SHOPPING',
+          origin: 'CENTRO',
+          destination: 'SHOPPING',
+        ),
+      ];
+      final repository = AssetPlaceSearchRepository(
+        lineSearchService: _FakeLineSearchService(lines),
+        busStopService: _FakeBusStopService([]),
+      );
+
+      final suggestions = await repository.search('centro');
+
+      expect(suggestions.map((suggestion) => suggestion.code), ['205', '408']);
+    });
+
+    test('desempata linhas de mesmo sgLinha pelo nome', () async {
+      const lines = [
+        Line(
+          id: '2',
+          name: 'ZONA SUL',
+          origin: 'A',
+          destination: 'B',
+          boardingCode: '0501',
+        ),
+        Line(
+          id: '1',
+          name: 'ZONA NORTE',
+          origin: 'A',
+          destination: 'B',
+          boardingCode: '0501',
+        ),
+      ];
+      final repository = AssetPlaceSearchRepository(
+        lineSearchService: _FakeLineSearchService(lines),
+        busStopService: _FakeBusStopService([]),
+      );
+
+      final suggestions = await repository.search('zona');
+
+      expect(suggestions.map((suggestion) => suggestion.title), [
+        'ZONA NORTE',
+        'ZONA SUL',
+      ]);
+    });
+
     test('dispose libera os recursos do repositório', () {
       final repository = AssetPlaceSearchRepository(
         lineSearchService: _FakeLineSearchService([]),
