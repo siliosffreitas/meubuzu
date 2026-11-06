@@ -53,6 +53,9 @@ repositório consulta o `LineSearchService` no catálogo `assets/lines.csv`
 (paradas por código, denominação ou endereço). Enquanto o backend não expõe a
 busca, os catálogos locais são a fonte de verdade.
 
+Os resultados são exibidos em seções separadas: **Linhas** e **Paradas**. Ao
+escolher uma sugestão, a tela retorna o item e o mapa exibe o marcador.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

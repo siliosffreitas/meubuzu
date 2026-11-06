@@ -109,38 +109,42 @@ class SearchResultsPanel extends StatelessWidget {
       );
     }
 
+    final lines = results
+        .where((suggestion) => suggestion.type == PlaceSuggestionType.line)
+        .toList(growable: false);
+    final stops = results
+        .where((suggestion) => suggestion.type == PlaceSuggestionType.stop)
+        .toList(growable: false);
+
+    final items = <Widget>[
+      if (lines.isNotEmpty) ...[
+        _SectionHeader(title: 'Linhas', count: lines.length),
+        ...lines.map(
+          (suggestion) => _SuggestionTile(
+            suggestion: suggestion,
+            onTap: () => onSelected(suggestion),
+          ),
+        ),
+      ],
+      if (stops.isNotEmpty) ...[
+        _SectionHeader(title: 'Paradas', count: stops.length),
+        ...stops.map(
+          (suggestion) => _SuggestionTile(
+            suggestion: suggestion,
+            onTap: () => onSelected(suggestion),
+          ),
+        ),
+      ],
+    ];
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
-          child: Row(
-            children: [
-              const Text(
-                'Linhas e paradas',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${results.length} ${results.length == 1 ? 'resultado' : 'resultados'}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
         Flexible(
           child: ListView.separated(
             shrinkWrap: true,
             padding: const EdgeInsets.only(bottom: 8),
-            itemCount: results.length,
+            itemCount: items.length,
             separatorBuilder: (_, _) => const Divider(
               height: 1,
               thickness: 0.6,
@@ -148,16 +152,42 @@ class SearchResultsPanel extends StatelessWidget {
               endIndent: 16,
               color: AppColors.border,
             ),
-            itemBuilder: (context, index) {
-              final suggestion = results[index];
-              return _SuggestionTile(
-                suggestion: suggestion,
-                onTap: () => onSelected(suggestion),
-              );
-            },
+            itemBuilder: (context, index) => items[index],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '$count ${count == 1 ? 'resultado' : 'resultados'}',
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ),
     );
   }
 }
