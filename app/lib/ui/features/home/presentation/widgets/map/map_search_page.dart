@@ -62,6 +62,14 @@ class _MapSearchPageState extends State<MapSearchPage> {
     _focusNode.requestFocus();
   }
 
+  /// Devolve o foco ao campo mantendo a consulta para o usuário ajustá-la.
+  void _editSearch() {
+    _focusNode.requestFocus();
+    _controller.selection = TextSelection.collapsed(
+      offset: _controller.text.length,
+    );
+  }
+
   void _selectSuggestion(PlaceSuggestion suggestion) {
     context.pop(suggestion);
   }
@@ -114,6 +122,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
                       maxHeight: double.infinity,
                       activeSuggestionId: widget.activeSuggestionId,
                       onSelected: _selectSuggestion,
+                      onEditSearch: _editSearch,
                     ),
                   );
                 },

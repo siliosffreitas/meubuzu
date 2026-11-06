@@ -5,6 +5,7 @@ abstract final class AppColors {
   static const background = Color(0xFFFFFEFF);
   static const primary = Color(0xFF357872);
   static const primaryPressed = Color(0xFF2A615C);
+  static const primarySurface = Color(0xFFE9F2EE);
   static const surface = Color(0xFFEDF4F1);
   static const surfaceMuted = Color(0xFFCBDAD3);
   static const codeField = Color(0xFFF7F9F7);

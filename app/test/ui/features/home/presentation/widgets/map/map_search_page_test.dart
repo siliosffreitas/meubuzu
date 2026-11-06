@@ -116,5 +116,28 @@ void main() {
       expect(selected?.id, _line.id);
       expect(find.text('Abrir busca'), findsOneWidget);
     });
+
+    testWidgets('estado vazio oferece editar a busca', (tester) async {
+      await tester.pumpWidget(_appWithSearch(_FakeSearchRepository(const [])));
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Aeroporto');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Não encontramos\n“Aeroporto”'), findsOneWidget);
+      expect(find.text('Editar busca'), findsOneWidget);
+
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+
+      await tester.ensureVisible(find.text('Editar busca'));
+      await tester.tap(find.text('Editar busca'));
+      await tester.pump();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.focusNode?.hasFocus, isTrue);
+    });
   });
 }

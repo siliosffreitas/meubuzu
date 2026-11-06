@@ -18,12 +18,17 @@ class SearchResultsPanel extends StatelessWidget {
     this.maxHeight = 352,
     this.activeSuggestionId,
     this.statusLabel,
+    this.onEditSearch,
   });
 
   final String query;
   final bool isLoading;
   final List<PlaceSuggestion> results;
   final ValueChanged<PlaceSuggestion> onSelected;
+
+  /// Ação do botão "Editar busca" exibido no estado vazio. Quando nulo, o
+  /// botão não é renderizado.
+  final VoidCallback? onEditSearch;
 
   /// Altura máxima do painel. Use `double.infinity` para ocupar todo o espaço
   /// disponível na tela dedicada de busca.
@@ -73,46 +78,7 @@ class SearchResultsPanel extends StatelessWidget {
     }
 
     if (results.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.search_off_rounded,
-                size: 26,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Nenhum resultado',
-              style: TextStyle(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Não encontramos linhas ou paradas para “$query”.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13.5,
-                height: 1.4,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
+      return _EmptyResults(query: query, onEditSearch: onEditSearch);
     }
 
     final lines = results
@@ -153,6 +119,111 @@ class SearchResultsPanel extends StatelessWidget {
     );
   }
 }
+
+/// Estado exibido quando a busca não encontra linhas nem paradas.
+class _EmptyResults extends StatelessWidget {
+  const _EmptyResults({required this.query, this.onEditSearch});
+
+  final String query;
+  final VoidCallback? onEditSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.primarySurface,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.search_rounded,
+                size: 26,
+                color: AppColors.primaryPressed,
+              ),
+            ),
+          ),
+          const SizedBox(height: 26),
+          Text(
+            'Não encontramos\n“$query”',
+            style: const TextStyle(
+              fontSize: 28,
+              height: 1.22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Nenhuma linha ou parada corresponde à sua busca.',
+            style: _emptyBodyStyle,
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Tente outro nome, número de linha ou código de parada. '
+            'Por exemplo: 101, Praça do Ipê ou P-014.',
+            style: _emptyBodyStyle,
+          ),
+          if (onEditSearch != null) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 46,
+              child: TextButton(
+                onPressed: onEditSearch,
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.primarySurface,
+                  foregroundColor: AppColors.primaryPressed,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.search_rounded, size: 19),
+                    SizedBox(width: 8),
+                    Text(
+                      'Editar busca',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 22),
+          const Text(
+            'Pesquisar locais, linhas e paradas não consome rastreamentos.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const _emptyBodyStyle = TextStyle(
+  fontSize: 14,
+  height: 1.5,
+  color: AppColors.textSecondary,
+);
 
 /// Cabeçalho com a quantidade de resultados e, quando disponível, a cota
 /// diária de rastreamentos.

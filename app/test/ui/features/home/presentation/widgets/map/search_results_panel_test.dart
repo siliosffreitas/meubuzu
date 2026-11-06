@@ -95,23 +95,47 @@ void main() {
       expect(find.text('2 de 5 rastreamentos hoje'), findsOneWidget);
     });
 
-    testWidgets('mostra o estado vazio', (tester) async {
+    testWidgets('mostra o estado vazio com as orientações da busca', (
+      tester,
+    ) async {
+      var edits = 0;
+
       await tester.pumpWidget(
         _app(
           SearchResultsPanel(
-            query: 'inexistente',
+            query: 'Aeroporto',
             isLoading: false,
             results: const [],
             onSelected: (_) {},
+            onEditSearch: () => edits++,
           ),
         ),
       );
 
-      expect(find.text('Nenhum resultado'), findsOneWidget);
+      expect(find.text('Não encontramos\n“Aeroporto”'), findsOneWidget);
       expect(
-        find.text('Não encontramos linhas ou paradas para “inexistente”.'),
+        find.text('Nenhuma linha ou parada corresponde à sua busca.'),
         findsOneWidget,
       );
+      expect(
+        find.text(
+          'Tente outro nome, número de linha ou código de parada. '
+          'Por exemplo: 101, Praça do Ipê ou P-014.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Pesquisar locais, linhas e paradas não consome rastreamentos.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text('Editar busca'));
+      await tester.tap(find.text('Editar busca'));
+      await tester.pump();
+
+      expect(edits, 1);
     });
   });
 }
