@@ -34,6 +34,17 @@ const _secondStop = BusStop(
   longitude: -42.9,
 );
 
+BusStop _stop(int position) {
+  return BusStop(
+    id: '$position',
+    code: '10$position',
+    name: 'PARADA $position',
+    address: 'Rua $position',
+    latitude: -5.0 - (position * 0.01),
+    longitude: -42.8,
+  );
+}
+
 class _FakeDetailsLineRepository implements DetailsLineRepository {
   _FakeDetailsLineRepository({
     this.line,
@@ -122,6 +133,55 @@ void main() {
       expect(find.text('175'), findsOneWidget);
 
       expect(repository.loadedCodes, ['0301']);
+    });
+
+    testWidgets('mostra só as 3 primeiras paradas e expande ao tocar', (
+      tester,
+    ) async {
+      final stops = [
+        for (var position = 1; position <= 7; position++) _stop(position),
+      ];
+      final repository = _FakeDetailsLineRepository(line: _line, stops: stops);
+      addTearDown(repository.dispose);
+
+      await tester.pumpWidget(_app(repository));
+      await tester.pumpAndSettle();
+
+      for (var position = 1; position <= 3; position++) {
+        expect(find.text('PARADA $position'), findsOneWidget);
+      }
+      expect(find.text('PARADA 4'), findsNothing);
+      expect(find.text('PARADA 5'), findsNothing);
+      expect(find.text('Mostrar mais'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Mostrar mais'));
+      await tester.tap(find.text('Mostrar mais'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mostrar mais'), findsNothing);
+      expect(find.text('PARADA 4'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('PARADA 7'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('PARADA 7'), findsOneWidget);
+    });
+
+    testWidgets('não mostra o botão quando há 3 paradas ou menos', (
+      tester,
+    ) async {
+      final stops = [
+        for (var position = 1; position <= 3; position++) _stop(position),
+      ];
+      final repository = _FakeDetailsLineRepository(line: _line, stops: stops);
+      addTearDown(repository.dispose);
+
+      await tester.pumpWidget(_app(repository));
+      await tester.pumpAndSettle();
+
+      expect(find.text('PARADA 3'), findsOneWidget);
+      expect(find.text('Mostrar mais'), findsNothing);
     });
 
     testWidgets('mostra o estado sem paradas cadastradas', (tester) async {

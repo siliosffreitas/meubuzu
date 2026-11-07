@@ -13,6 +13,9 @@ import 'details_line_view_model.dart';
 import 'widgets/line_details_header.dart';
 import 'widgets/line_stop_timeline_tile.dart';
 
+/// Quantidade de paradas exibidas antes do botão "Mostrar mais".
+const _initialVisibleStops = 3;
+
 /// Tela com os detalhes da linha e a lista ordenada de suas paradas.
 class DetailsLinePage extends StatefulWidget {
   const DetailsLinePage({
@@ -37,6 +40,7 @@ class DetailsLinePage extends StatefulWidget {
 
 class _DetailsLinePageState extends State<DetailsLinePage> {
   late final DetailsLineViewModel _viewModel;
+  bool _showAllStops = false;
 
   @override
   void initState() {
@@ -70,7 +74,15 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
   }
 
   void _reload() {
+    setState(() => _showAllStops = false);
     _viewModel.load();
+  }
+
+  void _showMoreStops() {
+    if (_showAllStops) {
+      return;
+    }
+    setState(() => _showAllStops = true);
   }
 
   @override
@@ -102,6 +114,8 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
       DetailsLineReady(:final line, :final stops) => _LineContent(
         line: line,
         stops: stops,
+        showAllStops: _showAllStops,
+        onShowMore: _showMoreStops,
       ),
       DetailsLineNoStops(:final line) => _LineContent(
         line: line,
@@ -180,13 +194,25 @@ class _LoadingView extends StatelessWidget {
 }
 
 class _LineContent extends StatelessWidget {
-  const _LineContent({required this.line, required this.stops});
+  const _LineContent({
+    required this.line,
+    required this.stops,
+    this.showAllStops = false,
+    this.onShowMore,
+  });
 
   final Line line;
   final List<BusStop> stops;
+  final bool showAllStops;
+  final VoidCallback? onShowMore;
 
   @override
   Widget build(BuildContext context) {
+    final visibleStops = showAllStops
+        ? stops
+        : stops.take(_initialVisibleStops).toList(growable: false);
+    final hasHiddenStops = visibleStops.length < stops.length;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
       children: [
@@ -197,13 +223,15 @@ class _LineContent extends StatelessWidget {
         if (stops.isEmpty)
           const _NoStopsCard()
         else ...[
-          for (var index = 0; index < stops.length; index++)
+          for (var index = 0; index < visibleStops.length; index++)
             LineStopTimelineTile(
-              stop: stops[index],
+              stop: visibleStops[index],
               position: index + 1,
               isFirst: index == 0,
               isLast: index == stops.length - 1,
             ),
+          if (hasHiddenStops && onShowMore != null)
+            _ShowMoreButton(onPressed: onShowMore!),
           const SizedBox(height: 16),
           const _OrderNotice(),
         ],
@@ -257,6 +285,28 @@ class _StopsSectionTitle extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ShowMoreButton extends StatelessWidget {
+  const _ShowMoreButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.expand_more_rounded, size: 20),
+        label: const Text('Mostrar mais'),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 }
