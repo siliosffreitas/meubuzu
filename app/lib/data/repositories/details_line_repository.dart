@@ -23,16 +23,15 @@ class DetailsLineRepositoryImpl implements DetailsLineRepository {
   Stream<BusStop?> get busStops => _busStopsController.stream;
 
   @override
-  Future<void> setCurrentLine(Line line) async {
-    final sgLinha = line.boardingCode;
-    if (sgLinha == null || sgLinha.isEmpty) {
-      _currentLineController.add(line);
+  Future<void> setCurrentLine(String lineCode) async {
+    if (lineCode.isEmpty) {
+      _currentLineController.add(null);
       return;
     }
 
-    // Consulta o catálogo pelo sgLinha para recuperar os dados básicos.
-    final results = await _lineSearchService.search(sgLinha);
-    _currentLineController.add(results.isNotEmpty ? results.first : line);
+    // Consulta o catálogo pelo código da linha para recuperar os dados básicos.
+    final results = await _lineSearchService.search(lineCode);
+    _currentLineController.add(results.isNotEmpty ? results.first : null);
   }
 
   @override

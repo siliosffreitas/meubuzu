@@ -7,6 +7,6 @@ abstract interface class DetailsLineRepository implements Repository {
   Stream<Line?> get currentLine;
   Stream<BusStop?> get busStops;
 
-  Future<void> setCurrentLine(Line line);
+  Future<void> setCurrentLine(String lineCode);
 
 }
