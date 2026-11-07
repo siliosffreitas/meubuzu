@@ -19,6 +19,9 @@ abstract interface class BusStopService implements Service {
 
   /// Busca paradas por código, denominação ou endereço no catálogo.
   Future<List<BusStop>> search(String query);
+
+  /// Busca paradas pelos [codes] informados, preservando a ordem recebida.
+  Future<List<BusStop>> findByCodes(Iterable<String> codes);
 }
 
 /// Implementação que lê as paradas do catálogo local em CSV.
@@ -61,6 +64,28 @@ class AssetBusStopService implements BusStopService {
               normalizeSearchText(stop.address).contains(normalizedQuery),
         )
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<BusStop>> findByCodes(Iterable<String> codes) async {
+    final stops = await (_stops ??= _loadStops());
+    final stopsByCode = <String, BusStop>{
+      for (final stop in stops) stop.code.trim(): stop,
+    };
+
+    final result = <BusStop>[];
+    final seen = <String>{};
+    for (final code in codes) {
+      final normalized = code.trim();
+      if (normalized.isEmpty || !seen.add(normalized)) {
+        continue;
+      }
+      final stop = stopsByCode[normalized];
+      if (stop != null) {
+        result.add(stop);
+      }
+    }
+    return result;
   }
 
   Future<List<BusStop>> _loadStops() async {

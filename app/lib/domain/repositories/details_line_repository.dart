@@ -5,8 +5,7 @@ import '../models/bus_stop.dart';
 
 abstract interface class DetailsLineRepository implements Repository {
   Stream<Line?> get currentLine;
-  Stream<BusStop?> get busStops;
+  Stream<List<BusStop>> get busStops;
 
   Future<void> setCurrentLine(String lineCode);
-
 }

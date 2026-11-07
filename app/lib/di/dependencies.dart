@@ -1,10 +1,13 @@
 import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/details_line_repository.dart';
 import '../data/repositories/user_location_repository.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/line_search_service.dart';
+import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
 import '../domain/repositories/auth_repository.dart';
+import '../domain/repositories/details_line_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
 import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
@@ -24,10 +27,18 @@ Future<void> setupDependencies() async {
   injector.addService<LocationService>(DeviceLocationService.new);
   injector.addService<BusStopService>(AssetBusStopService.new);
   injector.addService<LineSearchService>(AssetLineSearchService.new);
+  injector.addService<LineStopsService>(AssetLineStopsService.new);
 
   injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
   injector.addRepository<PlaceSearchRepository>(
     () => AssetPlaceSearchRepository(),
+  );
+  injector.addRepository<DetailsLineRepository>(
+    () => DetailsLineRepositoryImpl(
+      injector.getService<LineSearchService>(),
+      injector.getService<LineStopsService>(),
+      injector.getService<BusStopService>(),
+    ),
   );
   injector.addRepository<UserLocationRepository>(
     () => DeviceUserLocationRepository(

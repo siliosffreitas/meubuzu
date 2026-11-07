@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/repositories/asset_place_search_repository.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
+import 'package:meubuzu/data/repositories/details_line_repository.dart';
 import 'package:meubuzu/data/repositories/user_location_repository.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
+import 'package:meubuzu/data/services/line_stops_service.dart';
 import 'package:meubuzu/data/services/location_service.dart';
 import 'package:meubuzu/di/dependencies.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
+import 'package:meubuzu/domain/repositories/details_line_repository.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
@@ -30,10 +33,18 @@ void main() {
       injector.getService<LineSearchService>(),
       isA<AssetLineSearchService>(),
     );
+    expect(
+      injector.getService<LineStopsService>(),
+      isA<AssetLineStopsService>(),
+    );
     expect(injector.getRepository<AuthRepository>(), isA<FakeAuthRepository>());
     expect(
       injector.getRepository<PlaceSearchRepository>(),
       isA<AssetPlaceSearchRepository>(),
+    );
+    expect(
+      injector.getRepository<DetailsLineRepository>(),
+      isA<DetailsLineRepositoryImpl>(),
     );
     expect(
       injector.getRepository<UserLocationRepository>(),

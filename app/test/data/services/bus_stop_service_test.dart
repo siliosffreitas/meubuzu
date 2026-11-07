@@ -138,5 +138,30 @@ void main() {
 
       expect(stops, isEmpty);
     });
+
+    test('busca paradas pelos códigos preservando a ordem', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.findByCodes(['1851', '2362', '1848']);
+
+      expect(stops.map((stop) => stop.code), ['2362', '1848']);
+    });
+
+    test('busca por códigos ignora códigos inexistentes e repetidos', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.findByCodes(['2362', 'inexistente', '2362']);
+
+      expect(stops, hasLength(1));
+      expect(stops.first.code, '2362');
+    });
+
+    test('busca por códigos vazios retorna lista vazia', () async {
+      final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
+
+      final stops = await service.findByCodes(const []);
+
+      expect(stops, isEmpty);
+    });
   });
 }

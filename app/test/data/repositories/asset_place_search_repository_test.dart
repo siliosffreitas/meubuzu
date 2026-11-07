@@ -39,6 +39,12 @@ class _FakeBusStopService implements BusStopService {
     queries.add(query);
     return stops;
   }
+
+  @override
+  Future<List<BusStop>> findByCodes(Iterable<String> codes) async {
+    final wanted = codes.toSet();
+    return stops.where((stop) => wanted.contains(stop.code)).toList();
+  }
 }
 
 void main() {
