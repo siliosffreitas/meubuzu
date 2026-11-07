@@ -78,11 +78,8 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
     _viewModel.load();
   }
 
-  void _showMoreStops() {
-    if (_showAllStops) {
-      return;
-    }
-    setState(() => _showAllStops = true);
+  void _toggleStops() {
+    setState(() => _showAllStops = !_showAllStops);
   }
 
   @override
@@ -115,7 +112,7 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
         line: line,
         stops: stops,
         showAllStops: _showAllStops,
-        onShowMore: _showMoreStops,
+        onToggleStops: _toggleStops,
       ),
       DetailsLineNoStops(:final line) => _LineContent(
         line: line,
@@ -198,20 +195,20 @@ class _LineContent extends StatelessWidget {
     required this.line,
     required this.stops,
     this.showAllStops = false,
-    this.onShowMore,
+    this.onToggleStops,
   });
 
   final Line line;
   final List<BusStop> stops;
   final bool showAllStops;
-  final VoidCallback? onShowMore;
+  final VoidCallback? onToggleStops;
 
   @override
   Widget build(BuildContext context) {
     final visibleStops = showAllStops
         ? stops
         : stops.take(_initialVisibleStops).toList(growable: false);
-    final hasHiddenStops = visibleStops.length < stops.length;
+    final canToggle = stops.length > _initialVisibleStops;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
@@ -230,8 +227,11 @@ class _LineContent extends StatelessWidget {
               isFirst: index == 0,
               isLast: index == stops.length - 1,
             ),
-          if (hasHiddenStops && onShowMore != null)
-            _ShowMoreButton(onPressed: onShowMore!),
+          if (canToggle && onToggleStops != null)
+            _StopsToggleButton(
+              showAllStops: showAllStops,
+              onPressed: onToggleStops!,
+            ),
           const SizedBox(height: 16),
           const _OrderNotice(),
         ],
@@ -289,9 +289,13 @@ class _StopsSectionTitle extends StatelessWidget {
   }
 }
 
-class _ShowMoreButton extends StatelessWidget {
-  const _ShowMoreButton({required this.onPressed});
+class _StopsToggleButton extends StatelessWidget {
+  const _StopsToggleButton({
+    required this.showAllStops,
+    required this.onPressed,
+  });
 
+  final bool showAllStops;
   final VoidCallback onPressed;
 
   @override
@@ -299,8 +303,11 @@ class _ShowMoreButton extends StatelessWidget {
     return Center(
       child: TextButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.expand_more_rounded, size: 20),
-        label: const Text('Mostrar mais'),
+        icon: Icon(
+          showAllStops ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+          size: 20,
+        ),
+        label: Text(showAllStops ? 'Mostrar menos' : 'Mostrar mais'),
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

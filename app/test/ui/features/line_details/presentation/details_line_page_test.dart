@@ -135,9 +135,7 @@ void main() {
       expect(repository.loadedCodes, ['0301']);
     });
 
-    testWidgets('mostra só as 3 primeiras paradas e expande ao tocar', (
-      tester,
-    ) async {
+    testWidgets('alterna entre as 3 primeiras paradas e todas', (tester) async {
       final stops = [
         for (var position = 1; position <= 7; position++) _stop(position),
       ];
@@ -153,6 +151,7 @@ void main() {
       expect(find.text('PARADA 4'), findsNothing);
       expect(find.text('PARADA 5'), findsNothing);
       expect(find.text('Mostrar mais'), findsOneWidget);
+      expect(find.text('Mostrar menos'), findsNothing);
 
       await tester.ensureVisible(find.text('Mostrar mais'));
       await tester.tap(find.text('Mostrar mais'));
@@ -160,12 +159,28 @@ void main() {
 
       expect(find.text('Mostrar mais'), findsNothing);
       expect(find.text('PARADA 4'), findsOneWidget);
+
       await tester.scrollUntilVisible(
         find.text('PARADA 7'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('PARADA 7'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Mostrar menos'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Mostrar menos'), findsOneWidget);
+
+      await tester.tap(find.text('Mostrar menos'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mostrar menos'), findsNothing);
+      expect(find.text('Mostrar mais'), findsOneWidget);
+      expect(find.text('PARADA 4'), findsNothing);
+      expect(find.text('PARADA 5'), findsNothing);
     });
 
     testWidgets('não mostra o botão quando há 3 paradas ou menos', (
