@@ -14,6 +14,7 @@ import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_view_model.dart';
+import '../ui/features/line_details/presentation/details_line_view_model.dart';
 import 'custom_injector.dart';
 
 /// Injetor global da aplicação.
@@ -62,6 +63,12 @@ Future<void> setupDependencies() async {
   injector.addViewModel<MapLocationViewModel>(
     () =>
         MapLocationViewModel(injector.getRepository<UserLocationRepository>()),
+  );
+  injector.addViewModelParam<DetailsLineViewModel, String>(
+    (lineCode) => DetailsLineViewModel(
+      injector.getRepository<DetailsLineRepository>(),
+      lineCode: lineCode,
+    ),
   );
 
   injector.commit();

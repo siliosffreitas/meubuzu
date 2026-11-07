@@ -16,6 +16,7 @@ import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_view_m
 import 'package:meubuzu/ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
+import 'package:meubuzu/ui/features/line_details/presentation/details_line_view_model.dart';
 
 void main() {
   tearDown(injector.reset);
@@ -57,16 +58,21 @@ void main() {
     );
     final searchViewModel = injector.getViewModel<MapSearchViewModel>();
     final locationViewModel = injector.getViewModel<MapLocationViewModel>();
+    final detailsLineViewModel = injector
+        .getViewModelParam<DetailsLineViewModel, String>('0301');
 
     expect(emailViewModel, isA<AuthEmailViewModel>());
     expect(codeViewModel.email, 'ana@exemplo.com');
     expect(searchViewModel, isA<MapSearchViewModel>());
     expect(locationViewModel, isA<MapLocationViewModel>());
+    expect(detailsLineViewModel, isA<DetailsLineViewModel>());
+    expect(detailsLineViewModel.lineCode, '0301');
 
     emailViewModel.dispose();
     codeViewModel.dispose();
     searchViewModel.dispose();
     locationViewModel.dispose();
+    detailsLineViewModel.dispose();
   });
 
   test('reset descarta as dependências registradas', () async {

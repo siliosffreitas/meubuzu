@@ -9,6 +9,10 @@ abstract final class AppRoutes {
   static const mapSearch = '/search';
   static const mapSearchName = 'mapSearch';
 
+  /// Detalhes da linha e suas paradas. Recebe o código da linha em `code`.
+  static const detailsLine = '/line/:code';
+  static const detailsLineName = 'detailsLine';
+
   /// Primeira etapa da autenticação (e-mail).
   static const authEmail = '/auth';
   static const authEmailName = 'auth';

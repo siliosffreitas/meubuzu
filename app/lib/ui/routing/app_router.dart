@@ -7,6 +7,7 @@ import '../features/auth/presentation/auth_email/auth_email_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/home/presentation/widgets/map/map_search_arguments.dart';
 import '../features/home/presentation/widgets/map/map_search_page.dart';
+import '../features/line_details/presentation/details_line_page.dart';
 import 'app_routes.dart';
 
 /// Configura as rotas do aplicativo com GoRouter.
@@ -43,6 +44,12 @@ class AppRouter {
               repository: extra is PlaceSearchRepository ? extra : null,
             );
           },
+        ),
+        GoRoute(
+          path: AppRoutes.detailsLine,
+          name: AppRoutes.detailsLineName,
+          builder: (context, state) =>
+              DetailsLinePage(lineCode: state.pathParameters['code'] ?? ''),
         ),
         GoRoute(
           path: AppRoutes.authEmail,

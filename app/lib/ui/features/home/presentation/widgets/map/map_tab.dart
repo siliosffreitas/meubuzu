@@ -176,13 +176,19 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       return;
     }
 
-    final message = suggestion.type == PlaceSuggestionType.line
-        ? 'Acompanhamento da linha ${suggestion.code} em breve.'
-        : 'Parada ${suggestion.title} exibida no mapa.';
+    if (suggestion.type == PlaceSuggestionType.line) {
+      await context.pushNamed(
+        AppRoutes.detailsLineName,
+        pathParameters: {'code': suggestion.code},
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(content: Text('Parada ${suggestion.title} exibida no mapa.')),
+      );
   }
 
   @override

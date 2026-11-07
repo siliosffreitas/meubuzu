@@ -128,16 +128,19 @@ data/
   repositories/
     asset_place_search_repository.dart  # AssetPlaceSearchRepository
     auth_repository.dart             # FakeAuthRepository
+    details_line_repository.dart     # DetailsLineRepositoryImpl
     place_search_repository.dart     # PlaceSearchRepository
     user_location_repository.dart    # DeviceUserLocationRepository
   services/
     bus_stop_service.dart            # BusStopService + AssetBusStopService
     line_search_service.dart        # LineSearchService + AssetLineSearchService
+    line_stops_service.dart          # LineStopsService + AssetLineStopsService
     location_service.dart            # LocationService + DeviceLocationService
 
 domain/
   repositories/
     auth_repository.dart             # AuthRepository + InvalidCodeException
+    details_line_repository.dart     # DetailsLineRepository
     place_search_repository.dart     # PlaceSearchRepository
     user_location_repository.dart    # UserLocationRepository + erros
 ```
@@ -241,6 +244,12 @@ app/lib/
               map_search_view_model.dart
               map_style.dart
               widgets/
+      line_details/
+        presentation/
+          details_line_page.dart
+          details_line_state.dart
+          details_line_view_model.dart
+          widgets/
 ```
 
 Os testes em `app/test/` espelham essa estrutura:
@@ -332,6 +341,7 @@ enquanto.
 | home/account   | `AccountTab`                                                   | —                                                                                           | —      |
 | home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
 | home/map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
+| line_details   | `DetailsLinePage` e `DetailsLineViewModel`                       | `DetailsLineRepository`, `LineStopsService`, `BusStopService`, `Line`, `BusStop`              | —      |
 | core           | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
 
 Os elementos visuais de `core` ficam em `lib/ui/core/`.
