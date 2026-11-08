@@ -130,18 +130,21 @@ data/
     auth_repository.dart             # FakeAuthRepository
     details_line_repository.dart     # DetailsLineRepositoryImpl
     place_search_repository.dart     # PlaceSearchRepository
+    tracking_repository.dart         # TrackingRepositoryImpl
     user_location_repository.dart    # DeviceUserLocationRepository
   services/
     bus_stop_service.dart            # BusStopService + AssetBusStopService
     line_search_service.dart        # LineSearchService + AssetLineSearchService
     line_stops_service.dart          # LineStopsService + AssetLineStopsService
     location_service.dart            # LocationService + DeviceLocationService
+    route_service.dart               # RouteService + AssetRouteService
 
 domain/
   repositories/
     auth_repository.dart             # AuthRepository + InvalidCodeException
     details_line_repository.dart     # DetailsLineRepository
     place_search_repository.dart     # PlaceSearchRepository
+    tracking_repository.dart         # TrackingRepository
     user_location_repository.dart    # UserLocationRepository + erros
 ```
 
@@ -340,7 +343,7 @@ enquanto.
 | home           | `HomePage` e navegação por abas                                | —                                                                                           | —      |
 | home/account   | `AccountTab`                                                   | —                                                                                           | —      |
 | home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
-| home/map       | `MapTab`, `MapLocationViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates`      | —      |
+| home/map       | `MapTab`, `MapLocationViewModel`, `MapTrackingViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `TrackingRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates` | —      |
 | line_details   | `DetailsLinePage` e `DetailsLineViewModel`                       | `DetailsLineRepository`, `LineStopsService`, `BusStopService`, `Line`, `BusStop`              | —      |
 | core           | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
 

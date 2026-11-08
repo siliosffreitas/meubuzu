@@ -63,9 +63,11 @@ void main() {
         (routes) => routes.isNotEmpty,
       );
 
-      await repository.startTracking('0301');
+      final tracked = await repository.startTracking('0301');
 
       final routes = await routesFuture;
+      expect(tracked, isNotNull);
+      expect(tracked, same(routes.single));
       expect(routes, hasLength(1));
       expect(routes.single.line, line);
       expect(routes.single.route, route);
@@ -168,6 +170,21 @@ void main() {
 
       await subscription.cancel();
       repository.dispose();
+    });
+
+    test('retorna a linha já acompanhada sem recarregar o traçado', () async {
+      final routeService = _FakeRouteService({'0301': route});
+      final repository = TrackingRepositoryImpl(
+        routeService,
+        _FakeLineSearchService([line]),
+      );
+      addTearDown(repository.dispose);
+
+      final first = await repository.startTracking('0301');
+      final second = await repository.startTracking('0301');
+
+      expect(second, same(first));
+      expect(routeService.queries, ['0301']);
     });
 
     test('código vazio não consulta as dependências', () async {

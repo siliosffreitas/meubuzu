@@ -9,7 +9,9 @@ abstract interface class TrackingRepository implements Repository {
   Stream<List<TrackedLine>> get trackingRoutes;
 
   /// Inicia o acompanhamento da linha [lineCode] (`sgLinha`).
-  Future<void> startTracking(String lineCode);
+  ///
+  /// Retorna a linha acompanhada ou `null` quando ela não existe no catálogo.
+  Future<TrackedLine?> startTracking(String lineCode);
 
   /// Encerra o acompanhamento da linha [lineCode] (`sgLinha`).
   Future<void> stopTracking(String lineCode);

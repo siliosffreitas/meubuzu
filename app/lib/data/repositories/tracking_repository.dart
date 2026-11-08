@@ -38,32 +38,39 @@ class TrackingRepositoryImpl implements TrackingRepository {
   }
 
   @override
-  Future<void> startTracking(String lineCode) async {
+  Future<TrackedLine?> startTracking(String lineCode) async {
     final normalized = lineCode.trim();
-    if (normalized.isEmpty || _trackedLines.containsKey(normalized)) {
-      return;
+    if (normalized.isEmpty || _isDisposed) {
+      return null;
+    }
+
+    final existing = _trackedLines[normalized];
+    if (existing != null) {
+      return existing;
     }
     if (!_pendingLines.add(normalized)) {
-      return;
+      return null;
     }
 
     try {
       final line = await _findLine(normalized);
       if (line == null || _isDisposed) {
-        return;
+        return null;
       }
 
       final route = await _routeService.findRoute(normalized);
       if (_isDisposed) {
-        return;
+        return null;
       }
 
-      _trackedLines[normalized] = TrackedLine(
+      final trackedLine = TrackedLine(
         line: line,
         route: route,
         busPositions: const [],
       );
+      _trackedLines[normalized] = trackedLine;
       _publish();
+      return trackedLine;
     } finally {
       _pendingLines.remove(normalized);
     }
