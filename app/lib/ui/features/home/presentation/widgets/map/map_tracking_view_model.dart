@@ -22,6 +22,7 @@ class MapTrackingViewModel extends ViewmodelBase {
 
   MapTrackingState _state = const MapTrackingIdle();
   List<TrackedLine> _trackedLines = const [];
+  DateTime? _updatedAt;
   bool _isDisposed = false;
 
   /// Estado atual das linhas acompanhadas.
@@ -29,6 +30,15 @@ class MapTrackingViewModel extends ViewmodelBase {
 
   /// Linhas acompanhadas que devem ser desenhadas no mapa.
   List<TrackedLine> get trackedLines => _trackedLines;
+
+  /// Momento da última atualização recebida do repositório.
+  DateTime? get updatedAt => _updatedAt;
+
+  /// Indica se há linhas sendo acompanhadas.
+  bool get hasTrackedLines => _trackedLines.isNotEmpty;
+
+  /// Quantidade de linhas sendo acompanhadas.
+  int get trackedLineCount => _trackedLines.length;
 
   /// Inicia o acompanhamento da linha [lineCode] (`sgLinha`).
   ///
@@ -83,6 +93,7 @@ class MapTrackingViewModel extends ViewmodelBase {
 
   void _handleRoutes(List<TrackedLine> routes) {
     _trackedLines = routes;
+    _updatedAt = routes.isEmpty ? null : DateTime.now();
     _update(
       routes.isEmpty ? const MapTrackingIdle() : MapTrackingReady(routes),
     );

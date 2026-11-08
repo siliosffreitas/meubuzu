@@ -1,0 +1,328 @@
+import 'package:flutter/material.dart';
+
+import '../../../../../../core/extensions/line_map_color.dart';
+import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../../domain/models/line.dart';
+import '../../../../../../../domain/models/tracked_line.dart';
+import '../map_tracking_polylines.dart';
+
+/// Painel flutuante com todas as linhas acompanhadas no mapa.
+///
+/// Pode ser minimizado pelo toque no cabeçalho ou pelo arraste da alça. O
+/// estado de minimização é local da UI; os dados das linhas vêm do
+/// [MapTrackingViewModel] por parâmetro.
+class TrackingPanel extends StatefulWidget {
+  const TrackingPanel({
+    super.key,
+    required this.trackedLines,
+    this.updatedAt,
+    this.initiallyCollapsed = false,
+  });
+
+  /// Linhas retornadas pelo view model de rastreamento.
+  final List<TrackedLine> trackedLines;
+
+  /// Momento da última atualização do rastreamento.
+  final DateTime? updatedAt;
+
+  /// Permite abrir o painel já minimizado.
+  final bool initiallyCollapsed;
+
+  @override
+  State<TrackingPanel> createState() => _TrackingPanelState();
+}
+
+class _TrackingPanelState extends State<TrackingPanel> {
+  static const _animationDuration = Duration(milliseconds: 220);
+  static const _minListHeight = 120.0;
+  static const _maxListHeight = 300.0;
+
+  late bool _isCollapsed = widget.initiallyCollapsed;
+
+  bool get _hasLines => widget.trackedLines.isNotEmpty;
+
+  void _toggle() {
+    if (!_hasLines) {
+      return;
+    }
+    setState(() => _isCollapsed = !_isCollapsed);
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity < -80 && _isCollapsed) {
+      setState(() => _isCollapsed = false);
+    } else if (velocity > 80 && !_isCollapsed) {
+      setState(() => _isCollapsed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasLines) {
+      return const SizedBox.shrink();
+    }
+
+    final listMaxHeight = (MediaQuery.sizeOf(context).height * 0.32)
+        .clamp(_minListHeight, _maxListHeight)
+        .toDouble();
+
+    return Material(
+      key: const Key('tracking-panel'),
+      color: Colors.white,
+      elevation: 16,
+      shadowColor: const Color(0x242E3C3E),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Handle(
+            isCollapsed: _isCollapsed,
+            onTap: _toggle,
+            onVerticalDragEnd: _handleDragEnd,
+          ),
+          _Header(
+            count: widget.trackedLines.length,
+            updatedAt: widget.updatedAt,
+            onTap: _toggle,
+          ),
+          AnimatedSize(
+            duration: _animationDuration,
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: _isCollapsed
+                ? const SizedBox(width: double.infinity)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Divider(height: 1, color: AppColors.border),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxHeight: listMaxHeight),
+                        child: ListView.separated(
+                          key: const Key('tracking-panel-list'),
+                          shrinkWrap: true,
+                          padding: EdgeInsets.zero,
+                          itemCount: widget.trackedLines.length,
+                          separatorBuilder: (context, index) => const Divider(
+                            height: 1,
+                            indent: 20,
+                            endIndent: 20,
+                            color: AppColors.border,
+                          ),
+                          itemBuilder: (context, index) => _TrackedLineTile(
+                            tracked: widget.trackedLines[index],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Handle extends StatelessWidget {
+  const _Handle({
+    required this.isCollapsed,
+    required this.onTap,
+    required this.onVerticalDragEnd,
+  });
+
+  final bool isCollapsed;
+  final VoidCallback onTap;
+  final ValueChanged<DragEndDetails> onVerticalDragEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: const Key('tracking-panel-handle'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onVerticalDragEnd: onVerticalDragEnd,
+      child: Semantics(
+        button: true,
+        label: isCollapsed
+            ? 'Expandir linhas no mapa'
+            : 'Minimizar linhas no mapa',
+        child: SizedBox(
+          height: 24,
+          child: Center(
+            child: Container(
+              width: 42,
+              height: 4.5,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.count,
+    required this.updatedAt,
+    required this.onTap,
+  });
+
+  final int count;
+  final DateTime? updatedAt;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count == 1 ? '1 LINHA NO MAPA' : '$count LINHAS NO MAPA';
+    final updatedAt = this.updatedAt;
+
+    return InkWell(
+      key: const Key('tracking-panel-header'),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 2, 20, 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: AppColors.primaryPressed,
+                ),
+              ),
+            ),
+            if (updatedAt != null)
+              Text(
+                'Atualizado ${_formatTime(updatedAt)}',
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackedLineTile extends StatelessWidget {
+  const _TrackedLineTile({required this.tracked});
+
+  final TrackedLine tracked;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = tracked.line;
+    final subtitle = trackingLineSubtitle(line);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      child: Row(
+        children: [
+          _LineBadge(code: trackedLineKey(tracked), color: line.mapColor),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LineBadge extends StatelessWidget {
+  const _LineBadge({required this.code, required this.color});
+
+  final String code;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: Key('tracking-line-badge-$code'),
+      constraints: const BoxConstraints(minWidth: 66),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.directions_bus_filled_rounded,
+            size: 15,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            code,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Texto secundário da linha no painel: origem e código interno.
+String trackingLineSubtitle(Line line) {
+  final origin = line.origin.trim();
+  final id = line.id.trim();
+  final parts = <String>[if (origin.isNotEmpty) origin, if (id.isNotEmpty) id];
+  if (parts.isNotEmpty) {
+    return parts.join(' · ');
+  }
+  return line.destination.trim();
+}
+
+String _formatTime(DateTime value) {
+  String twoDigits(int number) => number.toString().padLeft(2, '0');
+  return '${twoDigits(value.hour)}:${twoDigits(value.minute)}:'
+      '${twoDigits(value.second)}';
+}

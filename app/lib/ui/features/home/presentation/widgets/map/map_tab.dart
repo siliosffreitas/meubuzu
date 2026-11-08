@@ -25,6 +25,7 @@ import 'map_tracking_view_model.dart';
 import 'nearby_stop_markers.dart';
 import 'widgets/location_notice_card.dart';
 import 'widgets/map_search_bar.dart';
+import 'widgets/tracking_panel.dart';
 
 /// Aba principal com o mapa, a busca e a localização do usuário.
 class MapTab extends StatefulWidget {
@@ -342,6 +343,8 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       ?_selectedMarker,
     };
     final polylines = buildTrackingPolylines(_trackingViewModel.trackedLines);
+    final trackedLines = _trackingViewModel.trackedLines;
+    final hasTrackedLines = trackedLines.isNotEmpty;
 
     return Stack(
       fit: StackFit.expand,
@@ -402,29 +405,45 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
           left: 16,
           right: 16,
           bottom: 16,
-          child: LocationNoticeCard(
-            state: locationState,
-            onOpenLocationSettings: _locationViewModel.openLocationSettings,
-            onRequestPermission: _locationViewModel.initialize,
-            onOpenAppSettings: _locationViewModel.openAppSettings,
-            onRetry: _locationViewModel.initialize,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (hasLocationNotice(locationState)) ...[
+                LocationNoticeCard(
+                  state: locationState,
+                  onOpenLocationSettings:
+                      _locationViewModel.openLocationSettings,
+                  onRequestPermission: _locationViewModel.initialize,
+                  onOpenAppSettings: _locationViewModel.openAppSettings,
+                  onRetry: _locationViewModel.initialize,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (isLocationReady)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _MapControlButton(
+                    tooltip: 'Centralizar na minha localização',
+                    icon: Icons.my_location_rounded,
+                    onPressed: () {
+                      final position = _locationViewModel.position;
+                      if (position != null) {
+                        _moveToUser(position);
+                      }
+                    },
+                  ),
+                ),
+              if (isLocationReady && hasTrackedLines)
+                const SizedBox(height: 12),
+              if (hasTrackedLines)
+                TrackingPanel(
+                  trackedLines: trackedLines,
+                  updatedAt: _trackingViewModel.updatedAt,
+                ),
+            ],
           ),
         ),
-        if (isLocationReady)
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: _MapControlButton(
-              tooltip: 'Centralizar na minha localização',
-              icon: Icons.my_location_rounded,
-              onPressed: () {
-                final position = _locationViewModel.position;
-                if (position != null) {
-                  _moveToUser(position);
-                }
-              },
-            ),
-          ),
         // Evita que a barra de status escura deixe o mapa sem contraste no topo.
         const Positioned(
           top: 0,

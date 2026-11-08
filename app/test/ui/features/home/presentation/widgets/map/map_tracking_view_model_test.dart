@@ -85,6 +85,9 @@ void main() {
       expect(viewModel.state, isA<MapTrackingIdle>());
       expect(viewModel.trackedLines, isEmpty);
       expect(viewModel.state.hasRoutes, isFalse);
+      expect(viewModel.updatedAt, isNull);
+      expect(viewModel.hasTrackedLines, isFalse);
+      expect(viewModel.trackedLineCount, 0);
     });
 
     test('acompanha a linha e expõe o traçado', () async {
@@ -101,6 +104,9 @@ void main() {
       expect(viewModel.state, isA<MapTrackingReady>());
       expect(viewModel.trackedLines, [_trackedLine]);
       expect(viewModel.state.hasRoutes, isTrue);
+      expect(viewModel.updatedAt, isNotNull);
+      expect(viewModel.hasTrackedLines, isTrue);
+      expect(viewModel.trackedLineCount, 1);
     });
 
     test('emite carregamento enquanto busca o traçado', () async {
@@ -176,12 +182,16 @@ void main() {
 
       expect(viewModel.state, isA<MapTrackingReady>());
       expect(viewModel.trackedLines, [_trackedLine]);
+      expect(viewModel.updatedAt, isNotNull);
+      expect(viewModel.trackedLineCount, 1);
 
       repository.emit(const []);
       await pumpEventQueue();
 
       expect(viewModel.state, isA<MapTrackingIdle>());
       expect(viewModel.trackedLines, isEmpty);
+      expect(viewModel.updatedAt, isNull);
+      expect(viewModel.hasTrackedLines, isFalse);
     });
 
     test('erro no stream gera estado de erro', () async {

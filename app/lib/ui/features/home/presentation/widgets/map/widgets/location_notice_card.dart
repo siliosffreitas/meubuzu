@@ -3,6 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../map_location_state.dart';
 
+/// Indica se o [state] atual possui um aviso a ser exibido sobre o mapa.
+bool hasLocationNotice(MapLocationState state) => switch (state) {
+  MapLocationNoGpsHardware() ||
+  MapLocationServiceDisabled() ||
+  MapLocationPermissionDenied() ||
+  MapLocationPermissionDeniedForever() ||
+  MapLocationUnavailable() => true,
+  _ => false,
+};
+
 /// Aviso sobre GPS/permissão exibido sobre o mapa.
 class LocationNoticeCard extends StatelessWidget {
   const LocationNoticeCard({

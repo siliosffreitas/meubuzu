@@ -343,7 +343,7 @@ enquanto.
 | home           | `HomePage` e navegação por abas                                | —                                                                                           | —      |
 | home/account   | `AccountTab`                                                   | —                                                                                           | —      |
 | home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
-| home/map       | `MapTab`, `MapLocationViewModel`, `MapTrackingViewModel`, `MapSearchViewModel`, widgets | `UserLocationRepository`, `TrackingRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates` | —      |
+| home/map       | `MapTab`, `MapLocationViewModel`, `MapTrackingViewModel`, `MapSearchViewModel`, `TrackingPanel` | `UserLocationRepository`, `TrackingRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates` | —      |
 | line_details   | `DetailsLinePage` e `DetailsLineViewModel`                       | `DetailsLineRepository`, `LineStopsService`, `BusStopService`, `Line`, `BusStop`              | —      |
 | core           | `AppColors`, `AppTheme`, `EmptyState`, `TabHeader`             | —                                                                                           | —      |
 
