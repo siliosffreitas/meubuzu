@@ -1,14 +1,17 @@
 import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/details_line_repository.dart';
+import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
+import '../data/services/route_service.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/details_line_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
+import '../domain/repositories/tracking_repository.dart';
 import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
@@ -29,6 +32,7 @@ Future<void> setupDependencies() async {
   injector.addService<BusStopService>(AssetBusStopService.new);
   injector.addService<LineSearchService>(AssetLineSearchService.new);
   injector.addService<LineStopsService>(AssetLineStopsService.new);
+  injector.addService<RouteService>(AssetRouteService.new);
 
   injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
   injector.addRepository<PlaceSearchRepository>(
@@ -45,6 +49,12 @@ Future<void> setupDependencies() async {
     () => DeviceUserLocationRepository(
       injector.getService<LocationService>(),
       injector.getService<BusStopService>(),
+    ),
+  );
+  injector.addRepository<TrackingRepository>(
+    () => TrackingRepositoryImpl(
+      injector.getService<RouteService>(),
+      injector.getService<LineSearchService>(),
     ),
   );
 
