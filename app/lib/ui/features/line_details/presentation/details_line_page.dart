@@ -82,6 +82,15 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
     setState(() => _showAllStops = !_showAllStops);
   }
 
+  /// Retorna `true` para a tela que abriu os detalhes iniciar o rastreamento.
+  void _startTracking() {
+    if (context.canPop()) {
+      context.pop(true);
+      return;
+    }
+    context.goNamed(AppRoutes.homeName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,6 +106,15 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
                   return _buildContent(_viewModel.state);
                 },
               ),
+            ),
+            AnimatedBuilder(
+              animation: _viewModel,
+              builder: (context, _) {
+                if (_viewModel.state.line == null) {
+                  return const SizedBox.shrink();
+                }
+                return _StartTrackingBar(onPressed: _startTracking);
+              },
             ),
           ],
         ),
@@ -135,29 +153,80 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(8, 8, 24, 8),
       child: Row(
         children: [
-          IconButton(
+          TextButton.icon(
             onPressed: onBack,
-            tooltip: 'Voltar',
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: AppColors.textPrimary,
+            icon: const Icon(Icons.arrow_back_rounded, size: 22),
+            label: const Text('Voltar'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primaryPressed,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 10),
           const Expanded(
             child: Text(
               'Detalhes da linha',
               style: TextStyle(
-                fontSize: 17,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StartTrackingBar extends StatelessWidget {
+  const _StartTrackingBar({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.background,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.directions_bus_filled_rounded, size: 22),
+              label: const Text('Começar a acompanhar'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(60),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Iniciar usa 1 de 5 rastreamentos por dia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.35,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -211,77 +280,71 @@ class _LineContent extends StatelessWidget {
     final canToggle = stops.length > _initialVisibleStops;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       children: [
         LineDetailsHeader(line: line),
-        const SizedBox(height: 24),
-        _StopsSectionTitle(count: stops.length),
-        const SizedBox(height: 10),
+        const SizedBox(height: 28),
+        _ItineraryHeader(line: line, count: stops.length),
+        const SizedBox(height: 8),
         if (stops.isEmpty)
           const _NoStopsCard()
         else ...[
           for (var index = 0; index < visibleStops.length; index++)
             LineStopTimelineTile(
               stop: visibleStops[index],
-              position: index + 1,
               isFirst: index == 0,
-              isLast: index == stops.length - 1,
+              isLast: index == visibleStops.length - 1,
             ),
           if (canToggle && onToggleStops != null)
             _StopsToggleButton(
               showAllStops: showAllStops,
               onPressed: onToggleStops!,
             ),
-          const SizedBox(height: 16),
-          const _OrderNotice(),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: AppColors.border),
         ],
       ],
     );
   }
 }
 
-class _StopsSectionTitle extends StatelessWidget {
-  const _StopsSectionTitle({required this.count});
+class _ItineraryHeader extends StatelessWidget {
+  const _ItineraryHeader({required this.line, required this.count});
 
+  final Line line;
   final int count;
+
+  String get _hint {
+    final origin = line.origin.trim();
+    final destination = line.destination.trim();
+    if (origin.isNotEmpty && origin == destination) {
+      return 'Circular';
+    }
+    return 'Sentido de ida';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final label = count == 1 ? 'parada' : 'paradas';
+
     return Row(
       children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Paradas da linha',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                'Na ordem do itinerário',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-            ],
+        Expanded(
+          child: Text(
+            'Itinerário · $count $label',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Text(
-            '$count',
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primaryPressed,
-            ),
+        const SizedBox(width: 12),
+        Text(
+          _hint,
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: AppColors.textSecondary,
           ),
         ),
       ],
@@ -346,31 +409,6 @@ class _NoStopsCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _OrderNotice extends StatelessWidget {
-  const _OrderNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline_rounded, size: 16, color: AppColors.textMuted),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            'As paradas são exibidas na ordem em que a linha passa por elas.',
-            style: TextStyle(
-              fontSize: 12.5,
-              height: 1.4,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

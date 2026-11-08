@@ -152,6 +152,22 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   }
 
   Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
+    // Linhas abrem os detalhes primeiro. O rastreamento só começa quando o
+    // usuário confirma no botão principal da tela de detalhes.
+    if (suggestion.type == PlaceSuggestionType.line) {
+      final started = await context.pushNamed<bool>(
+        AppRoutes.detailsLineName,
+        pathParameters: {'code': suggestion.code},
+      );
+      if (!mounted || started != true) {
+        return;
+      }
+    }
+
+    await _startTracking(suggestion);
+  }
+
+  Future<void> _startTracking(PlaceSuggestion suggestion) async {
     final target = LatLng(
       suggestion.latitude ?? _initialTarget.latitude,
       suggestion.longitude ?? _initialTarget.longitude,
@@ -176,19 +192,13 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       return;
     }
 
-    if (suggestion.type == PlaceSuggestionType.line) {
-      await context.pushNamed(
-        AppRoutes.detailsLineName,
-        pathParameters: {'code': suggestion.code},
-      );
-      return;
-    }
+    final message = suggestion.type == PlaceSuggestionType.line
+        ? 'Acompanhando a linha ${suggestion.code} no mapa.'
+        : 'Parada ${suggestion.title} exibida no mapa.';
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('Parada ${suggestion.title} exibida no mapa.')),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

@@ -3,125 +3,94 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../../domain/models/bus_stop.dart';
 
-/// Item da lista de paradas, com a linha do itinerário e o número da parada.
+/// Item do itinerário, com o marcador da parada e o código ao lado do nome.
 class LineStopTimelineTile extends StatelessWidget {
   const LineStopTimelineTile({
     super.key,
     required this.stop,
-    required this.position,
     required this.isFirst,
     required this.isLast,
   });
 
   final BusStop stop;
 
-  /// Posição da parada no itinerário, começando em 1.
-  final int position;
-
   final bool isFirst;
   final bool isLast;
 
   @override
   Widget build(BuildContext context) {
+    final code = stop.code.trim();
+    final lineColor = AppColors.primary.withValues(alpha: 0.45);
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 30,
+            width: 22,
             child: Column(
               children: [
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isFirst
-                        ? Colors.transparent
-                        : AppColors.surfaceMuted,
+                    color: isFirst ? Colors.transparent : lineColor,
                   ),
                 ),
                 Container(
-                  width: 26,
-                  height: 26,
+                  width: 18,
+                  height: 18,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isFirst ? AppColors.primary : AppColors.background,
+                    color: Colors.transparent,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 2),
+                    border: Border.all(color: AppColors.primary, width: 1.8),
                   ),
-                  child: Text(
-                    '$position',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      color: isFirst ? Colors.white : AppColors.primary,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
                     ),
                   ),
                 ),
                 Expanded(
                   child: Container(
                     width: 2,
-                    color: isLast ? Colors.transparent : AppColors.surfaceMuted,
+                    color: isLast ? Colors.transparent : lineColor,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          stop.name,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            height: 1.3,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        if (stop.address.trim().isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Text(
-                            stop.address,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              height: 1.35,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ],
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: stop.name,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  if (stop.code.trim().isNotEmpty) ...[
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        stop.code,
+                    if (code.isNotEmpty)
+                      TextSpan(
+                        text: ' · $code',
                         style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryPressed,
+                          fontSize: 15.5,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
           ),

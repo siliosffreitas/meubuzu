@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/repositories/details_line_repository.dart';
@@ -124,15 +125,65 @@ void main() {
       expect(find.text('0301'), findsOneWidget);
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
       expect(find.text('Circular • MOCAMBINHO'), findsOneWidget);
-      expect(find.text('Paradas da linha'), findsOneWidget);
-      expect(find.text('T-SANTA FÉ'), findsOneWidget);
-      expect(find.text('Rua B, Loteamento Mário Covas'), findsOneWidget);
-      expect(find.text('CONJUNTO BENTINHO 1'), findsOneWidget);
-      expect(find.text('Rua Seis, 8831 - Angelim'), findsOneWidget);
-      expect(find.text('174'), findsOneWidget);
-      expect(find.text('175'), findsOneWidget);
+      expect(find.text('Itinerário · 2 paradas'), findsOneWidget);
+      expect(find.text('Não acompanhada'), findsOneWidget);
+      expect(find.text('T-SANTA FÉ · 174'), findsOneWidget);
+      expect(find.text('CONJUNTO BENTINHO 1 · 175'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsOneWidget);
 
       expect(repository.loadedCodes, ['0301']);
+    });
+
+    testWidgets('inicia o rastreamento ao tocar no botão principal', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop, _secondStop],
+      );
+      addTearDown(repository.dispose);
+
+      bool? trackingStarted;
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    trackingStarted = await context.pushNamed<bool>('details');
+                  },
+                  child: const Text('Abrir detalhes'),
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/details',
+            name: 'details',
+            builder: (context, state) =>
+                DetailsLinePage(lineCode: '0301', repository: repository),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      );
+
+      await tester.tap(find.text('Abrir detalhes'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Começar a acompanhar'), findsOneWidget);
+
+      await tester.tap(find.text('Começar a acompanhar'));
+      await tester.pumpAndSettle();
+
+      expect(trackingStarted, isTrue);
+      expect(find.text('Abrir detalhes'), findsOneWidget);
     });
 
     testWidgets('alterna entre as 3 primeiras paradas e todas', (tester) async {
@@ -146,10 +197,10 @@ void main() {
       await tester.pumpAndSettle();
 
       for (var position = 1; position <= 3; position++) {
-        expect(find.text('PARADA $position'), findsOneWidget);
+        expect(find.textContaining('PARADA $position'), findsOneWidget);
       }
-      expect(find.text('PARADA 4'), findsNothing);
-      expect(find.text('PARADA 5'), findsNothing);
+      expect(find.textContaining('PARADA 4'), findsNothing);
+      expect(find.textContaining('PARADA 5'), findsNothing);
       expect(find.text('Mostrar mais'), findsOneWidget);
       expect(find.text('Mostrar menos'), findsNothing);
 
@@ -158,14 +209,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Mostrar mais'), findsNothing);
-      expect(find.text('PARADA 4'), findsOneWidget);
+      expect(find.textContaining('PARADA 4'), findsOneWidget);
 
       await tester.scrollUntilVisible(
-        find.text('PARADA 7'),
+        find.textContaining('PARADA 7'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('PARADA 7'), findsOneWidget);
+      expect(find.textContaining('PARADA 7'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.text('Mostrar menos'),
@@ -179,8 +230,8 @@ void main() {
 
       expect(find.text('Mostrar menos'), findsNothing);
       expect(find.text('Mostrar mais'), findsOneWidget);
-      expect(find.text('PARADA 4'), findsNothing);
-      expect(find.text('PARADA 5'), findsNothing);
+      expect(find.textContaining('PARADA 4'), findsNothing);
+      expect(find.textContaining('PARADA 5'), findsNothing);
     });
 
     testWidgets('não mostra o botão quando há 3 paradas ou menos', (
@@ -195,7 +246,7 @@ void main() {
       await tester.pumpWidget(_app(repository));
       await tester.pumpAndSettle();
 
-      expect(find.text('PARADA 3'), findsOneWidget);
+      expect(find.textContaining('PARADA 3'), findsOneWidget);
       expect(find.text('Mostrar mais'), findsNothing);
     });
 
@@ -207,6 +258,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
+      expect(find.text('Itinerário · 0 paradas'), findsOneWidget);
       expect(
         find.text('Nenhuma parada cadastrada para esta linha no momento.'),
         findsOneWidget,
@@ -228,7 +280,8 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Voltar'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Voltar'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsNothing);
     });
 
     testWidgets('mostra erro e permite tentar novamente', (tester) async {
@@ -241,6 +294,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Não foi possível carregar a linha'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsNothing);
 
       repository
         ..error = null
@@ -251,7 +305,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
-      expect(find.text('T-SANTA FÉ'), findsOneWidget);
+      expect(find.textContaining('T-SANTA FÉ'), findsOneWidget);
       expect(repository.loadedCodes, ['0301', '0301']);
     });
   });
