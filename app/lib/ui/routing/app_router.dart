@@ -37,6 +37,7 @@ class AppRouter {
             if (extra is MapSearchPageArguments) {
               return MapSearchPage(
                 repository: extra.repository,
+                trackingRepository: extra.trackingRepository,
                 activeSuggestionId: extra.activeSuggestionId,
               );
             }

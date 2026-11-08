@@ -167,6 +167,7 @@ void main() {
         name: 'Linha',
         origin: 'Centro',
         destination: 'Bairro',
+        boardingCode: '0101',
       );
 
       expect(trackingLineSubtitle(line), 'Centro');
@@ -178,6 +179,7 @@ void main() {
         name: 'Linha',
         origin: '',
         destination: 'Bairro',
+        boardingCode: '0101',
       );
 
       expect(trackingLineSubtitle(line), 'Bairro');

@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
+import '../../../../../../domain/repositories/tracking_repository.dart';
 import 'map_search_view_model.dart';
 import 'widgets/search_results_panel.dart';
 
@@ -16,12 +17,16 @@ class MapSearchPage extends StatefulWidget {
   const MapSearchPage({
     super.key,
     this.repository,
+    this.trackingRepository,
     this.viewModel,
     this.activeSuggestionId,
   });
 
   /// Permite injetar um repositório de busca fake em testes.
   final PlaceSearchRepository? repository;
+
+  /// Permite injetar um repositório de rastreamento fake em testes.
+  final TrackingRepository? trackingRepository;
 
   /// Permite injetar um view model pronto em testes.
   final MapSearchViewModel? viewModel;
@@ -44,7 +49,10 @@ class _MapSearchPageState extends State<MapSearchPage> {
     _viewModel =
         widget.viewModel ??
         (widget.repository != null
-            ? MapSearchViewModel(widget.repository!)
+            ? MapSearchViewModel(
+                widget.repository!,
+                trackingRepository: widget.trackingRepository,
+              )
             : injector.getViewModel<MapSearchViewModel>());
   }
 
@@ -121,6 +129,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
                       results: _viewModel.results,
                       maxHeight: double.infinity,
                       activeSuggestionId: widget.activeSuggestionId,
+                      trackedLineCodes: _viewModel.trackedLineCodes,
                       onSelected: _selectSuggestion,
                       onEditSearch: _editSearch,
                     ),

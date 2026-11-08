@@ -158,6 +158,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       AppRoutes.mapSearchName,
       extra: MapSearchPageArguments(
         repository: widget.searchRepository,
+        trackingRepository: widget.trackingRepository,
         activeSuggestionId: activeSuggestion?.type == PlaceSuggestionType.line
             ? activeSuggestion!.id
             : null,

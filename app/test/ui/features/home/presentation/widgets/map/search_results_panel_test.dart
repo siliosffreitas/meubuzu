@@ -95,6 +95,40 @@ void main() {
       expect(find.text('2 de 5 rastreamentos hoje'), findsOneWidget);
     });
 
+    testWidgets('destaca a linha já rastreada pelo código', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          SearchResultsPanel(
+            query: '301',
+            isLoading: false,
+            results: const [_line],
+            trackedLineCodes: const {'0301'},
+            onSelected: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
+    });
+
+    testWidgets('não destaca linha que não está sendo rastreada', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SearchResultsPanel(
+            query: '301',
+            isLoading: false,
+            results: const [_line],
+            trackedLineCodes: const {'0203'},
+            onSelected: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.text('Acompanhando no mapa'), findsNothing);
+    });
+
     testWidgets('mostra o estado vazio com as orientações da busca', (
       tester,
     ) async {

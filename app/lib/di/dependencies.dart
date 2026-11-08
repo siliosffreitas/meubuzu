@@ -69,7 +69,10 @@ Future<void> setupDependencies() async {
     ),
   );
   injector.addViewModel<MapSearchViewModel>(
-    () => MapSearchViewModel(injector.getRepository<PlaceSearchRepository>()),
+    () => MapSearchViewModel(
+      injector.getRepository<PlaceSearchRepository>(),
+      trackingRepository: injector.getRepository<TrackingRepository>(),
+    ),
   );
   injector.addViewModel<MapLocationViewModel>(
     () =>

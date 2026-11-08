@@ -47,10 +47,7 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
   }
 
   /// Código exibido da linha: o `sgLinha` quando existe, senão o `codigoLinha`.
-  String _displayCode(Line line) {
-    final code = line.boardingCode?.trim();
-    return code == null || code.isEmpty ? line.id : code;
-  }
+  String _displayCode(Line line) => line.boardingCode?.trim().isNotEmpty == true ? line.boardingCode! : line.id;
 
   /// Ordena as linhas pelo `sgLinha` (fallback para o código interno).
   int _compareLines(Line first, Line second) {

@@ -1,6 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/models/place_suggestion.dart';
+import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/route.dart';
+import 'package:meubuzu/domain/models/tracked_line.dart';
+import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
+import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
 class _RecordingSearchRepository implements PlaceSearchRepository {
@@ -18,6 +25,40 @@ class _RecordingSearchRepository implements PlaceSearchRepository {
     return results;
   }
 }
+
+class _FakeTrackingRepository implements TrackingRepository {
+  final _controller = StreamController<List<TrackedLine>>.broadcast();
+
+  void emit(List<TrackedLine> routes) => _controller.add(routes);
+
+  void emitError(Object error) => _controller.addError(error);
+
+  @override
+  Stream<List<TrackedLine>> get trackingRoutes => _controller.stream;
+
+  @override
+  Future<TrackedLine?> startTracking(String lineCode) async => null;
+
+  @override
+  Future<void> stopTracking(String lineCode) async {}
+
+  @override
+  void dispose() => _controller.close();
+}
+
+final _trackedLine = TrackedLine(
+  line: const Line(
+    id: '46',
+    name: 'MOCAMBINHO DUQUE DE CAXIAS',
+    origin: 'MOCAMBINHO',
+    destination: 'MOCAMBINHO',
+    boardingCode: '101',
+  ),
+  route: Route(
+    positions: const [UserCoordinates(latitude: -5.1, longitude: -42.8)],
+  ),
+  busPositions: const [],
+);
 
 const _line = PlaceSuggestion(
   id: '875A-10',
@@ -40,6 +81,50 @@ void main() {
       expect(viewModel.isLoading, isFalse);
       expect(viewModel.results, isEmpty);
       expect(viewModel.showsResults, isFalse);
+      expect(viewModel.trackedLineCodes, isEmpty);
+      expect(viewModel.isLineTracked('101'), isFalse);
+    });
+
+    test('expõe as linhas já acompanhadas no mapa', () async {
+      final trackingRepository = _FakeTrackingRepository();
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([]),
+        trackingRepository: trackingRepository,
+      );
+      addTearDown(viewModel.dispose);
+      addTearDown(trackingRepository.dispose);
+
+      trackingRepository.emit([_trackedLine]);
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, {'101'});
+      expect(viewModel.isLineTracked(' 101 '), isTrue);
+      expect(viewModel.isLineTracked('203'), isFalse);
+
+      trackingRepository.emit(const []);
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, isEmpty);
+      expect(viewModel.isLineTracked('101'), isFalse);
+    });
+
+    test('erro no rastreamento limpa as linhas acompanhadas', () async {
+      final trackingRepository = _FakeTrackingRepository();
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([]),
+        trackingRepository: trackingRepository,
+      );
+      addTearDown(viewModel.dispose);
+      addTearDown(trackingRepository.dispose);
+
+      trackingRepository.emit([_trackedLine]);
+      await pumpEventQueue();
+      expect(viewModel.trackedLineCodes, {'101'});
+
+      trackingRepository.emitError(StateError('falha no rastreamento'));
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, isEmpty);
     });
 
     testWidgets('busca após o debounce e expõe os resultados', (tester) async {

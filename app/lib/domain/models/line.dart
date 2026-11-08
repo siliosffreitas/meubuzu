@@ -5,7 +5,7 @@ class Line {
     required this.name,
     required this.origin,
     required this.destination,
-    this.boardingCode,
+    required this.boardingCode,
     this.latitude,
     this.longitude,
   });

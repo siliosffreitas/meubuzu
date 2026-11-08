@@ -17,6 +17,7 @@ class SearchResultsPanel extends StatelessWidget {
     required this.onSelected,
     this.maxHeight = 352,
     this.activeSuggestionId,
+    this.trackedLineCodes = const {},
     this.statusLabel,
     this.onEditSearch,
   });
@@ -36,6 +37,10 @@ class SearchResultsPanel extends StatelessWidget {
 
   /// Linha atualmente exibida no mapa. Recebe o selo "Acompanhando no mapa".
   final String? activeSuggestionId;
+
+  /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa. Também recebem o
+  /// selo "Acompanhando no mapa".
+  final Set<String> trackedLineCodes;
 
   /// Texto opcional exibido no selo do cabeçalho, como a cota diária de
   /// rastreamentos.
@@ -95,7 +100,9 @@ class SearchResultsPanel extends StatelessWidget {
         ...lines.map(
           (suggestion) => _LineSuggestionTile(
             suggestion: suggestion,
-            isActive: suggestion.id == activeSuggestionId,
+            isActive:
+                suggestion.id == activeSuggestionId ||
+                trackedLineCodes.contains(suggestion.code.trim()),
             onTap: () => onSelected(suggestion),
           ),
         ),

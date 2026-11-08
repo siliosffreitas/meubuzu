@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meubuzu/data/models/place_suggestion.dart';
+import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
+import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_page.dart';
 
@@ -22,6 +27,37 @@ class _FakeSearchRepository implements PlaceSearchRepository {
   void dispose() {}
 }
 
+class _FakeTrackingRepository implements TrackingRepository {
+  final _controller = StreamController<List<TrackedLine>>.broadcast();
+
+  void emit(List<TrackedLine> routes) => _controller.add(routes);
+
+  @override
+  Stream<List<TrackedLine>> get trackingRoutes => _controller.stream;
+
+  @override
+  Future<TrackedLine?> startTracking(String lineCode) async => null;
+
+  @override
+  Future<void> stopTracking(String lineCode) async {}
+
+  @override
+  void dispose() => _controller.close();
+}
+
+TrackedLine _trackedLine(String code) {
+  return TrackedLine(
+    line: Line(
+      id: code,
+      name: 'Perdizes ↔ Terminal Lapa',
+      origin: 'Perdizes',
+      destination: 'Terminal Lapa', boardingCode: '0101',
+    ),
+    route: null,
+    busPositions: const [],
+  );
+}
+
 const _line = PlaceSuggestion(
   id: '875A-10',
   code: '875A-10',
@@ -32,7 +68,10 @@ const _line = PlaceSuggestion(
   longitude: -46.676,
 );
 
-Widget _appWithSearch(PlaceSearchRepository repository) {
+Widget _appWithSearch(
+  PlaceSearchRepository repository, {
+  TrackingRepository? trackingRepository,
+}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -49,7 +88,10 @@ Widget _appWithSearch(PlaceSearchRepository repository) {
       ),
       GoRoute(
         path: '/search',
-        builder: (context, state) => MapSearchPage(repository: repository),
+        builder: (context, state) => MapSearchPage(
+          repository: repository,
+          trackingRepository: trackingRepository,
+        ),
       ),
     ],
   );
@@ -115,6 +157,31 @@ void main() {
 
       expect(selected?.id, _line.id);
       expect(find.text('Abrir busca'), findsOneWidget);
+    });
+
+    testWidgets('marca a linha já rastreada como acompanhando no mapa', (
+      tester,
+    ) async {
+      final trackingRepository = _FakeTrackingRepository();
+      addTearDown(trackingRepository.dispose);
+
+      await tester.pumpWidget(
+        _appWithSearch(
+          _FakeSearchRepository(const [_line]),
+          trackingRepository: trackingRepository,
+        ),
+      );
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      trackingRepository.emit([_trackedLine(_line.code)]);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '875');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
     });
 
     testWidgets('estado vazio oferece editar a busca', (tester) async {

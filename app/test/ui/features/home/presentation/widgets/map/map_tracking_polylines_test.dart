@@ -62,6 +62,7 @@ void main() {
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
         origin: 'MOCAMBINHO',
         destination: 'MOCAMBINHO',
+        boardingCode: '0101',
       );
       final tracked = TrackedLine(
         line: line,

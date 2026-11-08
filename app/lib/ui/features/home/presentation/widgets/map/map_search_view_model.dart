@@ -1,14 +1,33 @@
 import 'dart:async';
 
 import '../../../../../../data/models/place_suggestion.dart';
+import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
+import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
 
 /// Estado da busca exibida sobre o mapa.
+///
+/// Além dos resultados da busca, mantém quais linhas já estão sendo
+/// acompanhadas no mapa, consultando o [TrackingRepository].
 class MapSearchViewModel extends ViewmodelBase {
-  MapSearchViewModel(this._repository);
+  factory MapSearchViewModel(
+    PlaceSearchRepository repository, {
+    TrackingRepository? trackingRepository,
+  }) {
+    return MapSearchViewModel._(repository, trackingRepository);
+  }
+
+  MapSearchViewModel._(this._repository, this._trackingRepository) {
+    _trackingSubscription = _trackingRepository?.trackingRoutes.listen(
+      _handleTrackedLines,
+      onError: _handleTrackingError,
+    );
+  }
 
   final PlaceSearchRepository _repository;
+  final TrackingRepository? _trackingRepository;
+  StreamSubscription<List<TrackedLine>>? _trackingSubscription;
 
   Timer? _debounce;
   int _searchId = 0;
@@ -17,12 +36,19 @@ class MapSearchViewModel extends ViewmodelBase {
   bool _isFocused = false;
   bool _isLoading = false;
   List<PlaceSuggestion> _results = const [];
+  Set<String> _trackedLineCodes = const {};
 
   String get query => _query;
   bool get isFocused => _isFocused;
   bool get isLoading => _isLoading;
   List<PlaceSuggestion> get results => _results;
   bool get hasQuery => _query.trim().isNotEmpty;
+
+  /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
+  Set<String> get trackedLineCodes => _trackedLineCodes;
+
+  /// Indica se a linha [code] (`sgLinha`) já está sendo acompanhada.
+  bool isLineTracked(String code) => _trackedLineCodes.contains(code.trim());
 
   /// A lista de sugestões aparece apenas enquanto o campo está em uso.
   bool get showsResults => _isFocused && hasQuery;
@@ -71,9 +97,22 @@ class MapSearchViewModel extends ViewmodelBase {
     setQuery('');
   }
 
+  void _handleTrackedLines(List<TrackedLine> trackedLines) {
+    _trackedLineCodes = {
+      for (final tracked in trackedLines) tracked.line.id,
+    };
+    notifyListeners();
+  }
+
+  void _handleTrackingError(Object error, StackTrace stackTrace) {
+    _trackedLineCodes = const {};
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
+    _trackingSubscription?.cancel();
     super.dispose();
   }
 }

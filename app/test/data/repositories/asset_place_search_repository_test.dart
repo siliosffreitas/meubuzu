@@ -140,7 +140,7 @@ void main() {
         id: '408',
         name: 'BELAVISTA VIA S.MARIA',
         origin: 'TERMINAL 1',
-        destination: 'TERMINAL 1',
+        destination: 'TERMINAL 1', boardingCode: '0101',
       );
       final repository = AssetPlaceSearchRepository(
         lineSearchService: _FakeLineSearchService([line]),
@@ -197,12 +197,14 @@ void main() {
           name: 'BELAVISTA VIA S.MARIA',
           origin: 'TERMINAL 1',
           destination: 'TERMINAL 1',
+          boardingCode: '0101',
         ),
         Line(
           id: '205',
           name: 'CENTRO / SHOPPING',
           origin: 'CENTRO',
           destination: 'SHOPPING',
+          boardingCode: '0202',
         ),
       ];
       final repository = AssetPlaceSearchRepository(
