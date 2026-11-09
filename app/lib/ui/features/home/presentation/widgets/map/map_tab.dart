@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../../../../core/extensions/line_map_color.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../data/repositories/tracking_repository.dart';
@@ -11,6 +12,7 @@ import '../../../../../../domain/models/user_coordinates.dart';
 import '../../../../../../data/repositories/user_location_repository.dart';
 import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';
+import '../../../../../../data/services/tracking_service.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
@@ -20,6 +22,7 @@ import 'map_location_state.dart';
 import 'map_location_view_model.dart';
 import 'map_search_arguments.dart';
 import 'map_style.dart';
+import 'map_tracking_markers.dart';
 import 'map_tracking_polylines.dart';
 import 'map_tracking_view_model.dart';
 import 'nearby_stop_markers.dart';
@@ -65,6 +68,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   late final MapTrackingViewModel _trackingViewModel;
 
   final Set<String> _fittedLineCodes = <String>{};
+  final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
 
   GoogleMapController? _mapController;
   Marker? _selectedMarker;
@@ -103,6 +107,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
                 TrackingRepositoryImpl(
                   AssetRouteService(),
                   AssetLineSearchService(),
+                  trackingService: AssetTrackingService(),
                 ),
           );
     }
@@ -113,6 +118,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _locationViewModel.initialize();
+        _ensureBusIcons();
       }
     });
   }
@@ -191,6 +197,23 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     }
     setState(() {});
     _fitLatestRoute();
+    _ensureBusIcons();
+  }
+
+  /// Gera os ícones dos ônibus com a cor exata de cada linha acompanhada.
+  Future<void> _ensureBusIcons() async {
+    final colors = [
+      for (final tracked in _trackingViewModel.trackedLines)
+        if (tracked.busPositions.isNotEmpty) tracked.line.mapColor,
+    ];
+    if (colors.isEmpty) {
+      return;
+    }
+
+    final created = await _busIcons.ensure(colors);
+    if (created && mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _moveToUser(UserCoordinates position) async {
@@ -339,13 +362,17 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final locationState = _locationViewModel.state;
     final isLocationReady = _locationViewModel.isReady;
-    final markers = <Marker>{
-      ...buildNearbyStopMarkers(locationState.nearbyStops),
-      ?_selectedMarker,
-    };
-    final polylines = buildTrackingPolylines(_trackingViewModel.trackedLines);
     final trackedLines = _trackingViewModel.trackedLines;
     final hasTrackedLines = trackedLines.isNotEmpty;
+    final markers = <Marker>{
+      ...buildNearbyStopMarkers(locationState.nearbyStops),
+      ...buildTrackingBusMarkers(
+        trackedLines,
+        iconFor: (color) => _busIcons[color],
+      ),
+      ?_selectedMarker,
+    };
+    final polylines = buildTrackingPolylines(trackedLines);
 
     return Stack(
       fit: StackFit.expand,

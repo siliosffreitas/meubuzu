@@ -73,6 +73,12 @@ consultada. A comparação é feita pela hora do relógio (não por UTC), para q
 conjunto de 2023 funcione como demonstração em qualquer data. O índice de cada
 arquivo é lido uma única vez e reutilizado nas consultas seguintes.
 
+Enquanto houver linhas acompanhadas, o `TrackingRepositoryImpl` consulta o
+serviço a cada 30 segundos (e imediatamente ao adicionar uma linha). O mapa
+desenha o traçado e um marcador por ônibus na mesma cor da linha; o ícone é
+gerado a partir da cor exata e fica em cache, com o marcador padrão colorido
+pela matiz como fallback enquanto o ícone não está pronto.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as
