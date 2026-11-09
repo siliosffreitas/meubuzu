@@ -85,6 +85,11 @@ deslocamento passa a exibir uma seta na cor da linha. A seta é um marcador
 próprio, ancorado no centro do ônibus, que gira em volta do selo e aponta para
 o sentido do movimento em qualquer nível de zoom.
 
+Cada nova posição recebida é animada por `TrackingBusAnimator`: o marcador sai
+da posição antiga e chega à nova em 300 ms. A primeira posição de um ônibus
+aparece direto no destino, e uma atualização que chega no meio da animação
+recomeça a transição a partir da posição interpolada naquele momento.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

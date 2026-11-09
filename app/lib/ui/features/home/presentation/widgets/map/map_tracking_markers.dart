@@ -18,8 +18,12 @@ import 'map_tracking_polylines.dart';
 /// [bearings] traz a direção de cada ônibus, por [trackedBusKey]. Quando ela é
 /// conhecida, um segundo marcador em forma de seta é criado sobre o ônibus,
 /// girando em volta dele para indicar o sentido do movimento.
+///
+/// [positions] permite exibir uma posição interpolada pela animação; sem ela,
+/// o marcador usa a posição exata da captura.
 Set<Marker> buildTrackingBusMarkers(
   List<TrackedLine> trackedLines, {
+  Map<String, LatLng> positions = const {},
   Map<String, double> bearings = const {},
   BitmapDescriptor? Function(Color color)? iconFor,
   BitmapDescriptor? Function(Color color)? arrowIconFor,
@@ -31,7 +35,9 @@ Set<Marker> buildTrackingBusMarkers(
     final color = tracked.line.mapColor;
 
     for (final position in tracked.busPositions) {
-      final target = LatLng(position.latitude, position.longitude);
+      final key = trackedBusKey(tracked, position);
+      final target =
+          positions[key] ?? LatLng(position.latitude, position.longitude);
 
       markers.add(
         Marker(
@@ -47,7 +53,7 @@ Set<Marker> buildTrackingBusMarkers(
         ),
       );
 
-      final bearing = bearings[trackedBusKey(tracked, position)];
+      final bearing = bearings[key];
       if (bearing == null) {
         continue;
       }

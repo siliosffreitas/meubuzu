@@ -22,6 +22,7 @@ import 'map_location_state.dart';
 import 'map_location_view_model.dart';
 import 'map_search_arguments.dart';
 import 'map_style.dart';
+import 'map_tracking_animations.dart';
 import 'map_tracking_directions.dart';
 import 'map_tracking_markers.dart';
 import 'map_tracking_polylines.dart';
@@ -58,7 +59,8 @@ class MapTab extends StatefulWidget {
   State<MapTab> createState() => _MapTabState();
 }
 
-class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
+class _MapTabState extends State<MapTab>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   static const _initialTarget = LatLng(-23.5505, -46.6333);
   static const _initialZoom = 13.2;
   static const _userZoom = 16.0;
@@ -71,6 +73,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   final Set<String> _fittedLineCodes = <String>{};
   final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
   final TrackingBusDirections _busDirections = TrackingBusDirections();
+  late final TrackingBusAnimator _busAnimator;
 
   GoogleMapController? _mapController;
   Marker? _selectedMarker;
@@ -114,6 +117,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
           );
     }
 
+    _busAnimator = TrackingBusAnimator(vsync: this)
+      ..addListener(_handleBusAnimation);
+
     _locationViewModel.addListener(_handleLocationChange);
     _trackingViewModel.addListener(_handleTrackingChange);
     WidgetsBinding.instance.addObserver(this);
@@ -121,6 +127,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       if (mounted) {
         _locationViewModel.initialize();
         _busDirections.update(_trackingViewModel.trackedLines);
+        _busAnimator.jumpTo(_trackedBusPositions());
         _ensureBusIcons();
       }
     });
@@ -129,6 +136,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _busAnimator
+      ..removeListener(_handleBusAnimation)
+      ..dispose();
     _locationViewModel
       ..removeListener(_handleLocationChange)
       ..dispose();
@@ -199,9 +209,30 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       return;
     }
     _busDirections.update(_trackingViewModel.trackedLines);
+    _busAnimator.animateTo(_trackedBusPositions());
     setState(() {});
     _fitLatestRoute();
     _ensureBusIcons();
+  }
+
+  /// Reposiciona os marcadores a cada quadro da animação.
+  void _handleBusAnimation() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
+  /// Posições finais dos ônibus, por `linha:ônibus`.
+  Map<String, LatLng> _trackedBusPositions() {
+    return {
+      for (final tracked in _trackingViewModel.trackedLines)
+        for (final position in tracked.busPositions)
+          trackedBusKey(tracked, position): LatLng(
+            position.latitude,
+            position.longitude,
+          ),
+    };
   }
 
   /// Gera os ícones dos ônibus com a cor exata de cada linha acompanhada.
@@ -372,6 +403,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       ...buildNearbyStopMarkers(locationState.nearbyStops),
       ...buildTrackingBusMarkers(
         trackedLines,
+        positions: _busAnimator.positions,
         bearings: _busDirections.bearings,
         iconFor: (color) => _busIcons[color],
         arrowIconFor: (color) => _busIcons.arrow(color),

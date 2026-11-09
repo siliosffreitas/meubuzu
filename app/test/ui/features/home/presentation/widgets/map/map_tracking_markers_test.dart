@@ -208,6 +208,31 @@ void main() {
       );
       expect(markers, hasLength(3));
     });
+
+    test('usa a posição animada no ônibus e na seta', () {
+      final position = _position('4171');
+      final tracked = _tracked(_line, [position]);
+      const animated = LatLng(-5.095, -42.795);
+
+      final markers = buildTrackingBusMarkers(
+        [tracked],
+        positions: {trackedBusKey(tracked, position): animated},
+        bearings: {trackedBusKey(tracked, position): 90},
+        arrowIconFor: (_) => BitmapDescriptor.defaultMarker,
+      );
+
+      final bus = markers.singleWhere(
+        (marker) => marker.markerId.value == 'bus-0301-4171',
+      );
+      final arrow = markers.singleWhere(
+        (marker) => marker.markerId.value == 'bus-arrow-0301-4171',
+      );
+
+      expect(bus.position.latitude, animated.latitude);
+      expect(bus.position.longitude, animated.longitude);
+      expect(arrow.position.latitude, animated.latitude);
+      expect(arrow.position.longitude, animated.longitude);
+    });
   });
 
   group('TrackingBusMarkerIcons', () {
