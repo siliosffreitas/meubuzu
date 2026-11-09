@@ -1,18 +1,25 @@
 import 'dart:async';
 
+import '../../domain/models/bus_position.dart';
 import '../../domain/models/line.dart';
 import '../../domain/models/tracked_line.dart';
 import '../../domain/repositories/tracking_repository.dart';
 import '../services/line_search_service.dart';
 import '../services/route_service.dart';
+import '../services/tracking_service.dart';
 
 /// Implementação que monta as linhas acompanhadas a partir do catálogo local e
 /// dos traçados em CSV.
 class TrackingRepositoryImpl implements TrackingRepository {
-  TrackingRepositoryImpl(this._routeService, this._lineSearchService);
+  TrackingRepositoryImpl(
+    this._routeService,
+    this._lineSearchService, [
+    this._trackingService,
+  ]);
 
   final RouteService _routeService;
   final LineSearchService _lineSearchService;
+  final TrackingService? _trackingService;
 
   final StreamController<List<TrackedLine>> _trackingController =
       StreamController<List<TrackedLine>>.broadcast();
@@ -63,10 +70,17 @@ class TrackingRepositoryImpl implements TrackingRepository {
         return null;
       }
 
+      final busPositions =
+          await _trackingService?.findPositions([line]) ??
+          const <BusPosition>[];
+      if (_isDisposed) {
+        return null;
+      }
+
       final trackedLine = TrackedLine(
         line: line,
         route: route,
-        busPositions: const [],
+        busPositions: busPositions,
       );
       _trackedLines[normalized] = trackedLine;
       _publish();

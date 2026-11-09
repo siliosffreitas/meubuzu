@@ -8,6 +8,7 @@ import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
 import '../data/services/route_service.dart';
+import '../data/services/tracking_service.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/details_line_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
@@ -34,6 +35,7 @@ Future<void> setupDependencies() async {
   injector.addService<LineSearchService>(AssetLineSearchService.new);
   injector.addService<LineStopsService>(AssetLineStopsService.new);
   injector.addService<RouteService>(AssetRouteService.new);
+  injector.addService<TrackingService>(AssetTrackingService.new);
 
   injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
   injector.addRepository<PlaceSearchRepository>(
@@ -56,6 +58,7 @@ Future<void> setupDependencies() async {
     () => TrackingRepositoryImpl(
       injector.getService<RouteService>(),
       injector.getService<LineSearchService>(),
+      injector.getService<TrackingService>(),
     ),
   );
 

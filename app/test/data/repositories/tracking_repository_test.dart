@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/repositories/tracking_repository.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
 import 'package:meubuzu/data/services/route_service.dart';
+import 'package:meubuzu/data/services/tracking_service.dart';
+import 'package:meubuzu/domain/models/bus.dart';
+import 'package:meubuzu/domain/models/bus_position.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/models/route.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
@@ -35,6 +38,22 @@ class _FakeRouteService implements RouteService {
   Future<Route?> findRoute(String lineCode) async {
     queries.add(lineCode);
     return routes[lineCode];
+  }
+}
+
+class _FakeTrackingService implements TrackingService {
+  _FakeTrackingService(this.positions);
+
+  final List<BusPosition> positions;
+  final queries = <List<Line>>[];
+
+  @override
+  Future<List<BusPosition>> findPositions(
+    List<Line> lines, {
+    DateTime? at,
+  }) async {
+    queries.add(lines);
+    return positions;
   }
 }
 
@@ -78,12 +97,36 @@ void main() {
       repository.dispose();
     });
 
+    test('inclui as posições dos ônibus retornadas pelo serviço', () async {
+      final trackingService = _FakeTrackingService([
+        BusPosition(
+          bus: Bus(code: '4171'),
+          latitude: -5.102443,
+          longitude: -42.727275,
+          capturedAt: DateTime.utc(2023, 6, 4, 11, 58),
+        ),
+      ]);
+      final repository = TrackingRepositoryImpl(
+        _FakeRouteService({'0301': route}),
+        _FakeLineSearchService([line]),
+        trackingService,
+      );
+
+      final tracked = await repository.startTracking('0301');
+
+      expect(tracked, isNotNull);
+      expect(tracked!.busPositions, hasLength(1));
+      expect(tracked.busPositions.single.bus.code, '4171');
+      expect(trackingService.queries.single, [line]);
+
+      repository.dispose();
+    });
+
     test('publica a linha mesmo quando o traçado não existe', () async {
       final repository = TrackingRepositoryImpl(
         _FakeRouteService({'0301': null}),
         _FakeLineSearchService([line]),
       );
-
       final routesFuture = repository.trackingRoutes.firstWhere(
         (routes) => routes.isNotEmpty,
       );

@@ -62,6 +62,17 @@ mapa recebe o selo **Acompanhando no mapa**; o cabeçalho também reserva espaç
 para a cota diária de rastreamentos quando o backend fornecer esse dado. Ao
 escolher uma sugestão, a tela retorna o item e o mapa exibe o marcador.
 
+### Posições dos ônibus (dados de exemplo)
+
+As posições usadas no rastreamento vêm de `assets/locations/`, um CSV por dia
+sem cabeçalho (`label, codigoLinha, ônibus, geradoEm, lat, long, capturadoEm`).
+O `AssetTrackingService` escolhe o arquivo pelo dia da semana da consulta
+(01/06/2023 foi uma quinta-feira) e devolve, para as linhas pedidas, apenas a
+captura mais recente de cada ônibus na janela de 5 minutos antes da hora
+consultada. A comparação é feita pela hora do relógio (não por UTC), para que o
+conjunto de 2023 funcione como demonstração em qualquer data. O índice de cada
+arquivo é lido uma única vez e reutilizado nas consultas seguintes.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

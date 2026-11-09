@@ -66,6 +66,7 @@ flutter:
     - assets/lines.csv
     - assets/lines_paradas.json
     - assets/routes/
+    - assets/locations/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
