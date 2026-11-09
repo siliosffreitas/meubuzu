@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import '../../domain/models/bus_position.dart';
 import '../../domain/models/line.dart';
 import '../../domain/models/tracked_line.dart';
 import '../../domain/repositories/tracking_repository.dart';
@@ -10,16 +9,27 @@ import '../services/tracking_service.dart';
 
 /// Implementação que monta as linhas acompanhadas a partir do catálogo local e
 /// dos traçados em CSV.
+///
+/// Enquanto houver linhas acompanhadas, consulta o [TrackingService] a cada
+/// [pollInterval] para atualizar as posições dos ônibus. Cada nova linha
+/// adicionada dispara uma consulta com todas as linhas acompanhadas (inclusive
+/// a nova) e reinicia o cronômetro.
 class TrackingRepositoryImpl implements TrackingRepository {
   TrackingRepositoryImpl(
     this._routeService,
-    this._lineSearchService, [
-    this._trackingService,
-  ]);
+    this._lineSearchService, {
+    this.trackingService,
+    this.pollInterval = const Duration(seconds: 30),
+  });
 
   final RouteService _routeService;
   final LineSearchService _lineSearchService;
-  final TrackingService? _trackingService;
+
+  /// Serviço que fornece as posições dos ônibus, quando disponível.
+  final TrackingService? trackingService;
+
+  /// Intervalo entre as consultas de posições.
+  final Duration pollInterval;
 
   final StreamController<List<TrackedLine>> _trackingController =
       StreamController<List<TrackedLine>>.broadcast();
@@ -28,6 +38,9 @@ class TrackingRepositoryImpl implements TrackingRepository {
   final Set<String> _pendingLines = <String>{};
 
   List<TrackedLine> _latestRoutes = const [];
+
+  Timer? _pollTimer;
+  Future<void>? _inFlightRefresh;
 
   bool _isDisposed = false;
 
@@ -70,21 +83,20 @@ class TrackingRepositoryImpl implements TrackingRepository {
         return null;
       }
 
-      final busPositions =
-          await _trackingService?.findPositions([line]) ??
-          const <BusPosition>[];
+      _trackedLines[normalized] = TrackedLine(
+        line: line,
+        route: route,
+        busPositions: const [],
+      );
+
+      // Reinicia o cronômetro a partir da adição e consulta todas as linhas
+      // acompanhadas de uma vez, incluindo a recém-adicionada.
+      _restartPolling();
+      await _refreshAfterAdd();
       if (_isDisposed) {
         return null;
       }
-
-      final trackedLine = TrackedLine(
-        line: line,
-        route: route,
-        busPositions: busPositions,
-      );
-      _trackedLines[normalized] = trackedLine;
-      _publish();
-      return trackedLine;
+      return _trackedLines[normalized];
     } finally {
       _pendingLines.remove(normalized);
     }
@@ -98,6 +110,9 @@ class TrackingRepositoryImpl implements TrackingRepository {
     final normalized = lineCode.trim();
     if (_trackedLines.remove(normalized) != null) {
       _publish();
+      if (_trackedLines.isEmpty) {
+        _cancelPolling();
+      }
     }
   }
 
@@ -107,6 +122,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
       return;
     }
     _isDisposed = true;
+    _cancelPolling();
     _trackedLines.clear();
     _pendingLines.clear();
     _latestRoutes = const [];
@@ -122,6 +138,83 @@ class TrackingRepositoryImpl implements TrackingRepository {
       }
     }
     return results.isNotEmpty ? results.first : null;
+  }
+
+  void _restartPolling() {
+    _cancelPolling();
+    if (_isDisposed || trackingService == null || _trackedLines.isEmpty) {
+      return;
+    }
+    _pollTimer = Timer.periodic(pollInterval, (_) => _refresh());
+  }
+
+  void _cancelPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  /// Consulta usada pelo cronômetro. Não empilha consultas sobrepostas.
+  Future<void> _refresh() {
+    return _inFlightRefresh ??= _doRefresh().whenComplete(() {
+      _inFlightRefresh = null;
+    });
+  }
+
+  /// Consulta disparada ao adicionar uma linha.
+  ///
+  /// Aguarda uma consulta em andamento (que ainda não conhece a linha nova) e
+  /// então consulta novamente com todas as linhas acompanhadas.
+  Future<void> _refreshAfterAdd() async {
+    final running = _inFlightRefresh;
+    if (running != null) {
+      await running;
+    }
+    if (_isDisposed) {
+      return;
+    }
+    await _refresh();
+  }
+
+  Future<void> _doRefresh() async {
+    final service = trackingService;
+    if (service == null) {
+      _publish();
+      return;
+    }
+    if (_isDisposed || _trackedLines.isEmpty) {
+      return;
+    }
+
+    try {
+      final entries = _trackedLines.entries.toList(growable: false);
+      final results = await Future.wait([
+        for (final entry in entries) service.findPositions([entry.value.line]),
+      ]);
+      if (_isDisposed) {
+        return;
+      }
+
+      for (var index = 0; index < entries.length; index++) {
+        final key = entries[index].key;
+        // A linha pode ter saído do acompanhamento durante a consulta.
+        final current = _trackedLines[key];
+        if (current == null) {
+          continue;
+        }
+        _trackedLines[key] = TrackedLine(
+          line: current.line,
+          route: current.route,
+          busPositions: results[index],
+        );
+      }
+    } catch (_) {
+      // Mantém as últimas posições conhecidas quando a consulta falha.
+    }
+
+    if (_isDisposed) {
+      return;
+    }
+    _publish();
   }
 
   void _publish() {

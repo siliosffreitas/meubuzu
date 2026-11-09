@@ -58,7 +58,7 @@ Future<void> setupDependencies() async {
     () => TrackingRepositoryImpl(
       injector.getService<RouteService>(),
       injector.getService<LineSearchService>(),
-      injector.getService<TrackingService>(),
+      trackingService: injector.getService<TrackingService>(),
     ),
   );
 

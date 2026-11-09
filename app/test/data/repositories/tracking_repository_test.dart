@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/repositories/tracking_repository.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
@@ -44,8 +45,9 @@ class _FakeRouteService implements RouteService {
 class _FakeTrackingService implements TrackingService {
   _FakeTrackingService(this.positions);
 
-  final List<BusPosition> positions;
+  List<BusPosition> positions;
   final queries = <List<Line>>[];
+  bool shouldThrow = false;
 
   @override
   Future<List<BusPosition>> findPositions(
@@ -53,8 +55,20 @@ class _FakeTrackingService implements TrackingService {
     DateTime? at,
   }) async {
     queries.add(lines);
+    if (shouldThrow) {
+      throw StateError('falha na consulta de posições');
+    }
     return positions;
   }
+}
+
+BusPosition _position(String busCode) {
+  return BusPosition(
+    bus: Bus(code: busCode),
+    latitude: -5.102443,
+    longitude: -42.727275,
+    capturedAt: DateTime.utc(2023, 6, 4, 11, 58),
+  );
 }
 
 void main() {
@@ -64,6 +78,13 @@ void main() {
     origin: 'MOCAMBINHO',
     destination: 'MOCAMBINHO',
     boardingCode: '0301',
+  );
+  const otherLine = Line(
+    id: '47',
+    name: 'OUTRA LINHA',
+    origin: 'CENTRO',
+    destination: 'SHOPPING',
+    boardingCode: '0302',
   );
   final route = Route(
     positions: const [
@@ -98,18 +119,11 @@ void main() {
     });
 
     test('inclui as posições dos ônibus retornadas pelo serviço', () async {
-      final trackingService = _FakeTrackingService([
-        BusPosition(
-          bus: Bus(code: '4171'),
-          latitude: -5.102443,
-          longitude: -42.727275,
-          capturedAt: DateTime.utc(2023, 6, 4, 11, 58),
-        ),
-      ]);
+      final trackingService = _FakeTrackingService([_position('4171')]);
       final repository = TrackingRepositoryImpl(
         _FakeRouteService({'0301': route}),
         _FakeLineSearchService([line]),
-        trackingService,
+        trackingService: trackingService,
       );
 
       final tracked = await repository.startTracking('0301');
@@ -257,6 +271,180 @@ void main() {
       repository.dispose();
 
       await done;
+    });
+
+    test('consulta as linhas já acompanhadas ao adicionar uma nova', () async {
+      final trackingService = _FakeTrackingService([_position('4171')]);
+      final repository = TrackingRepositoryImpl(
+        _FakeRouteService({'0301': route, '0302': null}),
+        _FakeLineSearchService([line, otherLine]),
+        trackingService: trackingService,
+      );
+      addTearDown(repository.dispose);
+
+      await repository.startTracking('0301');
+      trackingService.queries.clear();
+
+      await repository.startTracking('0302');
+
+      final queriedLineIds = trackingService.queries
+          .expand((lines) => lines)
+          .map((queried) => queried.id)
+          .toSet();
+      expect(queriedLineIds, {line.id, otherLine.id});
+    });
+
+    test('atualiza as posições a cada intervalo', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route}),
+          _FakeLineSearchService([line]),
+          trackingService: trackingService,
+        );
+        final emissions = <List<TrackedLine>>[];
+        final subscription = repository.trackingRoutes.listen(emissions.add);
+        async.flushMicrotasks();
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+        expect(emissions.last.single.busPositions.single.bus.code, '4171');
+
+        trackingService.positions = [_position('5096')];
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+
+        expect(emissions.last.single.busPositions.single.bus.code, '5096');
+
+        subscription.cancel();
+        repository.dispose();
+      });
+    });
+
+    test('reinicia o cronômetro ao adicionar uma linha', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route, '0302': null}),
+          _FakeLineSearchService([line, otherLine]),
+          trackingService: trackingService,
+        );
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+        expect(trackingService.queries, hasLength(1));
+
+        async.elapse(const Duration(seconds: 29));
+        expect(trackingService.queries, hasLength(1));
+
+        repository.startTracking('0302');
+        async.flushMicrotasks();
+        // Consulta imediata com as duas linhas acompanhadas.
+        final afterAdd = trackingService.queries.length;
+        expect(afterAdd, 3);
+
+        async.elapse(const Duration(seconds: 29));
+        expect(trackingService.queries, hasLength(afterAdd));
+
+        async.elapse(const Duration(seconds: 1));
+        expect(trackingService.queries, hasLength(afterAdd + 2));
+
+        repository.dispose();
+      });
+    });
+
+    test('para de consultar quando não há linhas acompanhadas', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route}),
+          _FakeLineSearchService([line]),
+          trackingService: trackingService,
+        );
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+        final afterStart = trackingService.queries.length;
+
+        repository.stopTracking('0301');
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 2));
+
+        expect(trackingService.queries, hasLength(afterStart));
+
+        repository.dispose();
+      });
+    });
+
+    test('cancela o cronômetro ao descartar o repositório', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route}),
+          _FakeLineSearchService([line]),
+          trackingService: trackingService,
+        );
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+        final afterStart = trackingService.queries.length;
+
+        repository.dispose();
+        async.elapse(const Duration(minutes: 2));
+
+        expect(trackingService.queries, hasLength(afterStart));
+      });
+    });
+
+    test('mantém as últimas posições quando a consulta falha', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route}),
+          _FakeLineSearchService([line]),
+          trackingService: trackingService,
+        );
+        final emissions = <List<TrackedLine>>[];
+        final subscription = repository.trackingRoutes.listen(emissions.add);
+        async.flushMicrotasks();
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+
+        trackingService.shouldThrow = true;
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+
+        // A falha não derruba o stream e preserva as últimas posições.
+        expect(emissions.last.single.busPositions.single.bus.code, '4171');
+
+        trackingService.shouldThrow = false;
+        trackingService.positions = [_position('5096')];
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+
+        expect(emissions.last.single.busPositions.single.bus.code, '5096');
+
+        subscription.cancel();
+        repository.dispose();
+      });
+    });
+
+    test('não consulta o serviço sem linhas acompanhadas', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({}),
+          _FakeLineSearchService([]),
+          trackingService: trackingService,
+        );
+
+        async.elapse(const Duration(minutes: 2));
+
+        expect(trackingService.queries, isEmpty);
+
+        repository.dispose();
+      });
     });
   });
 }
