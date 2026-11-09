@@ -79,6 +79,12 @@ desenha o traçado e um marcador por ônibus na mesma cor da linha; o ícone é
 gerado a partir da cor exata e fica em cache, com o marcador padrão colorido
 pela matiz como fallback enquanto o ícone não está pronto.
 
+A direção do ônibus é calculada na tela a partir da captura anterior
+(`TrackingBusDirections`): a primeira posição não tem seta, e qualquer
+deslocamento passa a exibir uma seta na cor da linha. A seta é um marcador
+próprio, ancorado no centro do ônibus, que gira em volta do selo e aponta para
+o sentido do movimento em qualquer nível de zoom.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

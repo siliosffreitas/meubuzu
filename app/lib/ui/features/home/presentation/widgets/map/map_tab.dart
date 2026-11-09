@@ -22,6 +22,7 @@ import 'map_location_state.dart';
 import 'map_location_view_model.dart';
 import 'map_search_arguments.dart';
 import 'map_style.dart';
+import 'map_tracking_directions.dart';
 import 'map_tracking_markers.dart';
 import 'map_tracking_polylines.dart';
 import 'map_tracking_view_model.dart';
@@ -69,6 +70,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
 
   final Set<String> _fittedLineCodes = <String>{};
   final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
+  final TrackingBusDirections _busDirections = TrackingBusDirections();
 
   GoogleMapController? _mapController;
   Marker? _selectedMarker;
@@ -118,6 +120,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _locationViewModel.initialize();
+        _busDirections.update(_trackingViewModel.trackedLines);
         _ensureBusIcons();
       }
     });
@@ -195,6 +198,7 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
     if (!mounted) {
       return;
     }
+    _busDirections.update(_trackingViewModel.trackedLines);
     setState(() {});
     _fitLatestRoute();
     _ensureBusIcons();
@@ -368,7 +372,9 @@ class _MapTabState extends State<MapTab> with WidgetsBindingObserver {
       ...buildNearbyStopMarkers(locationState.nearbyStops),
       ...buildTrackingBusMarkers(
         trackedLines,
+        bearings: _busDirections.bearings,
         iconFor: (color) => _busIcons[color],
+        arrowIconFor: (color) => _busIcons.arrow(color),
       ),
       ?_selectedMarker,
     };

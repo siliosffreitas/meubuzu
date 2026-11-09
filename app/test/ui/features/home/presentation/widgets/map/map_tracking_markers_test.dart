@@ -6,6 +6,7 @@ import 'package:meubuzu/domain/models/bus_position.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_directions.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_markers.dart';
 
 const _line = Line(
@@ -135,19 +136,96 @@ void main() {
       expect(markers.single.infoWindow.title, 'Linha 0301 • Ônibus 4171');
       expect(markers.single.infoWindow.snippet, 'Atualizado às 09:05');
     });
+
+    test('não cria seta quando a direção ainda é desconhecida', () {
+      final markers = buildTrackingBusMarkers([
+        _tracked(_line, [_position('4171')]),
+      ], arrowIconFor: (_) => BitmapDescriptor.defaultMarker);
+
+      expect(markers, hasLength(1));
+      expect(
+        markers.every(
+          (marker) => !marker.markerId.value.startsWith('bus-arrow-'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('cria a seta na direção do movimento sobre o ônibus', () {
+      final position = _position('4171');
+      final tracked = _tracked(_line, [position]);
+      final arrowIcon = BitmapDescriptor.defaultMarker;
+
+      final markers = buildTrackingBusMarkers(
+        [tracked],
+        bearings: {trackedBusKey(tracked, position): 135},
+        arrowIconFor: (_) => arrowIcon,
+      );
+
+      expect(markers, hasLength(2));
+
+      final arrow = markers.singleWhere(
+        (marker) => marker.markerId.value == 'bus-arrow-0301-4171',
+      );
+      expect(arrow.position.latitude, position.latitude);
+      expect(arrow.position.longitude, position.longitude);
+      expect(arrow.rotation, 135);
+      expect(arrow.anchor, const Offset(0.5, 1));
+      expect(arrow.zIndexInt, 2);
+      expect(arrow.icon, same(arrowIcon));
+      expect(arrow.infoWindow.title, isNull);
+    });
+
+    test('não cria a seta enquanto o ícone dela não está pronto', () {
+      final position = _position('4171');
+      final tracked = _tracked(_line, [position]);
+
+      final markers = buildTrackingBusMarkers(
+        [tracked],
+        bearings: {trackedBusKey(tracked, position): 90},
+        arrowIconFor: (_) => null,
+      );
+
+      expect(markers, hasLength(1));
+    });
+
+    test('cria setas apenas para os ônibus com direção conhecida', () {
+      final withBearing = _position('4171');
+      final withoutBearing = _position('5096');
+      final tracked = _tracked(_line, [withBearing, withoutBearing]);
+
+      final markers = buildTrackingBusMarkers(
+        [tracked],
+        bearings: {trackedBusKey(tracked, withBearing): 0},
+        arrowIconFor: (_) => BitmapDescriptor.defaultMarker,
+      );
+
+      expect(
+        markers.where(
+          (marker) => marker.markerId.value.startsWith('bus-arrow-'),
+        ),
+        hasLength(1),
+      );
+      expect(markers, hasLength(3));
+    });
   });
 
   group('TrackingBusMarkerIcons', () {
     test('gera o ícone e o mantém no cache por cor', () async {
       final icons = TrackingBusMarkerIcons();
       expect(icons[Colors.red], isNull);
+      expect(icons.arrow(Colors.red), isNull);
 
       expect(await icons.ensure([Colors.red]), isTrue);
 
       final icon = icons[Colors.red];
+      final arrow = icons.arrow(Colors.red);
       expect(icon, isNotNull);
+      expect(arrow, isNotNull);
+      expect(arrow, isNot(same(icon)));
       expect(await icons.ensure([Colors.red]), isFalse);
       expect(icons[Colors.red], same(icon));
+      expect(icons.arrow(Colors.red), same(arrow));
     });
 
     test('gera ícones diferentes para cores diferentes', () async {
@@ -158,6 +236,9 @@ void main() {
       expect(icons[Colors.red], isNotNull);
       expect(icons[Colors.blue], isNotNull);
       expect(icons[Colors.red], isNot(same(icons[Colors.blue])));
+      expect(icons.arrow(Colors.red), isNotNull);
+      expect(icons.arrow(Colors.blue), isNotNull);
+      expect(icons.arrow(Colors.red), isNot(same(icons.arrow(Colors.blue))));
     });
 
     test('não gera duas vezes a mesma cor em chamadas concorrentes', () async {
@@ -169,6 +250,7 @@ void main() {
       expect(await first, isTrue);
       expect(await second, isFalse);
       expect(icons[Colors.red], isNotNull);
+      expect(icons.arrow(Colors.red), isNotNull);
     });
   });
 }

@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../core/extensions/line_map_color.dart';
+import 'map_tracking_directions.dart';
 import 'map_tracking_polylines.dart';
 
 /// Cria os marcadores dos ônibus encontrados pelo rastreamento.
@@ -13,31 +14,67 @@ import 'map_tracking_polylines.dart';
 /// [iconFor] devolve o ícone já gerado para a cor; enquanto ele ainda não
 /// existe, o marcador usa o ícone padrão do Google Maps colorido pela matiz da
 /// linha.
+///
+/// [bearings] traz a direção de cada ônibus, por [trackedBusKey]. Quando ela é
+/// conhecida, um segundo marcador em forma de seta é criado sobre o ônibus,
+/// girando em volta dele para indicar o sentido do movimento.
 Set<Marker> buildTrackingBusMarkers(
   List<TrackedLine> trackedLines, {
+  Map<String, double> bearings = const {},
   BitmapDescriptor? Function(Color color)? iconFor,
+  BitmapDescriptor? Function(Color color)? arrowIconFor,
 }) {
-  return {
-    for (final tracked in trackedLines)
-      for (final position in tracked.busPositions)
+  final markers = <Marker>{};
+
+  for (final tracked in trackedLines) {
+    final lineKey = trackedLineKey(tracked);
+    final color = tracked.line.mapColor;
+
+    for (final position in tracked.busPositions) {
+      final target = LatLng(position.latitude, position.longitude);
+
+      markers.add(
         Marker(
-          markerId: MarkerId(
-            'bus-${trackedLineKey(tracked)}-${position.bus.code}',
-          ),
-          position: LatLng(position.latitude, position.longitude),
+          markerId: MarkerId('bus-$lineKey-${position.bus.code}'),
+          position: target,
           anchor: const Offset(0.5, 0.5),
           zIndexInt: 1,
-          icon:
-              iconFor?.call(tracked.line.mapColor) ??
-              _fallbackIcon(tracked.line.mapColor),
+          icon: iconFor?.call(color) ?? _fallbackIcon(color),
           infoWindow: InfoWindow(
-            title:
-                'Linha ${trackedLineKey(tracked)} • '
-                'Ônibus ${position.bus.code}',
+            title: 'Linha $lineKey • Ônibus ${position.bus.code}',
             snippet: 'Atualizado às ${_formatCapturedAt(position.capturedAt)}',
           ),
         ),
-  };
+      );
+
+      final bearing = bearings[trackedBusKey(tracked, position)];
+      if (bearing == null) {
+        continue;
+      }
+
+      final arrowIcon = arrowIconFor?.call(color);
+      if (arrowIcon == null) {
+        continue;
+      }
+
+      // A âncora fica no centro do ônibus, então a seta orbita o selo e
+      // continua apontando para fora, na direção do movimento, em qualquer
+      // nível de zoom.
+      markers.add(
+        Marker(
+          markerId: MarkerId('bus-arrow-$lineKey-${position.bus.code}'),
+          position: target,
+          anchor: const Offset(0.5, 1),
+          rotation: bearing,
+          zIndexInt: 2,
+          icon: arrowIcon,
+          infoWindow: InfoWindow.noText,
+        ),
+      );
+    }
+  }
+
+  return markers;
 }
 
 /// Matiz usada no ícone provisório enquanto a cor exata não foi gerada.
@@ -55,22 +92,31 @@ String _formatCapturedAt(DateTime value) {
 /// Gera e mantém em cache os ícones dos marcadores de ônibus.
 ///
 /// O ícone padrão do Google Maps só aceita uma matiz aproximada, então cada
-/// cor de linha é desenhada uma única vez em um selo circular e convertida em
-/// PNG para o mapa.
+/// cor de linha é desenhada uma única vez em um selo circular e em uma seta de
+/// direção, convertidos em PNG para o mapa.
 class TrackingBusMarkerIcons {
   static const double _size = 96;
   static const double _displaySize = 30;
 
+  static const double _arrowWidth = 64;
+  static const double _arrowHeight = 80;
+  static const double _arrowDisplayWidth = 32;
+  static const double _arrowDisplayHeight = 40;
+
   final Map<int, BitmapDescriptor> _icons = <int, BitmapDescriptor>{};
+  final Map<int, BitmapDescriptor> _arrowIcons = <int, BitmapDescriptor>{};
   final Map<int, Future<void>> _pending = <int, Future<void>>{};
 
-  /// Ícone já pronto para [color], ou `null` enquanto não foi gerado.
+  /// Ícone já pronto do ônibus para [color], ou `null` enquanto não foi gerado.
   BitmapDescriptor? operator [](Color color) => _icons[color.toARGB32()];
+
+  /// Ícone já pronto da seta de direção, ou `null` enquanto não foi gerado.
+  BitmapDescriptor? arrow(Color color) => _arrowIcons[color.toARGB32()];
 
   /// Gera os ícones das [colors] que ainda não existem.
   ///
-  /// Cores repetidas são ignoradas e chamadas concorrentes não geram o mesmo
-  /// ícone duas vezes. Retorna `true` quando iniciou a geração de pelo menos
+  /// Cores repetidas são ignoradas e chamadas concorrentes não geram os mesmos
+  /// ícones duas vezes. Retorna `true` quando iniciou a geração de pelo menos
   /// uma cor nova.
   Future<bool> ensure(Iterable<Color> colors) async {
     final pending = <Future<void>>[];
@@ -78,16 +124,14 @@ class TrackingBusMarkerIcons {
 
     for (final color in colors) {
       final key = color.toARGB32();
-      if (_icons.containsKey(key) || _pending.containsKey(key)) {
+      if ((_icons.containsKey(key) && _arrowIcons.containsKey(key)) ||
+          _pending.containsKey(key)) {
         continue;
       }
 
       created = true;
-      final future = _buildIcon(color).then<void>((icon) {
+      final future = _buildIcons(color).whenComplete(() {
         _pending.remove(key);
-        if (icon != null) {
-          _icons[key] = icon;
-        }
       });
       _pending[key] = future;
       pending.add(future);
@@ -99,14 +143,56 @@ class TrackingBusMarkerIcons {
     return created;
   }
 
-  Future<BitmapDescriptor?> _buildIcon(Color color) async {
+  Future<void> _buildIcons(Color color) async {
+    final key = color.toARGB32();
+
+    if (!_icons.containsKey(key)) {
+      final icon = await _buildIcon(
+        color,
+        _paintBusIcon,
+        canvasWidth: _size,
+        canvasHeight: _size,
+        displayWidth: _displaySize,
+        displayHeight: _displaySize,
+      );
+      if (icon != null) {
+        _icons[key] = icon;
+      }
+    }
+
+    if (!_arrowIcons.containsKey(key)) {
+      final arrow = await _buildIcon(
+        color,
+        _paintArrowIcon,
+        canvasWidth: _arrowWidth,
+        canvasHeight: _arrowHeight,
+        displayWidth: _arrowDisplayWidth,
+        displayHeight: _arrowDisplayHeight,
+      );
+      if (arrow != null) {
+        _arrowIcons[key] = arrow;
+      }
+    }
+  }
+
+  Future<BitmapDescriptor?> _buildIcon(
+    Color color,
+    void Function(Canvas canvas, Color color) paint, {
+    required double canvasWidth,
+    required double canvasHeight,
+    required double displayWidth,
+    required double displayHeight,
+  }) async {
     final recorder = ui.PictureRecorder();
     try {
-      _paintIcon(Canvas(recorder), color);
+      paint(Canvas(recorder), color);
 
       final picture = recorder.endRecording();
       try {
-        final image = await picture.toImage(_size.toInt(), _size.toInt());
+        final image = await picture.toImage(
+          canvasWidth.toInt(),
+          canvasHeight.toInt(),
+        );
         try {
           final data = await image.toByteData(format: ui.ImageByteFormat.png);
           if (data == null) {
@@ -114,8 +200,8 @@ class TrackingBusMarkerIcons {
           }
           return BitmapDescriptor.bytes(
             data.buffer.asUint8List(),
-            width: _displaySize,
-            height: _displaySize,
+            width: displayWidth,
+            height: displayHeight,
           );
         } finally {
           image.dispose();
@@ -130,7 +216,7 @@ class TrackingBusMarkerIcons {
   }
 
   /// Desenha um selo circular na cor da linha com um ônibus branco no centro.
-  void _paintIcon(Canvas canvas, Color color) {
+  void _paintBusIcon(Canvas canvas, Color color) {
     const center = Offset(_size / 2, _size / 2);
     final white = Paint()..color = Colors.white;
     final fill = Paint()..color = color;
@@ -158,5 +244,31 @@ class TrackingBusMarkerIcons {
 
     canvas.drawCircle(const Offset(36, 66), 5, white);
     canvas.drawCircle(const Offset(60, 66), 5, white);
+  }
+
+  /// Desenha a seta na parte de cima do ícone, apontando para cima.
+  ///
+  /// A âncora do marcador fica na base do canvas, então a seta aparece logo
+  /// acima do selo do ônibus e gira em volta dele.
+  void _paintArrowIcon(Canvas canvas, Color color) {
+    final white = Paint()..color = Colors.white;
+    final fill = Paint()..color = color;
+
+    canvas.drawPath(
+      Path()
+        ..moveTo(_arrowWidth / 2, 2)
+        ..lineTo(12, 44)
+        ..lineTo(_arrowWidth - 12, 44)
+        ..close(),
+      white,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(_arrowWidth / 2, 10)
+        ..lineTo(19, 40)
+        ..lineTo(_arrowWidth - 19, 40)
+        ..close(),
+      fill,
+    );
   }
 }
