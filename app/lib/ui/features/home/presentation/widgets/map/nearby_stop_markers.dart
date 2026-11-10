@@ -5,12 +5,13 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../../domain/models/bus_stop.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/stop_ring_icon.dart';
 
 /// Diâmetro do anel da parada, em unidades de exibição.
-const nearbyStopMarkerDiameter = 14.0;
+const nearbyStopMarkerDiameter = stopRingDiameter;
 
 /// Espessura da borda do anel, em unidades de exibição.
-const nearbyStopMarkerStrokeWidth = 2.8;
+const nearbyStopMarkerStrokeWidth = stopRingStrokeWidth;
 
 /// Desenha um anel na cor do app com o centro transparente.
 void paintNearbyStopMarker(
@@ -20,12 +21,13 @@ void paintNearbyStopMarker(
   double strokeWidth = nearbyStopMarkerStrokeWidth,
 }) {
   final ringCenter = center ?? Offset(diameter / 2, diameter / 2);
-  final paint = Paint()
-    ..color = AppColors.primary
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = strokeWidth;
 
-  canvas.drawCircle(ringCenter, (diameter - strokeWidth) / 2, paint);
+  paintStopRing(
+    canvas,
+    center: ringCenter,
+    diameter: diameter,
+    strokeWidth: strokeWidth,
+  );
 }
 
 /// Cria os marcadores das paradas próximas exibidas no mapa.

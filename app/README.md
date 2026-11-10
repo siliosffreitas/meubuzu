@@ -45,6 +45,8 @@ até 500 metros do usuário. O `MapLocationViewModel` transforma essa lista em u
 estado específico e o mapa exibe cada parada como um marcador: um anel pequeno
 na cor principal do app, com o centro transparente e o nome da parada no canto
 superior direito. Os ícones são desenhados uma vez por nome e ficam em cache.
+O mesmo anel (`StopRingIcon`) identifica as paradas no itinerário da tela de
+detalhes da linha.
 
 ### Linhas acompanhadas
 

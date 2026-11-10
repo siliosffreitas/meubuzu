@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/stop_ring_icon.dart';
 import '../../../../../domain/models/bus_stop.dart';
 
 /// Item do itinerário, com o marcador da parada e o código ao lado do nome.
@@ -36,24 +37,7 @@ class LineStopTimelineTile extends StatelessWidget {
                     color: isFirst ? Colors.transparent : lineColor,
                   ),
                 ),
-                Container(
-                  width: 18,
-                  height: 18,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.primary, width: 1.8),
-                  ),
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
+                const StopRingIcon(),
                 Expanded(
                   child: Container(
                     width: 2,
