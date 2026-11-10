@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/details_top_bar.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../../di/dependencies.dart';
 import '../../../../domain/models/bus_stop.dart';
@@ -122,7 +123,7 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
       body: SafeArea(
         child: Column(
           children: [
-            _TopBar(onBack: _back),
+            DetailsTopBar(title: 'Detalhes da linha', onBack: _back),
             Expanded(
               child: AnimatedBuilder(
                 animation: _viewModel,
@@ -172,47 +173,6 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
       ),
       DetailsLineError() => _ErrorView(onRetry: _reload),
     };
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onBack});
-
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 24, 8),
-      child: Row(
-        children: [
-          TextButton.icon(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_rounded, size: 22),
-            label: const Text('Voltar'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primaryPressed,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              textStyle: const TextStyle(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Detalhes da linha',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

@@ -13,6 +13,11 @@ abstract final class AppRoutes {
   static const detailsLine = '/line/:code';
   static const detailsLineName = 'detailsLine';
 
+  /// Detalhes da parada e as linhas que passam por ela. Recebe o código da
+  /// parada em `code`.
+  static const detailsBusStop = '/stop/:code';
+  static const detailsBusStopName = 'detailsBusStop';
+
   /// Primeira etapa da autenticação (e-mail).
   static const authEmail = '/auth';
   static const authEmailName = 'auth';

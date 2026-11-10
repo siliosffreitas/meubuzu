@@ -431,9 +431,28 @@ class _MapTabState extends State<MapTab>
       if (started != true) {
         return;
       }
+    } else {
+      await _openBusStopDetails(suggestion.code);
+      return;
     }
 
     await _startTracking(suggestion);
+  }
+
+  /// Abre os detalhes de uma parada pelo código do catálogo.
+  Future<void> _openBusStopDetails(String busStopCode) async {
+    final code = busStopCode.trim();
+    if (code.isEmpty) {
+      return;
+    }
+    await context.pushNamed<void>(
+      AppRoutes.detailsBusStopName,
+      pathParameters: {'code': code},
+    );
+  }
+
+  void _handleNearbyStopTap(BusStop stop) {
+    _openBusStopDetails(stop.code);
   }
 
   Future<void> _startTracking(PlaceSuggestion suggestion) async {
@@ -502,6 +521,7 @@ class _MapTabState extends State<MapTab>
         locationState.nearbyStops,
         iconFor: (stop) => _stopIcons.iconFor(stop.name),
         anchorFor: (stop) => _stopIcons.anchorFor(stop.name),
+        onTap: _handleNearbyStopTap,
       ),
       ...buildTrackingBusMarkers(
         trackedLines,

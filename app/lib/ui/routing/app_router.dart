@@ -4,6 +4,7 @@ import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/place_search_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
 import '../features/auth/presentation/auth_email/auth_email_page.dart';
+import '../features/bus_stop_details/presentation/details_bus_stop_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/home/presentation/widgets/map/map_search_arguments.dart';
 import '../features/home/presentation/widgets/map/map_search_page.dart';
@@ -51,6 +52,13 @@ class AppRouter {
           name: AppRoutes.detailsLineName,
           builder: (context, state) =>
               DetailsLinePage(lineCode: state.pathParameters['code'] ?? ''),
+        ),
+        GoRoute(
+          path: AppRoutes.detailsBusStop,
+          name: AppRoutes.detailsBusStopName,
+          builder: (context, state) => DetailsBusStopPage(
+            busStopCode: state.pathParameters['code'] ?? '',
+          ),
         ),
         GoRoute(
           path: AppRoutes.authEmail,

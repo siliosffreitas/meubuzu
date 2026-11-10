@@ -35,10 +35,13 @@ void paintNearbyStopMarker(
 /// [iconFor] e [anchorFor] recebem o ícone e a âncora de cada parada, que
 /// incluem o nome ao lado do anel. Sem eles, o marcador usa o pino verde padrão
 /// do Google Maps até o ícone ficar pronto.
+///
+/// [onTap] é chamado quando o usuário toca no marcador da parada.
 Set<Marker> buildNearbyStopMarkers(
   Iterable<BusStop> stops, {
   BitmapDescriptor? Function(BusStop stop)? iconFor,
   Offset? Function(BusStop stop)? anchorFor,
+  void Function(BusStop stop)? onTap,
 }) {
   return {
     for (final stop in stops)
@@ -50,6 +53,7 @@ Set<Marker> buildNearbyStopMarkers(
         icon:
             iconFor?.call(stop) ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        onTap: onTap == null ? null : () => onTap(stop),
       ),
   };
 }

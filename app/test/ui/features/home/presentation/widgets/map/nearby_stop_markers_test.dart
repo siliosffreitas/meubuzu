@@ -59,6 +59,18 @@ void main() {
     test('não cria marcadores quando não há paradas', () {
       expect(buildNearbyStopMarkers(const []), isEmpty);
     });
+
+    test('aciona o callback ao tocar no marcador da parada', () {
+      BusStop? tapped;
+      final marker = buildNearbyStopMarkers(const [
+        _busStop,
+      ], onTap: (stop) => tapped = stop).single;
+
+      expect(marker.onTap, isNotNull);
+      marker.onTap!();
+
+      expect(tapped, _busStop);
+    });
   });
 
   group('paintNearbyStopMarker', () {

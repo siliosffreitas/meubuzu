@@ -18,6 +18,7 @@ import '../domain/repositories/tracking_repository.dart';
 import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
+import '../ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_view_model.dart';
@@ -101,6 +102,13 @@ Future<void> setupDependencies() async {
       injector.getRepository<DetailsLineRepository>(),
       lineCode: lineCode,
       trackingRepository: injector.getRepository<TrackingRepository>(),
+    ),
+  );
+  injector.addViewModelParam<DetailsBusStopViewModel, String>(
+    (busStopCode) => DetailsBusStopViewModel(
+      injector.getRepository<DetailsBusStopRepository>(),
+      busStopCode: busStopCode,
+      locationRepository: injector.getRepository<UserLocationRepository>(),
     ),
   );
 
