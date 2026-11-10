@@ -444,18 +444,16 @@ class _MapTabState extends State<MapTab>
       });
 
       // O view model adiciona a linha ao repositório de rastreamento e expõe
-      // o traçado carregado para o mapa desenhar a polyline.
+      // o traçado carregado para o mapa desenhar a polyline. O sucesso é
+      // silencioso; só erros geram aviso para o usuário.
       final success = await _trackingViewModel.startTracking(suggestion.code);
-      if (!mounted) {
+      if (!mounted || success) {
         return;
       }
 
       _showMessage(
-        success
-            ? 'Acompanhando a linha ${suggestion.code} no mapa.'
-            : _trackingViewModel.state.errorMessage ??
-                  'Não foi possível carregar a rota da linha '
-                      '${suggestion.code}.',
+        _trackingViewModel.state.errorMessage ??
+            'Não foi possível carregar a rota da linha ${suggestion.code}.',
       );
       return;
     }
