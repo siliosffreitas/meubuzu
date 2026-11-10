@@ -14,6 +14,7 @@ import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../data/services/tracking_service.dart';
 import '../../../../../../di/dependencies.dart';
+import '../../../../../../domain/models/bus_stop.dart';
 import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
@@ -75,6 +76,7 @@ class _MapTabState extends State<MapTab>
   final Set<String> _fittedLineCodes = <String>{};
   Set<String> _trackedLineKeys = <String>{};
   final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
+  final NearbyStopMarkerIcons _stopIcons = NearbyStopMarkerIcons();
   final TrackingBusDirections _busDirections = TrackingBusDirections();
   late final TrackingBusAnimator _busAnimator;
 
@@ -136,6 +138,7 @@ class _MapTabState extends State<MapTab>
         _busDirections.update(_trackingViewModel.trackedLines);
         _busAnimator.jumpTo(_trackedBusPositions());
         _ensureBusIcons();
+        _ensureStopIcons(_locationViewModel.nearbyStops);
       }
     });
   }
@@ -203,6 +206,8 @@ class _MapTabState extends State<MapTab>
       return;
     }
     setState(() {});
+
+    _ensureStopIcons(_locationViewModel.nearbyStops);
 
     final position = _locationViewModel.position;
     if (position != null && !_centeredOnUser) {
@@ -297,6 +302,14 @@ class _MapTabState extends State<MapTab>
     }
 
     final created = await _busIcons.ensure(colors);
+    if (created && mounted) {
+      setState(() {});
+    }
+  }
+
+  /// Gera os ícones (anel + nome) das paradas próximas.
+  Future<void> _ensureStopIcons(Iterable<BusStop> stops) async {
+    final created = await _stopIcons.ensure(stops.map((stop) => stop.name));
     if (created && mounted) {
       setState(() {});
     }
@@ -461,7 +474,11 @@ class _MapTabState extends State<MapTab>
     final trackedLines = _trackingViewModel.trackedLines;
     final hasTrackedLines = trackedLines.isNotEmpty;
     final markers = <Marker>{
-      ...buildNearbyStopMarkers(locationState.nearbyStops),
+      ...buildNearbyStopMarkers(
+        locationState.nearbyStops,
+        iconFor: (stop) => _stopIcons.iconFor(stop.name),
+        anchorFor: (stop) => _stopIcons.anchorFor(stop.name),
+      ),
       ...buildTrackingBusMarkers(
         trackedLines,
         positions: _busAnimator.positions,
