@@ -210,9 +210,19 @@ class _MapTabState extends State<MapTab>
     }
     _busDirections.update(_trackingViewModel.trackedLines);
     _busAnimator.animateTo(_trackedBusPositions());
+    _pruneFittedLines();
     setState(() {});
     _fitLatestRoute();
     _ensureBusIcons();
+  }
+
+  /// Descarta enquadramentos de linhas que saíram do mapa.
+  void _pruneFittedLines() {
+    final trackedKeys = {
+      for (final tracked in _trackingViewModel.trackedLines)
+        trackedLineKey(tracked),
+    };
+    _fittedLineCodes.retainWhere(trackedKeys.contains);
   }
 
   /// Reposiciona os marcadores a cada quadro da animação.
@@ -328,7 +338,17 @@ class _MapTabState extends State<MapTab>
         AppRoutes.detailsLineName,
         pathParameters: {'code': suggestion.code},
       );
-      if (!mounted || started != true) {
+      if (!mounted) {
+        return;
+      }
+      // A tela de detalhes devolve `false` depois de remover a linha do mapa.
+      if (started == false) {
+        if (_selectedSuggestion?.code == suggestion.code) {
+          setState(() => _selectedSuggestion = null);
+        }
+        return;
+      }
+      if (started != true) {
         return;
       }
     }

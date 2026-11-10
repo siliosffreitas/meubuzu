@@ -90,6 +90,12 @@ da posição antiga e chega à nova em 300 ms. A primeira posição de um ônibu
 aparece direto no destino, e uma atualização que chega no meio da animação
 recomeça a transição a partir da posição interpolada naquele momento.
 
+A tela de detalhes também assina o `TrackingRepository`: quando a linha já está
+no mapa, o cabeçalho mostra "Acompanhando no mapa" e o botão principal vira
+"Remover do mapa", que encerra o rastreamento e volta para a tela anterior. Uma
+linha que sai do mapa pela própria tela de detalhes tem a seleção do mapa
+limpa, para a barra de busca não exibir um código que não está mais ativo.
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as

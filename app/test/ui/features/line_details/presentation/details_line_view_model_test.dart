@@ -7,6 +7,8 @@ import 'package:meubuzu/domain/repositories/details_line_repository.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_state.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_view_model.dart';
 
+import '../../../../helpers/fake_tracking_repository.dart';
+
 const _line = Line(
   id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
@@ -77,28 +79,40 @@ class _FakeDetailsLineRepository implements DetailsLineRepository {
 void main() {
   group('DetailsLineViewModel', () {
     late _FakeDetailsLineRepository repository;
+    late FakeTrackingRepository trackingRepository;
 
     setUp(() {
       repository = _FakeDetailsLineRepository();
+      trackingRepository = FakeTrackingRepository();
     });
 
     tearDown(() {
       repository.dispose();
+      trackingRepository.dispose();
     });
 
+    DetailsLineViewModel createViewModel({String lineCode = '0301'}) {
+      return DetailsLineViewModel(
+        repository,
+        lineCode: lineCode,
+        trackingRepository: trackingRepository,
+      );
+    }
+
     test('inicia no estado ocioso', () {
-      final viewModel = DetailsLineViewModel(repository, lineCode: '0301');
+      final viewModel = createViewModel();
       addTearDown(viewModel.dispose);
 
       expect(viewModel.state, isA<DetailsLineIdle>());
       expect(viewModel.lineCode, '0301');
+      expect(viewModel.isTracking, isFalse);
     });
 
     test('carrega a linha e publica as paradas em ordem', () async {
       repository
         ..line = _line
         ..stops = const [_firstStop, _secondStop];
-      final viewModel = DetailsLineViewModel(repository, lineCode: '0301');
+      final viewModel = createViewModel();
       addTearDown(viewModel.dispose);
 
       final states = <DetailsLineState>[];
@@ -124,7 +138,7 @@ void main() {
       repository
         ..line = _line
         ..stops = const [];
-      final viewModel = DetailsLineViewModel(repository, lineCode: '0301');
+      final viewModel = createViewModel();
       addTearDown(viewModel.dispose);
 
       await viewModel.load();
@@ -136,7 +150,7 @@ void main() {
 
     test('linha inexistente gera o estado de não encontrada', () async {
       repository.line = null;
-      final viewModel = DetailsLineViewModel(repository, lineCode: '9999');
+      final viewModel = createViewModel(lineCode: '9999');
       addTearDown(viewModel.dispose);
 
       await viewModel.load();
@@ -148,7 +162,7 @@ void main() {
 
     test('erro ao carregar gera o estado de erro', () async {
       repository.error = StateError('catálogo indisponível');
-      final viewModel = DetailsLineViewModel(repository, lineCode: '0301');
+      final viewModel = createViewModel();
       addTearDown(viewModel.dispose);
 
       await viewModel.load();
@@ -159,7 +173,7 @@ void main() {
 
     test('tentar novamente recarrega a linha', () async {
       repository.error = StateError('catálogo indisponível');
-      final viewModel = DetailsLineViewModel(repository, lineCode: '0301');
+      final viewModel = createViewModel();
       addTearDown(viewModel.dispose);
 
       await viewModel.load();
@@ -176,6 +190,78 @@ void main() {
 
       expect(viewModel.state, isA<DetailsLineReady>());
       expect(repository.loadedCodes, ['0301', '0301']);
+    });
+
+    test('fica acompanhada quando a linha entra no rastreamento', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final viewModel = createViewModel();
+      addTearDown(viewModel.dispose);
+      var notifications = 0;
+      viewModel.addListener(() => notifications++);
+
+      trackingRepository.emit([trackedLineFor(_line)]);
+      await pumpEventQueue();
+
+      expect(viewModel.isTracking, isTrue);
+      expect(notifications, 1);
+
+      // Emissões repetidas com o mesmo status não notificam de novo.
+      trackingRepository.emit([trackedLineFor(_line)]);
+      await pumpEventQueue();
+
+      expect(viewModel.isTracking, isTrue);
+      expect(notifications, 1);
+    });
+
+    test('reconhece a linha acompanhada pelo código interno', () async {
+      const otherLine = Line(
+        id: '46',
+        name: 'MOCAMBINHO DUQUE DE CAXIAS',
+        origin: 'MOCAMBINHO',
+        destination: 'MOCAMBINHO',
+        boardingCode: '9999',
+      );
+      final viewModel = createViewModel(lineCode: '46');
+      addTearDown(viewModel.dispose);
+
+      trackingRepository.emit([trackedLineFor(otherLine)]);
+      await pumpEventQueue();
+
+      expect(viewModel.isTracking, isTrue);
+    });
+
+    test('desmarca ao sair do rastreamento', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final viewModel = createViewModel();
+      addTearDown(viewModel.dispose);
+
+      trackingRepository.emit([trackedLineFor(_line)]);
+      await pumpEventQueue();
+      expect(viewModel.isTracking, isTrue);
+
+      trackingRepository.emit(const []);
+      await pumpEventQueue();
+
+      expect(viewModel.isTracking, isFalse);
+    });
+
+    test('remove a linha do mapa usando o código de embarque', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final viewModel = createViewModel(lineCode: '46');
+      addTearDown(viewModel.dispose);
+
+      await viewModel.load();
+      await pumpEventQueue();
+
+      await viewModel.stopTracking();
+
+      expect(trackingRepository.stoppedCodes, ['0301']);
     });
   });
 }

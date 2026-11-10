@@ -88,6 +88,7 @@ Future<void> setupDependencies() async {
     (lineCode) => DetailsLineViewModel(
       injector.getRepository<DetailsLineRepository>(),
       lineCode: lineCode,
+      trackingRepository: injector.getRepository<TrackingRepository>(),
     ),
   );
 

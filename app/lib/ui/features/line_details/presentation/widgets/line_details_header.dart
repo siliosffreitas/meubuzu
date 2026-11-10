@@ -6,9 +6,16 @@ import '../../../../../domain/models/line.dart';
 
 /// Cabeçalho com o código, o nome e o sentido da linha.
 class LineDetailsHeader extends StatelessWidget {
-  const LineDetailsHeader({super.key, required this.line});
+  const LineDetailsHeader({
+    super.key,
+    required this.line,
+    this.isTracking = false,
+  });
 
   final Line line;
+
+  /// Indica se a linha já está sendo acompanhada no mapa.
+  final bool isTracking;
 
   String get _displayCode {
     final code = line.boardingCode?.trim();
@@ -91,38 +98,44 @@ class LineDetailsHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        const _TrackingStatusPill(),
+        _TrackingStatusPill(isTracking: isTracking),
       ],
     );
   }
 }
 
 class _TrackingStatusPill extends StatelessWidget {
-  const _TrackingStatusPill();
+  const _TrackingStatusPill({required this.isTracking});
+
+  final bool isTracking;
 
   @override
   Widget build(BuildContext context) {
+    const color = AppColors.primaryPressed;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isTracking ? AppColors.primarySurface : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.directions_bus_filled_rounded,
+            isTracking
+                ? Icons.location_on_rounded
+                : Icons.directions_bus_filled_rounded,
             size: 18,
-            color: AppColors.primaryPressed,
+            color: color,
           ),
-          SizedBox(width: 8),
+          const SizedBox(width: 8),
           Text(
-            'Não acompanhada',
+            isTracking ? 'Acompanhando no mapa' : 'Não acompanhada',
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
-              color: AppColors.primaryPressed,
+              color: color,
             ),
           ),
         ],

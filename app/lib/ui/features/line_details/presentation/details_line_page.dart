@@ -7,6 +7,7 @@ import '../../../../di/dependencies.dart';
 import '../../../../domain/models/bus_stop.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/repositories/details_line_repository.dart';
+import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../routing/app_routes.dart';
 import 'details_line_state.dart';
 import 'details_line_view_model.dart';
@@ -22,6 +23,7 @@ class DetailsLinePage extends StatefulWidget {
     super.key,
     required this.lineCode,
     this.repository,
+    this.trackingRepository,
     this.viewModel,
   });
 
@@ -30,6 +32,9 @@ class DetailsLinePage extends StatefulWidget {
 
   /// Permite injetar um repositório fake em testes.
   final DetailsLineRepository? repository;
+
+  /// Permite injetar o repositório de rastreamento em testes.
+  final TrackingRepository? trackingRepository;
 
   /// Permite injetar um view model pronto em testes.
   final DetailsLineViewModel? viewModel;
@@ -45,17 +50,23 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
   @override
   void initState() {
     super.initState();
-    _viewModel =
-        widget.viewModel ??
-        (widget.repository != null
-            ? DetailsLineViewModel(
-                widget.repository!,
-                lineCode: widget.lineCode,
-              )
-            : injector.getViewModelParam<DetailsLineViewModel, String>(
-                widget.lineCode,
-              ));
+    _viewModel = widget.viewModel ?? _createViewModel();
     _viewModel.load();
+  }
+
+  DetailsLineViewModel _createViewModel() {
+    if (widget.repository == null && widget.trackingRepository == null) {
+      return injector.getViewModelParam<DetailsLineViewModel, String>(
+        widget.lineCode,
+      );
+    }
+    return DetailsLineViewModel(
+      widget.repository ?? injector.getRepository<DetailsLineRepository>(),
+      trackingRepository:
+          widget.trackingRepository ??
+          injector.getRepository<TrackingRepository>(),
+      lineCode: widget.lineCode,
+    );
   }
 
   @override
@@ -91,6 +102,19 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
     context.goNamed(AppRoutes.homeName);
   }
 
+  /// Remove a linha do mapa e volta para a tela que abriu os detalhes.
+  Future<void> _stopTracking() async {
+    await _viewModel.stopTracking();
+    if (!mounted) {
+      return;
+    }
+    if (context.canPop()) {
+      context.pop(false);
+      return;
+    }
+    context.goNamed(AppRoutes.homeName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +137,11 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
                 if (_viewModel.state.line == null) {
                   return const SizedBox.shrink();
                 }
-                return _StartTrackingBar(onPressed: _startTracking);
+                return _TrackingActionBar(
+                  isTracking: _viewModel.isTracking,
+                  onStart: _startTracking,
+                  onStop: _stopTracking,
+                );
               },
             ),
           ],
@@ -130,11 +158,13 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
         line: line,
         stops: stops,
         showAllStops: _showAllStops,
+        isTracking: _viewModel.isTracking,
         onToggleStops: _toggleStops,
       ),
       DetailsLineNoStops(:final line) => _LineContent(
         line: line,
         stops: const [],
+        isTracking: _viewModel.isTracking,
       ),
       DetailsLineNotFound() => _NotFoundView(
         lineCode: widget.lineCode,
@@ -186,10 +216,16 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-class _StartTrackingBar extends StatelessWidget {
-  const _StartTrackingBar({required this.onPressed});
+class _TrackingActionBar extends StatelessWidget {
+  const _TrackingActionBar({
+    required this.isTracking,
+    required this.onStart,
+    required this.onStop,
+  });
 
-  final VoidCallback onPressed;
+  final bool isTracking;
+  final VoidCallback onStart;
+  final Future<void> Function() onStop;
 
   @override
   Widget build(BuildContext context) {
@@ -200,31 +236,51 @@ class _StartTrackingBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FilledButton.icon(
-              onPressed: onPressed,
-              icon: const Icon(Icons.directions_bus_filled_rounded, size: 22),
-              label: const Text('Começar a acompanhar'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(60),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+            if (isTracking)
+              OutlinedButton.icon(
+                onPressed: onStop,
+                icon: const Icon(Icons.location_off_rounded, size: 22),
+                label: const Text('Remover do mapa'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  minimumSize: const Size.fromHeight(60),
+                  side: const BorderSide(color: AppColors.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
+              )
+            else ...[
+              FilledButton.icon(
+                onPressed: onStart,
+                icon: const Icon(Icons.directions_bus_filled_rounded, size: 22),
+                label: const Text('Começar a acompanhar'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(60),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Iniciar usa 1 de 5 rastreamentos por dia.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                height: 1.35,
-                color: AppColors.textMuted,
+              const SizedBox(height: 10),
+              const Text(
+                'Iniciar usa 1 de 5 rastreamentos por dia.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.35,
+                  color: AppColors.textMuted,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -263,12 +319,14 @@ class _LineContent extends StatelessWidget {
   const _LineContent({
     required this.line,
     required this.stops,
+    this.isTracking = false,
     this.showAllStops = false,
     this.onToggleStops,
   });
 
   final Line line;
   final List<BusStop> stops;
+  final bool isTracking;
   final bool showAllStops;
   final VoidCallback? onToggleStops;
 
@@ -282,7 +340,7 @@ class _LineContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
       children: [
-        LineDetailsHeader(line: line),
+        LineDetailsHeader(line: line, isTracking: isTracking),
         const SizedBox(height: 28),
         _ItineraryHeader(line: line, count: stops.length),
         const SizedBox(height: 8),

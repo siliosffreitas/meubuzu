@@ -9,6 +9,8 @@ import 'package:meubuzu/domain/repositories/details_line_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_page.dart';
 
+import '../../../../helpers/fake_tracking_repository.dart';
+
 const _line = Line(
   id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
@@ -94,10 +96,22 @@ class _FakeDetailsLineRepository implements DetailsLineRepository {
   }
 }
 
-Widget _app(DetailsLineRepository repository, {String lineCode = '0301'}) {
+Widget _app(
+  DetailsLineRepository repository, {
+  String lineCode = '0301',
+  FakeTrackingRepository? trackingRepository,
+}) {
+  final tracking = trackingRepository ?? FakeTrackingRepository();
+  if (trackingRepository == null) {
+    addTearDown(tracking.dispose);
+  }
   return MaterialApp(
     theme: AppTheme.light(),
-    home: DetailsLinePage(lineCode: lineCode, repository: repository),
+    home: DetailsLinePage(
+      lineCode: lineCode,
+      repository: repository,
+      trackingRepository: tracking,
+    ),
   );
 }
 
@@ -144,6 +158,8 @@ void main() {
       addTearDown(repository.dispose);
 
       bool? trackingStarted;
+      final trackingRepository = FakeTrackingRepository();
+      addTearDown(trackingRepository.dispose);
       final router = GoRouter(
         initialLocation: '/',
         routes: [
@@ -163,8 +179,11 @@ void main() {
           GoRoute(
             path: '/details',
             name: 'details',
-            builder: (context, state) =>
-                DetailsLinePage(lineCode: '0301', repository: repository),
+            builder: (context, state) => DetailsLinePage(
+              lineCode: '0301',
+              repository: repository,
+              trackingRepository: trackingRepository,
+            ),
           ),
         ],
       );
@@ -184,6 +203,102 @@ void main() {
 
       expect(trackingStarted, isTrue);
       expect(find.text('Abrir detalhes'), findsOneWidget);
+    });
+
+    testWidgets('mostra o status de acompanhada e remove do mapa', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop, _secondStop],
+      );
+      addTearDown(repository.dispose);
+      final trackingRepository = FakeTrackingRepository(
+        trackedLines: [trackedLineFor(_line)],
+      );
+      addTearDown(trackingRepository.dispose);
+
+      bool? removalResult;
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    removalResult = await context.pushNamed<bool>('details');
+                  },
+                  child: const Text('Abrir detalhes'),
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/details',
+            name: 'details',
+            builder: (context, state) => DetailsLinePage(
+              lineCode: '0301',
+              repository: repository,
+              trackingRepository: trackingRepository,
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      );
+
+      await tester.tap(find.text('Abrir detalhes'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
+      expect(find.text('Remover do mapa'), findsOneWidget);
+      expect(find.text('Não acompanhada'), findsNothing);
+      expect(find.text('Começar a acompanhar'), findsNothing);
+      expect(
+        find.text('Iniciar usa 1 de 5 rastreamentos por dia.'),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Remover do mapa'));
+      await tester.pumpAndSettle();
+
+      expect(trackingRepository.stoppedCodes, ['0301']);
+      expect(removalResult, isFalse);
+      expect(find.text('Abrir detalhes'), findsOneWidget);
+    });
+
+    testWidgets('volta a mostrar o início quando a linha sai do mapa', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop, _secondStop],
+      );
+      addTearDown(repository.dispose);
+      final trackingRepository = FakeTrackingRepository(
+        trackedLines: [trackedLineFor(_line)],
+      );
+      addTearDown(trackingRepository.dispose);
+
+      await tester.pumpWidget(
+        _app(repository, trackingRepository: trackingRepository),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
+      expect(find.text('Remover do mapa'), findsOneWidget);
+
+      trackingRepository.emit(const []);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Não acompanhada'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsOneWidget);
+      expect(find.text('Remover do mapa'), findsNothing);
     });
 
     testWidgets('alterna entre as 3 primeiras paradas e todas', (tester) async {
