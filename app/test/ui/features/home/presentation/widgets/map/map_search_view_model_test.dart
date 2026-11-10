@@ -8,6 +8,7 @@ import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
 import 'package:meubuzu/domain/repositories/tracking_repository.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
 class _RecordingSearchRepository implements PlaceSearchRepository {
@@ -185,6 +186,85 @@ void main() {
       expect(_line.matches('875a'), isTrue);
       expect(_line.matches('lapa'), isTrue);
       expect(_line.matches('metro'), isFalse);
+    });
+  });
+
+  group('cache da busca', () {
+    test('restaura a última busca concluída', () {
+      final cache = MapSearchCache()..save('875', const [_line]);
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([]),
+        cache: cache,
+      );
+      addTearDown(viewModel.dispose);
+
+      expect(viewModel.query, '875');
+      expect(viewModel.hasQuery, isTrue);
+      expect(viewModel.isLoading, isFalse);
+      expect(viewModel.results, const [_line]);
+    });
+
+    testWidgets('salva a busca concluída no cache', (tester) async {
+      final cache = MapSearchCache();
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([_line]),
+        cache: cache,
+      );
+      addTearDown(viewModel.dispose);
+
+      viewModel.setQuery('875');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(cache.query, '875');
+      expect(cache.results, [_line]);
+    });
+
+    testWidgets('não salva o texto de uma busca descartada', (tester) async {
+      final cache = MapSearchCache();
+      final repository = _RecordingSearchRepository([_line]);
+      final viewModel = MapSearchViewModel(repository, cache: cache);
+      addTearDown(viewModel.dispose);
+
+      viewModel.setQuery('8');
+      await tester.pump(const Duration(milliseconds: 100));
+      viewModel.setQuery('875');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(repository.queries, ['875']);
+      expect(cache.query, '875');
+      expect(cache.results, [_line]);
+    });
+
+    testWidgets('limpar apaga a busca guardada', (tester) async {
+      final cache = MapSearchCache();
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([_line]),
+        cache: cache,
+      );
+      addTearDown(viewModel.dispose);
+
+      viewModel.setQuery('875');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(cache.query, '875');
+
+      viewModel.clear();
+
+      expect(cache.query, isEmpty);
+      expect(cache.results, isEmpty);
+    });
+
+    test('pesquisa vazia apaga a busca guardada', () {
+      final cache = MapSearchCache()..save('875', const [_line]);
+      final viewModel = MapSearchViewModel(
+        _RecordingSearchRepository([]),
+        cache: cache,
+      );
+      addTearDown(viewModel.dispose);
+
+      viewModel.setQuery('   ');
+
+      expect(cache.query, isEmpty);
+      expect(cache.results, isEmpty);
     });
   });
 }

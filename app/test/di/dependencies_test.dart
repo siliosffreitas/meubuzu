@@ -15,6 +15,7 @@ import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_view_model.dart';
 
@@ -38,6 +39,9 @@ void main() {
       injector.getService<LineStopsService>(),
       isA<AssetLineStopsService>(),
     );
+    final searchCache = injector.getService<MapSearchCache>();
+    expect(searchCache, isA<MapSearchCache>());
+    expect(injector.getService<MapSearchCache>(), same(searchCache));
     expect(injector.getRepository<AuthRepository>(), isA<FakeAuthRepository>());
     expect(
       injector.getRepository<PlaceSearchRepository>(),

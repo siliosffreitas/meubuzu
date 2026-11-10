@@ -5,6 +5,7 @@ import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
+import 'map_search_cache.dart';
 
 /// Estado da busca exibida sobre o mapa.
 ///
@@ -14,11 +15,18 @@ class MapSearchViewModel extends ViewmodelBase {
   factory MapSearchViewModel(
     PlaceSearchRepository repository, {
     TrackingRepository? trackingRepository,
+    MapSearchCache? cache,
   }) {
-    return MapSearchViewModel._(repository, trackingRepository);
+    return MapSearchViewModel._(repository, trackingRepository, cache);
   }
 
-  MapSearchViewModel._(this._repository, this._trackingRepository) {
+  MapSearchViewModel._(
+    this._repository,
+    this._trackingRepository,
+    this._cache,
+  ) {
+    _query = _cache?.query ?? '';
+    _results = _cache?.results ?? const [];
     _trackingSubscription = _trackingRepository?.trackingRoutes.listen(
       _handleTrackedLines,
       onError: _handleTrackingError,
@@ -27,6 +35,7 @@ class MapSearchViewModel extends ViewmodelBase {
 
   final PlaceSearchRepository _repository;
   final TrackingRepository? _trackingRepository;
+  final MapSearchCache? _cache;
   StreamSubscription<List<TrackedLine>>? _trackingSubscription;
 
   Timer? _debounce;
@@ -69,6 +78,7 @@ class MapSearchViewModel extends ViewmodelBase {
       _searchId++;
       _isLoading = false;
       _results = const [];
+      _cache?.clear();
       notifyListeners();
       return;
     }
@@ -89,6 +99,7 @@ class MapSearchViewModel extends ViewmodelBase {
       }
       _results = results;
       _isLoading = false;
+      _cache?.save(_query, results);
       notifyListeners();
     });
   }
@@ -98,9 +109,7 @@ class MapSearchViewModel extends ViewmodelBase {
   }
 
   void _handleTrackedLines(List<TrackedLine> trackedLines) {
-    _trackedLineCodes = {
-      for (final tracked in trackedLines) tracked.line.id,
-    };
+    _trackedLineCodes = {for (final tracked in trackedLines) tracked.line.id};
     notifyListeners();
   }
 

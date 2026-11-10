@@ -70,7 +70,10 @@ própria, calculada a partir do `sgLinha` e do nome da linha, exibida no fundo d
 As paradas mostram o código antes do endereço. A linha atualmente exibida no
 mapa recebe o selo **Acompanhando no mapa**; o cabeçalho também reserva espaço
 para a cota diária de rastreamentos quando o backend fornecer esse dado. Ao
-escolher uma sugestão, a tela retorna o item e o mapa exibe o marcador.
+escolher uma sugestão, a tela retorna o item e o mapa exibe o marcador. A última
+busca concluída fica em `MapSearchCache`: ao reabrir `/search`, o texto e os
+resultados anteriores são restaurados sem consultar o repositório novamente. O
+cache é limpo ao usar “Limpar busca” ou ao encerrar a sessão.
 
 ### Posições dos ônibus (dados de exemplo)
 

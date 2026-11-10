@@ -9,7 +9,9 @@ import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
 import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_page.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
 class _FakeSearchRepository implements PlaceSearchRepository {
   _FakeSearchRepository(this.results);
@@ -51,7 +53,8 @@ TrackedLine _trackedLine(String code) {
       id: code,
       name: 'Perdizes ↔ Terminal Lapa',
       origin: 'Perdizes',
-      destination: 'Terminal Lapa', boardingCode: '0101',
+      destination: 'Terminal Lapa',
+      boardingCode: '0101',
     ),
     route: null,
     busPositions: const [],
@@ -182,6 +185,67 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Acompanhando no mapa'), findsOneWidget);
+    });
+
+    testWidgets('reabre com a busca e os resultados anteriores', (
+      tester,
+    ) async {
+      PlaceSuggestion? selected;
+      final repository = _FakeSearchRepository(const [_line]);
+      final cache = MapSearchCache();
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () async {
+                    selected = await context.push<PlaceSuggestion>('/search');
+                  },
+                  child: const Text('Abrir busca'),
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/search',
+            builder: (context, state) => MapSearchPage(
+              viewModel: MapSearchViewModel(repository, cache: cache),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      );
+
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '875');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(repository.queries, ['875']);
+      expect(find.text('875A-10'), findsOneWidget);
+
+      await tester.tap(find.text('875A-10'));
+      await tester.pumpAndSettle();
+
+      expect(selected?.id, _line.id);
+      expect(repository.queries, ['875']);
+
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller?.text, '875');
+      expect(find.text('875A-10'), findsOneWidget);
+      expect(repository.queries, ['875']);
     });
 
     testWidgets('estado vazio oferece editar a busca', (tester) async {

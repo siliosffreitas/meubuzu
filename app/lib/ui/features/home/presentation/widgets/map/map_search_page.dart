@@ -54,6 +54,12 @@ class _MapSearchPageState extends State<MapSearchPage> {
                 trackingRepository: widget.trackingRepository,
               )
             : injector.getViewModel<MapSearchViewModel>());
+
+    // Restaura a última busca concluída ao reabrir a tela.
+    _controller.text = _viewModel.query;
+    _controller.selection = TextSelection.collapsed(
+      offset: _controller.text.length,
+    );
   }
 
   @override

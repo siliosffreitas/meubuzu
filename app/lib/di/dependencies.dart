@@ -17,6 +17,7 @@ import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
+import '../ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_tracking_view_model.dart';
 import '../ui/features/line_details/presentation/details_line_view_model.dart';
@@ -36,6 +37,7 @@ Future<void> setupDependencies() async {
   injector.addService<LineStopsService>(AssetLineStopsService.new);
   injector.addService<RouteService>(AssetRouteService.new);
   injector.addService<TrackingService>(AssetTrackingService.new);
+  injector.addService<MapSearchCache>(MapSearchCache.new);
 
   injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
   injector.addRepository<PlaceSearchRepository>(
@@ -75,6 +77,7 @@ Future<void> setupDependencies() async {
     () => MapSearchViewModel(
       injector.getRepository<PlaceSearchRepository>(),
       trackingRepository: injector.getRepository<TrackingRepository>(),
+      cache: injector.getService<MapSearchCache>(),
     ),
   );
   injector.addViewModel<MapLocationViewModel>(
