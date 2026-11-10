@@ -143,7 +143,7 @@ class BusStopLineTileWithNavigation extends StatelessWidget {
     return InkWell(
       onTap: () => context.pushNamed<bool>(
         AppRoutes.detailsLineName,
-        pathParameters: {'code': line.id.trim()},
+        pathParameters: {'code': line.boardingCode ?? ''},
       ),
       child: Container(
         padding: const EdgeInsets.all(14),

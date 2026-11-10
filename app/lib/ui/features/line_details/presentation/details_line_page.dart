@@ -94,10 +94,13 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
     setState(() => _showAllStops = !_showAllStops);
   }
 
-  /// Retorna `true` para a tela que abriu os detalhes iniciar o rastreamento.
-  void _startTracking() {
-    if (context.canPop()) {
-      context.pop(true);
+  /// Inicia o rastreamento e volta para a Home, limpando toda a pilha.
+  ///
+  /// A Home passa a exibir o mapa com a linha acompanhada, sem nenhuma tela
+  /// de detalhes aberta por cima.
+  Future<void> _startTracking() async {
+    await _viewModel.startTracking();
+    if (!mounted) {
       return;
     }
     context.goNamed(AppRoutes.homeName);

@@ -148,7 +148,7 @@ void main() {
       expect(repository.loadedCodes, ['0301']);
     });
 
-    testWidgets('inicia o rastreamento ao tocar no botão principal', (
+    testWidgets('inicia o rastreamento e volta para a Home ao tocar no botão', (
       tester,
     ) async {
       final repository = _FakeDetailsLineRepository(
@@ -157,7 +157,6 @@ void main() {
       );
       addTearDown(repository.dispose);
 
-      bool? trackingStarted;
       final trackingRepository = FakeTrackingRepository();
       addTearDown(trackingRepository.dispose);
       final router = GoRouter(
@@ -165,12 +164,11 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
+            name: 'home',
             builder: (context, state) => Scaffold(
               body: Center(
                 child: ElevatedButton(
-                  onPressed: () async {
-                    trackingStarted = await context.pushNamed<bool>('details');
-                  },
+                  onPressed: () => context.pushNamed('details'),
                   child: const Text('Abrir detalhes'),
                 ),
               ),
@@ -201,8 +199,9 @@ void main() {
       await tester.tap(find.text('Começar a acompanhar'));
       await tester.pumpAndSettle();
 
-      expect(trackingStarted, isTrue);
+      expect(trackingRepository.startedCodes, ['0301']);
       expect(find.text('Abrir detalhes'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsNothing);
     });
 
     testWidgets('mostra o status de acompanhada e remove do mapa', (

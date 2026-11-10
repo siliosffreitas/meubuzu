@@ -152,6 +152,11 @@ class DetailsLineViewModel extends ViewmodelBase {
     await trackingRepository.stopTracking(_trackingCode);
   }
 
+  /// Inicia o acompanhamento da linha atual no mapa.
+  Future<void> startTracking() async {
+    await trackingRepository.startTracking(_trackingCode);
+  }
+
   void _update(DetailsLineState state) {
     if (_isDisposed) {
       return;
