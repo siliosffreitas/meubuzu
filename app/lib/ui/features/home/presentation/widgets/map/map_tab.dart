@@ -14,6 +14,7 @@ import '../../../../../../data/services/bus_stop_service.dart';
 import '../../../../../../data/services/location_service.dart';
 import '../../../../../../data/services/tracking_service.dart';
 import '../../../../../../di/dependencies.dart';
+import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
@@ -23,6 +24,7 @@ import 'map_location_view_model.dart';
 import 'map_search_arguments.dart';
 import 'map_style.dart';
 import 'map_tracking_animations.dart';
+import 'map_tracking_camera.dart';
 import 'map_tracking_directions.dart';
 import 'map_tracking_markers.dart';
 import 'map_tracking_polylines.dart';
@@ -71,6 +73,7 @@ class _MapTabState extends State<MapTab>
   late final MapTrackingViewModel _trackingViewModel;
 
   final Set<String> _fittedLineCodes = <String>{};
+  Set<String> _trackedLineKeys = <String>{};
   final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
   final TrackingBusDirections _busDirections = TrackingBusDirections();
   late final TrackingBusAnimator _busAnimator;
@@ -126,6 +129,10 @@ class _MapTabState extends State<MapTab>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _locationViewModel.initialize();
+        _trackedLineKeys = {
+          for (final tracked in _trackingViewModel.trackedLines)
+            trackedLineKey(tracked),
+        };
         _busDirections.update(_trackingViewModel.trackedLines);
         _busAnimator.jumpTo(_trackedBusPositions());
         _ensureBusIcons();
@@ -208,12 +215,46 @@ class _MapTabState extends State<MapTab>
     if (!mounted) {
       return;
     }
-    _busDirections.update(_trackingViewModel.trackedLines);
+
+    final trackedLines = _trackingViewModel.trackedLines;
+    final currentKeys = {
+      for (final tracked in trackedLines) trackedLineKey(tracked),
+    };
+    final removedKeys = _trackedLineKeys.difference(currentKeys);
+    _trackedLineKeys = currentKeys;
+
+    _busDirections.update(trackedLines);
     _busAnimator.animateTo(_trackedBusPositions());
     _pruneFittedLines();
     setState(() {});
-    _fitLatestRoute();
+    if (removedKeys.isNotEmpty) {
+      _fitAfterRemoval(trackedLines);
+    } else {
+      _fitLatestRoute();
+    }
     _ensureBusIcons();
+  }
+
+  /// Reposiciona a câmera depois que uma linha sai do mapa.
+  ///
+  /// Sem linhas restantes, mostra o usuário e as paradas próximas. Se ainda
+  /// houver linhas, enquadra o traçado de todas as que permaneceram.
+  void _fitAfterRemoval(List<TrackedLine> trackedLines) {
+    if (trackedLines.isEmpty) {
+      final position = _locationViewModel.position;
+      if (position == null) {
+        return;
+      }
+      _fitPositions(
+        userAndNearbyStopsCoordinates(
+          position: position,
+          nearbyStops: _locationViewModel.nearbyStops,
+        ),
+      );
+      return;
+    }
+
+    _fitPositions(trackedLinesCoordinates(trackedLines));
   }
 
   /// Descarta enquadramentos de linhas que saíram do mapa.
@@ -285,7 +326,7 @@ class _MapTabState extends State<MapTab>
 
   void _fitPositions(List<UserCoordinates> positions) {
     final controller = _mapController;
-    if (controller == null) {
+    if (controller == null || positions.isEmpty) {
       return;
     }
 

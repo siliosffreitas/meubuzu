@@ -96,6 +96,11 @@ no mapa, o cabeçalho mostra "Acompanhando no mapa" e o botão principal vira
 linha que sai do mapa pela própria tela de detalhes tem a seleção do mapa
 limpa, para a barra de busca não exibir um código que não está mais ativo.
 
+Ao remover uma linha do rastreamento, a câmera do mapa se reenquadra: quando
+não restam linhas, mostra o usuário e as paradas próximas; quando ainda há
+outras linhas, enquadra o traçado de todas as que permaneceram (com fallback
+para as posições dos ônibus ou para a coordenada da linha).
+
 ## Navegação
 
 O app usa o [GoRouter](https://pub.dev/packages/go_router) para gerenciar as
