@@ -197,7 +197,10 @@ class _BusStopContent extends StatelessWidget {
         else
           for (var index = 0; index < lines.length; index++) ...[
             if (index > 0) const SizedBox(height: 10),
-            BusStopLineTile(line: lines[index]),
+            BusStopLineTileWithNavigation(
+              line: lines[index],
+            ),
+            const SizedBox(height: 8),
           ],
       ],
     );
@@ -283,7 +286,7 @@ class _NotFoundView extends StatelessWidget {
       message: code.isEmpty
           ? 'Não encontramos esta parada no catálogo. Confira o código e tente '
                 'novamente.'
-          : 'Não encontramos a parada $code no catálogo. Confira o código e '
+          : 'Não encontrou a parada $code no catálogo. Confira o código e '
                 'tente novamente.',
       action: OutlinedButton.icon(
         onPressed: onBack,
