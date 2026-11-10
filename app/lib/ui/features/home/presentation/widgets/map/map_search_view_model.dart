@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../../../../data/models/place_suggestion.dart';
+import '../../../../../../domain/models/line.dart';
 import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
@@ -109,8 +110,22 @@ class MapSearchViewModel extends ViewmodelBase {
   }
 
   void _handleTrackedLines(List<TrackedLine> trackedLines) {
-    _trackedLineCodes = {for (final tracked in trackedLines) tracked.line.id};
+    _trackedLineCodes = {
+      for (final tracked in trackedLines) _searchCode(tracked.line),
+    };
     notifyListeners();
+  }
+
+  /// Código usado na busca (`sgLinha`), com fallback para o código interno.
+  ///
+  /// O rastreamento é iniciado pelo `sgLinha` (o `code` da sugestão), enquanto
+  /// [Line.id] guarda o `codigoLinha` do catálogo. Comparar apenas o `id`
+  /// deixaria de reconhecer a linha acompanhada.
+  String _searchCode(Line line) {
+    final boardingCode = line.boardingCode?.trim();
+    return boardingCode != null && boardingCode.isNotEmpty
+        ? boardingCode
+        : line.id.trim();
   }
 
   void _handleTrackingError(Object error, StackTrace stackTrace) {

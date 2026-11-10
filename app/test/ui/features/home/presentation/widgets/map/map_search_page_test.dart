@@ -50,11 +50,12 @@ class _FakeTrackingRepository implements TrackingRepository {
 TrackedLine _trackedLine(String code) {
   return TrackedLine(
     line: Line(
-      id: code,
+      // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
+      id: 'codigo-interno-$code',
       name: 'Perdizes ↔ Terminal Lapa',
       origin: 'Perdizes',
       destination: 'Terminal Lapa',
-      boardingCode: '0101',
+      boardingCode: code,
     ),
     route: null,
     busPositions: const [],
