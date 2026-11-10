@@ -27,6 +27,17 @@ class _FakeLineSearchService implements LineSearchService {
         )
         .toList(growable: false);
   }
+
+  @override
+  Future<List<Line>> findByCodes(Iterable<String> codes) async {
+    final wanted = codes.toSet();
+    return lines
+        .where(
+          (line) =>
+              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+        )
+        .toList(growable: false);
+  }
 }
 
 class _FakeRouteService implements RouteService {

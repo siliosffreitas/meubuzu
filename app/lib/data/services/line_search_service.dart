@@ -9,6 +9,9 @@ import '../utils/search_normalizer.dart';
 abstract interface class LineSearchService implements Service {
   /// Busca linhas por código ou nome.
   Future<List<Line>> search(String query);
+
+  /// Busca linhas pelos [codes] informados, preservando a ordem recebida.
+  Future<List<Line>> findByCodes(Iterable<String> codes);
 }
 
 /// Implementação que lê as linhas do catálogo local em CSV.
@@ -22,6 +25,7 @@ class AssetLineSearchService implements LineSearchService {
   final String assetPath;
 
   Future<List<Line>>? _lines;
+  Future<Map<String, Line>>? _linesByCode;
 
   @override
   Future<List<Line>> search(String query) async {
@@ -40,6 +44,53 @@ class AssetLineSearchService implements LineSearchService {
                       .contains(normalizedQuery)),
         )
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<Line>> findByCodes(Iterable<String> codes) async {
+    if (codes.isEmpty) {
+      return const [];
+    }
+
+    final index = await (_linesByCode ??= _loadLinesByCode());
+    final result = <Line>[];
+    final seenCodes = <String>{};
+    final seenLines = <Line>{};
+
+    for (final code in codes) {
+      final normalized = code.trim();
+      if (normalized.isEmpty || !seenCodes.add(normalized)) {
+        continue;
+      }
+      final line = index[normalized];
+      if (line == null || !seenLines.add(line)) {
+        continue;
+      }
+      result.add(line);
+    }
+    return result;
+  }
+
+  /// Indexa as linhas por `codigoLinha` e por `sgLinha`.
+  ///
+  /// O `sgLinha` tem prioridade quando o mesmo código aparece nas duas colunas.
+  Future<Map<String, Line>> _loadLinesByCode() async {
+    final lines = await (_lines ??= _loadLines());
+    final index = <String, Line>{};
+
+    for (final line in lines) {
+      final id = line.id.trim();
+      if (id.isNotEmpty) {
+        index[id] = line;
+      }
+    }
+    for (final line in lines) {
+      final boardingCode = line.boardingCode?.trim();
+      if (boardingCode != null && boardingCode.isNotEmpty) {
+        index[boardingCode] = line;
+      }
+    }
+    return index;
   }
 
   Future<List<Line>> _loadLines() async {

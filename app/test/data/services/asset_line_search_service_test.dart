@@ -8,9 +8,11 @@ class _FakeAssetBundle extends AssetBundle {
   _FakeAssetBundle(this.content);
 
   final String content;
+  int loadCount = 0;
 
   @override
   Future<ByteData> load(String key) async {
+    loadCount++;
     return ByteData.sublistView(Uint8List.fromList(utf8.encode(content)));
   }
 }
@@ -76,5 +78,60 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
 
       expect(lines, isEmpty);
     });
+
+    test('busca linhas pelos códigos preservando a ordem recebida', () async {
+      final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
+
+      final lines = await service.findByCodes(['0402', '0001']);
+
+      expect(lines.map((line) => line.id), ['8000-1', '875A-10']);
+    });
+
+    test(
+      'busca pelo código interno e pelo código de embarque sem duplicar',
+      () async {
+        final service = AssetLineSearchService(
+          bundle: _FakeAssetBundle(catalog),
+        );
+
+        final lines = await service.findByCodes(['46', '0301']);
+
+        expect(lines, hasLength(1));
+        expect(lines.first.id, '46');
+      },
+    );
+
+    test('ignora códigos vazios, repetidos e desconhecidos', () async {
+      final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
+
+      final lines = await service.findByCodes([' 0402 ', '0402', '', '9999']);
+
+      expect(lines, hasLength(1));
+      expect(lines.first.id, '8000-1');
+    });
+
+    test('lista vazia retorna lista vazia sem carregar o asset', () async {
+      final bundle = _FakeAssetBundle(catalog);
+      final service = AssetLineSearchService(bundle: bundle);
+
+      final lines = await service.findByCodes([]);
+
+      expect(lines, isEmpty);
+      expect(bundle.loadCount, 0);
+    });
+
+    test(
+      'carrega o asset uma única vez ao buscar por nome e por código',
+      () async {
+        final bundle = _FakeAssetBundle(catalog);
+        final service = AssetLineSearchService(bundle: bundle);
+
+        await service.search('perdizes');
+        await service.findByCodes(['0001']);
+        await service.search('vila');
+
+        expect(bundle.loadCount, 1);
+      },
+    );
   });
 }

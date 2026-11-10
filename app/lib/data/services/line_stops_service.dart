@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 
 import '../../domain/contracts/contracts.dart';
 
-/// Contrato de consulta das paradas atendidas por uma linha.
+/// Contrato de consulta das paradas atendidas por uma linha e vice-versa.
 abstract interface class LineStopsService implements Service {
   /// Retorna os códigos das paradas atendidas pela linha [lineCode] (`sgLinha`).
   Future<List<String>> findStopCodesForLine(String lineCode);
+
+  /// Retorna os códigos das linhas que passam pela parada [stopCode].
+  Future<List<String>> findLineCodesForStop(String stopCode);
 }
 
 /// Implementação que lê o mapa `sgLinha -> códigos de paradas` do asset JSON.
@@ -21,6 +24,7 @@ class AssetLineStopsService implements LineStopsService {
   final String assetPath;
 
   Future<Map<String, List<String>>>? _lines;
+  Future<Map<String, List<String>>>? _stopsToLines;
 
   @override
   Future<List<String>> findStopCodesForLine(String lineCode) async {
@@ -31,6 +35,34 @@ class AssetLineStopsService implements LineStopsService {
 
     final lines = await (_lines ??= _loadLines());
     return lines[normalized] ?? const [];
+  }
+
+  @override
+  Future<List<String>> findLineCodesForStop(String stopCode) async {
+    final normalized = stopCode.trim();
+    if (normalized.isEmpty) {
+      return const [];
+    }
+
+    final stopsToLines = await (_stopsToLines ??= _loadStopsToLines());
+    return stopsToLines[normalized] ?? const [];
+  }
+
+  /// Monta o índice reverso `parada -> linhas` a partir do mesmo asset.
+  Future<Map<String, List<String>>> _loadStopsToLines() async {
+    final lines = await (_lines ??= _loadLines());
+    final stopsToLines = <String, Set<String>>{};
+
+    lines.forEach((lineCode, stopCodes) {
+      for (final stopCode in stopCodes) {
+        (stopsToLines[stopCode] ??= <String>{}).add(lineCode);
+      }
+    });
+
+    return {
+      for (final entry in stopsToLines.entries)
+        entry.key: List<String>.unmodifiable(entry.value),
+    };
   }
 
   Future<Map<String, List<String>>> _loadLines() async {

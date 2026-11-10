@@ -18,6 +18,17 @@ class _FakeLineSearchService implements LineSearchService {
     queries.add(query);
     return lines;
   }
+
+  @override
+  Future<List<Line>> findByCodes(Iterable<String> codes) async {
+    final wanted = codes.toSet();
+    return lines
+        .where(
+          (line) =>
+              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+        )
+        .toList();
+  }
 }
 
 class _FakeLineStopsService implements LineStopsService {
@@ -30,6 +41,11 @@ class _FakeLineStopsService implements LineStopsService {
   Future<List<String>> findStopCodesForLine(String lineCode) async {
     queries.add(lineCode);
     return codesByLine[lineCode] ?? const [];
+  }
+
+  @override
+  Future<List<String>> findLineCodesForStop(String stopCode) async {
+    return const [];
   }
 }
 

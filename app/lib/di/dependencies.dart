@@ -1,5 +1,6 @@
 import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/details_bus_stop_repository.dart';
 import '../data/repositories/details_line_repository.dart';
 import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
@@ -10,6 +11,7 @@ import '../data/services/location_service.dart';
 import '../data/services/route_service.dart';
 import '../data/services/tracking_service.dart';
 import '../domain/repositories/auth_repository.dart';
+import '../domain/repositories/details_bus_stop_repository.dart';
 import '../domain/repositories/details_line_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
 import '../domain/repositories/tracking_repository.dart';
@@ -48,6 +50,13 @@ Future<void> setupDependencies() async {
       injector.getService<LineSearchService>(),
       injector.getService<LineStopsService>(),
       injector.getService<BusStopService>(),
+    ),
+  );
+  injector.addRepository<DetailsBusStopRepository>(
+    () => DetailsBusStopRepositoryImpl(
+      injector.getService<BusStopService>(),
+      injector.getService<LineStopsService>(),
+      injector.getService<LineSearchService>(),
     ),
   );
   injector.addRepository<UserLocationRepository>(

@@ -18,6 +18,17 @@ class _FakeLineSearchService implements LineSearchService {
     queries.add(query);
     return lines;
   }
+
+  @override
+  Future<List<Line>> findByCodes(Iterable<String> codes) async {
+    final wanted = codes.toSet();
+    return lines
+        .where(
+          (line) =>
+              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+        )
+        .toList();
+  }
 }
 
 class _FakeBusStopService implements BusStopService {
@@ -140,7 +151,8 @@ void main() {
         id: '408',
         name: 'BELAVISTA VIA S.MARIA',
         origin: 'TERMINAL 1',
-        destination: 'TERMINAL 1', boardingCode: '0101',
+        destination: 'TERMINAL 1',
+        boardingCode: null,
       );
       final repository = AssetPlaceSearchRepository(
         lineSearchService: _FakeLineSearchService([line]),
@@ -197,14 +209,14 @@ void main() {
           name: 'BELAVISTA VIA S.MARIA',
           origin: 'TERMINAL 1',
           destination: 'TERMINAL 1',
-          boardingCode: '0101',
+          boardingCode: null,
         ),
         Line(
           id: '205',
           name: 'CENTRO / SHOPPING',
           origin: 'CENTRO',
           destination: 'SHOPPING',
-          boardingCode: '0202',
+          boardingCode: null,
         ),
       ];
       final repository = AssetPlaceSearchRepository(
