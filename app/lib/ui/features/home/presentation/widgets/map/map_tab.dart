@@ -384,6 +384,32 @@ class _MapTabState extends State<MapTab>
     );
   }
 
+  /// Abre os detalhes de uma linha que já está no mapa.
+  ///
+  /// Usa o código de embarque exibido e, quando ele não existe, o código
+  /// interno da linha. Ao remover a linha pela tela de detalhes, o painel é
+  /// atualizado pelo próprio stream de rastreamento.
+  Future<void> _openTrackedLineDetails(TrackedLine tracked) async {
+    final boardingCode = tracked.line.boardingCode?.trim();
+    final code = boardingCode != null && boardingCode.isNotEmpty
+        ? boardingCode
+        : tracked.line.id.trim();
+    if (code.isEmpty) {
+      return;
+    }
+
+    final removed = await context.pushNamed<bool>(
+      AppRoutes.detailsLineName,
+      pathParameters: {'code': code},
+    );
+    if (!mounted || removed != false) {
+      return;
+    }
+    if (_selectedSuggestion?.code == code) {
+      setState(() => _selectedSuggestion = null);
+    }
+  }
+
   Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
     // Linhas abrem os detalhes primeiro. O rastreamento só começa quando o
     // usuário confirma no botão principal da tela de detalhes.
@@ -584,6 +610,7 @@ class _MapTabState extends State<MapTab>
                 TrackingPanel(
                   trackedLines: trackedLines,
                   updatedAt: _trackingViewModel.updatedAt,
+                  onLineTap: _openTrackedLineDetails,
                 ),
             ],
           ),

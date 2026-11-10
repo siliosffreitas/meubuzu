@@ -17,6 +17,7 @@ class TrackingPanel extends StatefulWidget {
     required this.trackedLines,
     this.updatedAt,
     this.initiallyCollapsed = false,
+    this.onLineTap,
   });
 
   /// Linhas retornadas pelo view model de rastreamento.
@@ -27,6 +28,9 @@ class TrackingPanel extends StatefulWidget {
 
   /// Permite abrir o painel já minimizado.
   final bool initiallyCollapsed;
+
+  /// Chamado ao tocar em uma linha, normalmente para abrir seus detalhes.
+  final ValueChanged<TrackedLine>? onLineTap;
 
   @override
   State<TrackingPanel> createState() => _TrackingPanelState();
@@ -114,6 +118,7 @@ class _TrackingPanelState extends State<TrackingPanel> {
                           ),
                           itemBuilder: (context, index) => _TrackedLineTile(
                             tracked: widget.trackedLines[index],
+                            onTap: widget.onLineTap,
                           ),
                         ),
                       ),
@@ -217,51 +222,57 @@ class _Header extends StatelessWidget {
 }
 
 class _TrackedLineTile extends StatelessWidget {
-  const _TrackedLineTile({required this.tracked});
+  const _TrackedLineTile({required this.tracked, this.onTap});
 
   final TrackedLine tracked;
+  final ValueChanged<TrackedLine>? onTap;
 
   @override
   Widget build(BuildContext context) {
     final line = tracked.line;
     final subtitle = trackingLineSubtitle(line);
+    final onTap = this.onTap;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-      child: Row(
-        children: [
-          _LineBadge(code: trackedLineKey(tracked), color: line.mapColor),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  line.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+    return InkWell(
+      key: Key('tracking-line-tile-${trackedLineKey(tracked)}'),
+      onTap: onTap == null ? null : () => onTap(tracked),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        child: Row(
+          children: [
+            _LineBadge(code: trackedLineKey(tracked), color: line.mapColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    subtitle,
+                    line.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
                   ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -46,6 +46,12 @@ estado específico e o mapa exibe cada parada como um marcador: um anel pequeno
 na cor principal do app, com o centro transparente e o nome da parada no canto
 superior direito. Os ícones são desenhados uma vez por nome e ficam em cache.
 
+### Linhas acompanhadas
+
+O painel flutuante na Home lista as linhas que estão no mapa. Tocar em uma
+linha abre a mesma tela de detalhes usada pela busca, permitindo consultar as
+paradas e remover a linha do rastreamento.
+
 ### Busca de linhas e paradas
 
 A busca do mapa abre a tela dedicada em `/search`

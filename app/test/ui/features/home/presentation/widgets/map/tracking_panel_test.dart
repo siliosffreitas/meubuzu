@@ -99,6 +99,35 @@ void main() {
       expect(decoration.color, _line101.mapColor);
     });
 
+    testWidgets('abre a linha tocada pelo callback', (tester) async {
+      final tapped = <TrackedLine>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [_tracked(_line101), _tracked(_line203)],
+            onLineTap: tapped.add,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Vila do Sol'));
+      await tester.pump();
+
+      expect(tapped.map((tracked) => tracked.line.name), ['Vila do Sol']);
+    });
+
+    testWidgets('não falha ao tocar sem callback configurado', (tester) async {
+      await tester.pumpWidget(
+        _wrap(TrackingPanel(trackedLines: [_tracked(_line101)])),
+      );
+
+      await tester.tap(find.text('Jardim das Flores'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('minimiza pelo cabeçalho e expande pela alça', (tester) async {
       await tester.pumpWidget(
         _wrap(TrackingPanel(trackedLines: [_tracked(_line101)])),
