@@ -109,6 +109,7 @@ Future<void> setupDependencies() async {
       injector.getRepository<DetailsBusStopRepository>(),
       busStopCode: busStopCode,
       locationRepository: injector.getRepository<UserLocationRepository>(),
+      trackingRepository: injector.getRepository<TrackingRepository>(),
     ),
   );
 

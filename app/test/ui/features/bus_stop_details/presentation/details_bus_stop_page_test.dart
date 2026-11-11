@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/details_bus_stop_repository.dart';
+import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_stop_page.dart';
@@ -113,10 +115,44 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   }
 }
 
+class _FakeTrackingRepository implements TrackingRepository {
+  final _controller = StreamController<List<TrackedLine>>.broadcast();
+
+  void emit(List<TrackedLine> lines) => _controller.add(lines);
+
+  @override
+  Stream<List<TrackedLine>> get trackingRoutes => _controller.stream;
+
+  @override
+  Future<TrackedLine?> startTracking(String lineCode) async => null;
+
+  @override
+  Future<void> stopTracking(String lineCode) async {}
+
+  @override
+  void dispose() => _controller.close();
+}
+
+TrackedLine _trackedLine(String code) {
+  return TrackedLine(
+    line: Line(
+      // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
+      id: 'codigo-interno-$code',
+      name: 'LINHA RASTREADA',
+      origin: 'TERMINAL CENTRAL',
+      destination: 'JARDIM DAS FLORES',
+      boardingCode: code,
+    ),
+    route: null,
+    busPositions: const [],
+  );
+}
+
 Widget _app(
   DetailsBusStopRepository repository, {
   String busStopCode = '174',
   UserLocationRepository? locationRepository,
+  TrackingRepository? trackingRepository,
 }) {
   return MaterialApp(
     theme: AppTheme.light(),
@@ -124,6 +160,7 @@ Widget _app(
       busStopCode: busStopCode,
       repository: repository,
       locationRepository: locationRepository,
+      trackingRepository: trackingRepository,
       mapPreviewBuilder: (_) =>
           const SizedBox(key: Key('map-preview'), height: 190),
     ),
@@ -193,6 +230,30 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('A 0 m de você'), findsOneWidget);
+    });
+
+    testWidgets('marca as linhas que já estão sendo acompanhadas', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsBusStopRepository(
+        busStop: _busStop,
+        busStopLines: const [_line, _otherLine],
+      );
+      final trackingRepository = _FakeTrackingRepository();
+      addTearDown(repository.dispose);
+      addTearDown(trackingRepository.dispose);
+
+      await tester.pumpWidget(
+        _app(repository, trackingRepository: trackingRepository),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acompanhando no mapa'), findsNothing);
+
+      trackingRepository.emit([_trackedLine('101')]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Acompanhando no mapa'), findsOneWidget);
     });
 
     testWidgets('mostra mensagem quando a parada não tem linhas', (

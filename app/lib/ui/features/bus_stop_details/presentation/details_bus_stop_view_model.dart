@@ -3,8 +3,10 @@ import 'dart:async';
 import '../../../../domain/contracts/contracts.dart';
 import '../../../../domain/models/bus_stop.dart';
 import '../../../../domain/models/line.dart';
+import '../../../../domain/models/tracked_line.dart';
 import '../../../../domain/models/user_coordinates.dart';
 import '../../../../domain/repositories/details_bus_stop_repository.dart';
+import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../../domain/repositories/user_location_repository.dart';
 import 'details_bus_stop_state.dart';
 
@@ -14,13 +16,19 @@ import 'details_bus_stop_state.dart';
 /// Emite estados concretos ([DetailsBusStopState]) para que a view saiba qual
 /// conteúdo exibir. Quando recebe um [UserLocationRepository], também acompanha
 /// a última localização disponível para calcular a distância até a parada, sem
-/// solicitar permissão novamente.
+/// solicitar permissão novamente. Quando recebe um [TrackingRepository],
+/// acompanha quais linhas já estão sendo rastreadas no mapa.
 class DetailsBusStopViewModel extends ViewmodelBase {
   DetailsBusStopViewModel(
     this._repository, {
     required this.busStopCode,
     UserLocationRepository? locationRepository,
+    TrackingRepository? trackingRepository,
   }) {
+    _trackingSubscription = trackingRepository?.trackingRoutes.listen(
+      _handleTrackedLines,
+      onError: _handleTrackingError,
+    );
     _busStopSubscription = _repository.currentBusStop.listen(
       _handleBusStop,
       onError: _handleError,
@@ -40,16 +48,21 @@ class DetailsBusStopViewModel extends ViewmodelBase {
 
   late final StreamSubscription<BusStop?> _busStopSubscription;
   late final StreamSubscription<List<Line>> _linesSubscription;
-  late final StreamSubscription<UserCoordinates>? _locationSubscription;
+  StreamSubscription<UserCoordinates>? _locationSubscription;
+  StreamSubscription<List<TrackedLine>>? _trackingSubscription;
 
   DetailsBusStopState _state = const DetailsBusStopIdle();
   BusStop? _busStop;
   List<Line>? _lines;
   UserCoordinates? _position;
+  Set<String> _trackedLineCodes = const {};
   bool _isDisposed = false;
 
   /// Estado atual da tela.
   DetailsBusStopState get state => _state;
+
+  /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
+  Set<String> get trackedLineCodes => _trackedLineCodes;
 
   /// Distância em metros até a parada, quando a localização está disponível.
   double? get distanceInMeters {
@@ -113,6 +126,30 @@ class DetailsBusStopViewModel extends ViewmodelBase {
   /// Mantém a tela sem distância quando a localização não está disponível.
   void _handleLocationError(Object error, StackTrace stackTrace) {}
 
+  void _handleTrackedLines(List<TrackedLine> trackedLines) {
+    _trackedLineCodes = {
+      for (final tracked in trackedLines) _searchCode(tracked.line),
+    };
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  void _handleTrackingError(Object error, StackTrace stackTrace) {
+    _trackedLineCodes = const {};
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  /// Código usado na busca (`sgLinha`), com fallback para o código interno.
+  String _searchCode(Line line) {
+    final boardingCode = line.boardingCode?.trim();
+    return boardingCode != null && boardingCode.isNotEmpty
+        ? boardingCode
+        : line.id.trim();
+  }
+
   void _update(DetailsBusStopState state) {
     if (_isDisposed) {
       return;
@@ -127,6 +164,7 @@ class DetailsBusStopViewModel extends ViewmodelBase {
     _busStopSubscription.cancel();
     _linesSubscription.cancel();
     _locationSubscription?.cancel();
+    _trackingSubscription?.cancel();
     super.dispose();
   }
 }

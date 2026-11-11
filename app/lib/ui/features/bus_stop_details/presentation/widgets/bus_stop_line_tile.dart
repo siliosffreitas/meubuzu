@@ -6,11 +6,25 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../../domain/models/line.dart';
 import '../../../../routing/app_routes.dart';
 
+/// Código usado para reconhecer a linha acompanhada (`sgLinha`), com fallback
+/// para o código interno quando o `sgLinha` não está disponível.
+String _trackingCode(Line line) {
+  final code = line.boardingCode?.trim();
+  return code == null || code.isEmpty ? line.id.trim() : code;
+}
+
 /// Card de uma linha que passa pela parada, com o código, o nome e o trajeto.
 class BusStopLineTile extends StatelessWidget {
-  const BusStopLineTile({super.key, required this.line});
+  const BusStopLineTile({
+    super.key,
+    required this.line,
+    this.trackingLines = const {},
+  });
 
   final Line line;
+
+  /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
+  final Set<String> trackingLines;
 
   String get _displayCode {
     final code = line.boardingCode?.trim();
@@ -101,6 +115,17 @@ class BusStopLineTile extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (trackingLines.contains(_trackingCode(line))) ...[
+                  const SizedBox(height: 5),
+                  const Text(
+                    'Acompanhando no mapa',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryPressed,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -112,9 +137,16 @@ class BusStopLineTile extends StatelessWidget {
 
 /// Widget que exibe o tile da linha com navegação para os detalhes da linha.
 class BusStopLineTileWithNavigation extends StatelessWidget {
-  const BusStopLineTileWithNavigation({super.key, required this.line});
+  const BusStopLineTileWithNavigation({
+    super.key,
+    required this.line,
+    this.trackingLines = const {},
+  });
 
   final Line line;
+
+  /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
+  final Set<String> trackingLines;
 
   String get _displayCode {
     final code = line.boardingCode?.trim();
@@ -207,6 +239,17 @@ class BusStopLineTileWithNavigation extends StatelessWidget {
                         fontSize: 13.5,
                         height: 1.35,
                         color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (trackingLines.contains(_trackingCode(line))) ...[
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Acompanhando no mapa',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryPressed,
                       ),
                     ),
                   ],

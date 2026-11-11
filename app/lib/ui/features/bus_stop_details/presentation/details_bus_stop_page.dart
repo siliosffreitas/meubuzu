@@ -5,6 +5,7 @@ import '../../../../di/dependencies.dart';
 import '../../../../domain/models/bus_stop.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/repositories/details_bus_stop_repository.dart';
+import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../../domain/repositories/user_location_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/details_top_bar.dart';
@@ -26,6 +27,7 @@ class DetailsBusStopPage extends StatefulWidget {
     required this.busStopCode,
     this.repository,
     this.locationRepository,
+    this.trackingRepository,
     this.viewModel,
     this.mapPreviewBuilder,
   });
@@ -38,6 +40,9 @@ class DetailsBusStopPage extends StatefulWidget {
 
   /// Permite injetar a localização em testes.
   final UserLocationRepository? locationRepository;
+
+  /// Permite injetar o rastreamento em testes.
+  final TrackingRepository? trackingRepository;
 
   /// Permite injetar um view model pronto em testes.
   final DetailsBusStopViewModel? viewModel;
@@ -60,7 +65,9 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
   }
 
   DetailsBusStopViewModel _createViewModel() {
-    if (widget.repository == null && widget.locationRepository == null) {
+    if (widget.repository == null &&
+        widget.locationRepository == null &&
+        widget.trackingRepository == null) {
       return injector.getViewModelParam<DetailsBusStopViewModel, String>(
         widget.busStopCode,
       );
@@ -69,6 +76,7 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
       widget.repository ?? injector.getRepository<DetailsBusStopRepository>(),
       busStopCode: widget.busStopCode,
       locationRepository: widget.locationRepository,
+      trackingRepository: widget.trackingRepository,
     );
   }
 
@@ -124,6 +132,7 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
         mapPreview: (widget.mapPreviewBuilder ?? _defaultMapPreview).call(
           busStop,
         ),
+        trackingLines: _viewModel.trackedLineCodes,
       ),
       DetailsBusStopNotFound() => _NotFoundView(
         busStopCode: widget.busStopCode,
@@ -171,12 +180,14 @@ class _BusStopContent extends StatelessWidget {
     required this.lines,
     required this.distanceInMeters,
     required this.mapPreview,
+    required this.trackingLines,
   });
 
   final BusStop busStop;
   final List<Line> lines;
   final double? distanceInMeters;
   final Widget mapPreview;
+  final Set<String> trackingLines;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +210,7 @@ class _BusStopContent extends StatelessWidget {
             if (index > 0) const SizedBox(height: 10),
             BusStopLineTileWithNavigation(
               line: lines[index],
+              trackingLines: trackingLines,
             ),
             const SizedBox(height: 8),
           ],

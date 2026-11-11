@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/details_bus_stop_repository.dart';
+import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_stop_state.dart';
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
@@ -101,6 +103,41 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   }
 }
 
+class _FakeTrackingRepository implements TrackingRepository {
+  final _controller = StreamController<List<TrackedLine>>.broadcast();
+
+  void emit(List<TrackedLine> lines) => _controller.add(lines);
+
+  void emitError(Object error) => _controller.addError(error);
+
+  @override
+  Stream<List<TrackedLine>> get trackingRoutes => _controller.stream;
+
+  @override
+  Future<TrackedLine?> startTracking(String lineCode) async => null;
+
+  @override
+  Future<void> stopTracking(String lineCode) async {}
+
+  @override
+  void dispose() => _controller.close();
+}
+
+TrackedLine _trackedLine(String code) {
+  return TrackedLine(
+    line: Line(
+      // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
+      id: 'codigo-interno-$code',
+      name: 'MOCAMBINHO DUQUE DE CAXIAS',
+      origin: 'MOCAMBINHO',
+      destination: 'MOCAMBINHO',
+      boardingCode: code,
+    ),
+    route: null,
+    busPositions: const [],
+  );
+}
+
 void main() {
   group('DetailsBusStopViewModel', () {
     late _FakeDetailsBusStopRepository repository;
@@ -116,11 +153,13 @@ void main() {
     DetailsBusStopViewModel createViewModel({
       String busStopCode = '174',
       UserLocationRepository? locationRepository,
+      TrackingRepository? trackingRepository,
     }) {
       return DetailsBusStopViewModel(
         repository,
         busStopCode: busStopCode,
         locationRepository: locationRepository,
+        trackingRepository: trackingRepository,
       );
     }
 
@@ -227,6 +266,62 @@ void main() {
 
       expect(viewModel.state, isA<DetailsBusStopReady>());
       expect(viewModel.distanceInMeters, isNull);
+    });
+
+    test('reconhece a linha acompanhada pelo sgLinha', () async {
+      repository.busStop = _busStop;
+      final trackingRepository = _FakeTrackingRepository();
+      addTearDown(trackingRepository.dispose);
+      final viewModel = createViewModel(trackingRepository: trackingRepository);
+      addTearDown(viewModel.dispose);
+
+      await viewModel.load();
+      await pumpEventQueue();
+
+      trackingRepository.emit([_trackedLine('0301')]);
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, {'0301'});
+    });
+
+    test('usa o código interno quando o sgLinha está vazio', () async {
+      final trackingRepository = _FakeTrackingRepository();
+      addTearDown(trackingRepository.dispose);
+      final viewModel = createViewModel(trackingRepository: trackingRepository);
+      addTearDown(viewModel.dispose);
+
+      final tracked = TrackedLine(
+        line: const Line(
+          id: '46',
+          name: 'SEM SG',
+          origin: '',
+          destination: '',
+          boardingCode: null,
+        ),
+        route: null,
+        busPositions: const [],
+      );
+
+      trackingRepository.emit([tracked]);
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, {'46'});
+    });
+
+    test('limpa as linhas acompanhadas quando o rastreamento falha', () async {
+      final trackingRepository = _FakeTrackingRepository();
+      addTearDown(trackingRepository.dispose);
+      final viewModel = createViewModel(trackingRepository: trackingRepository);
+      addTearDown(viewModel.dispose);
+
+      trackingRepository.emit([_trackedLine('0301')]);
+      await pumpEventQueue();
+      expect(viewModel.trackedLineCodes, {'0301'});
+
+      trackingRepository.emitError(StateError('sem conexão'));
+      await pumpEventQueue();
+
+      expect(viewModel.trackedLineCodes, isEmpty);
     });
   });
 }
