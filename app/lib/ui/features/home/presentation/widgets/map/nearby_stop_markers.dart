@@ -13,6 +13,50 @@ const nearbyStopMarkerDiameter = stopRingDiameter;
 /// Espessura da borda do anel, em unidades de exibição.
 const nearbyStopMarkerStrokeWidth = stopRingStrokeWidth;
 
+/// Tamanho do nome da parada exibido no marcador.
+const nearbyStopLabelTextSize = 10.5;
+
+/// Espessura do contorno do nome da parada no marcador.
+const nearbyStopLabelStrokeWidth = 1.4;
+
+/// Estilo do preenchimento do nome da parada exibido no canto superior direito
+/// do marcador.
+///
+/// As letras usam a cor principal do app.
+TextStyle buildNearbyStopLabelFillStyle() {
+  return const TextStyle(
+    fontSize: nearbyStopLabelTextSize,
+    height: 1.1,
+    fontWeight: FontWeight.w600,
+    color: AppColors.primary,
+  );
+}
+
+/// Estilo da borda do nome da parada exibido no marcador.
+///
+/// A borda é branca e desenhada apenas com contorno (`PaintingStyle.stroke`),
+/// por baixo do preenchimento, para destacar o nome sobre o mapa.
+TextStyle buildNearbyStopLabelStrokeStyle() {
+  return TextStyle(
+    fontSize: nearbyStopLabelTextSize,
+    height: 1.1,
+    fontWeight: FontWeight.w600,
+    foreground: Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = nearbyStopLabelStrokeWidth
+      ..color = Colors.white,
+  );
+}
+
+/// Margem entre o desenho e as bordas do ícone do marcador.
+const double _iconMargin = 2;
+
+/// Espaço entre o anel e o nome da parada.
+const double _labelGap = 3;
+
+/// Largura máxima do nome da parada antes de ser truncado.
+const double _maxLabelWidth = 110;
+
 /// Desenha um anel na cor do app com o centro transparente.
 void paintNearbyStopMarker(
   Canvas canvas, {
@@ -28,6 +72,47 @@ void paintNearbyStopMarker(
     diameter: diameter,
     strokeWidth: strokeWidth,
   );
+}
+
+/// Desenha o marcador da parada: o anel com o nome no canto superior direito.
+///
+/// O nome é pintado sem fundo, direto sobre o mapa: letras verdes na cor
+/// principal do app com borda branca, e o anel fica abaixo e à esquerda dele.
+/// Retorna o tamanho lógico do desenho e o centro do anel, para posicionar a
+/// âncora do marcador.
+({Size size, Offset ringCenter}) paintNearbyStopMarkerIcon(
+  Canvas canvas,
+  String name,
+) {
+  final label = _labelPainter(name, buildNearbyStopLabelFillStyle());
+  final border = _labelPainter(name, buildNearbyStopLabelStrokeStyle());
+
+  final ringCenterX = _iconMargin + nearbyStopMarkerDiameter / 2;
+  final labelLeft = ringCenterX + nearbyStopMarkerDiameter / 2 + _labelGap;
+  final ringTop = label.height + _labelGap;
+  final ringCenterY = ringTop + nearbyStopMarkerDiameter / 2;
+
+  // A borda branca fica por baixo do preenchimento verde do nome.
+  border.paint(canvas, Offset(labelLeft, 0));
+  label.paint(canvas, Offset(labelLeft, 0));
+  paintNearbyStopMarker(canvas, center: Offset(ringCenterX, ringCenterY));
+
+  final width = labelLeft + label.width + _iconMargin;
+  final height = ringTop + nearbyStopMarkerDiameter + _iconMargin;
+  return (
+    size: Size(width, height),
+    ringCenter: Offset(ringCenterX, ringCenterY),
+  );
+}
+
+/// Mede o texto do nome da parada com o [style] informado.
+TextPainter _labelPainter(String name, TextStyle style) {
+  return TextPainter(
+    text: TextSpan(text: name, style: style),
+    maxLines: 1,
+    ellipsis: '…',
+    textDirection: TextDirection.ltr,
+  )..layout(maxWidth: _maxLabelWidth);
 }
 
 /// Cria os marcadores das paradas próximas exibidas no mapa.
@@ -61,17 +146,11 @@ Set<Marker> buildNearbyStopMarkers(
 /// Gera e mantém em cache o ícone de cada parada próxima.
 ///
 /// O ícone traz o anel na cor do app e o nome da parada no canto superior
-/// direito. Cada nome é desenhado uma única vez e reutilizado por todas as
-/// paradas com o mesmo nome.
+/// direito, com letras verdes e borda branca, sem fundo atrás do nome. Cada
+/// nome é desenhado uma única vez e reutilizado por todas as paradas com o
+/// mesmo nome.
 class NearbyStopMarkerIcons {
   static const double _scale = 4;
-  static const double _ringMargin = 2;
-  static const double _labelGap = 3;
-  static const double _labelPaddingX = 5;
-  static const double _labelPaddingY = 2.5;
-  static const double _labelRadius = 4;
-  static const double _textSize = 10.5;
-  static const double _maxTextWidth = 110;
 
   final Map<String, BitmapDescriptor> _icons = <String, BitmapDescriptor>{};
   final Map<String, Offset> _anchors = <String, Offset>{};
@@ -110,57 +189,20 @@ class NearbyStopMarkerIcons {
   }
 
   Future<void> _build(String name) async {
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: name,
-        style: const TextStyle(
-          fontSize: _textSize,
-          height: 1.1,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      maxLines: 1,
-      ellipsis: '…',
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: _maxTextWidth);
-
-    final labelWidth = textPainter.width + _labelPaddingX * 2;
-    final labelHeight = textPainter.height + _labelPaddingY * 2;
-
-    final ringCenterX = _ringMargin + nearbyStopMarkerDiameter / 2;
-    final labelLeft = ringCenterX + nearbyStopMarkerDiameter / 2 + _labelGap;
-    final ringTop = labelHeight + _labelGap;
-    final ringCenterY = ringTop + nearbyStopMarkerDiameter / 2;
-
-    final width = labelLeft + labelWidth + _ringMargin;
-    final height = ringTop + nearbyStopMarkerDiameter + _ringMargin;
-    final anchor = Offset(ringCenterX / width, ringCenterY / height);
-
     final recorder = ui.PictureRecorder();
     try {
       final canvas = Canvas(recorder)..scale(_scale);
-
-      final labelRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(labelLeft, 0, labelWidth, labelHeight),
-        const Radius.circular(_labelRadius),
+      final icon = paintNearbyStopMarkerIcon(canvas, name);
+      final anchor = Offset(
+        icon.ringCenter.dx / icon.size.width,
+        icon.ringCenter.dy / icon.size.height,
       );
-      canvas.drawRRect(
-        labelRect,
-        Paint()..color = Colors.white.withValues(alpha: 0.94),
-      );
-      textPainter.paint(
-        canvas,
-        Offset(labelLeft + _labelPaddingX, _labelPaddingY),
-      );
-
-      paintNearbyStopMarker(canvas, center: Offset(ringCenterX, ringCenterY));
 
       final picture = recorder.endRecording();
       try {
         final image = await picture.toImage(
-          (width * _scale).ceil(),
-          (height * _scale).ceil(),
+          (icon.size.width * _scale).ceil(),
+          (icon.size.height * _scale).ceil(),
         );
         try {
           final data = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -169,8 +211,8 @@ class NearbyStopMarkerIcons {
           }
           _icons[name] = BitmapDescriptor.bytes(
             data.buffer.asUint8List(),
-            width: width,
-            height: height,
+            width: icon.size.width,
+            height: icon.size.height,
           );
           _anchors[name] = anchor;
         } finally {

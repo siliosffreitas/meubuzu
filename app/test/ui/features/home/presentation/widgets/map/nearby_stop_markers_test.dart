@@ -117,6 +117,105 @@ void main() {
     );
   });
 
+  group('paintNearbyStopMarkerIcon', () {
+    test(
+      'desenha o nome verde com borda branca, sem fundo atrás dele',
+      () async {
+        final recorder = ui.PictureRecorder();
+        final icon = paintNearbyStopMarkerIcon(
+          ui.Canvas(recorder),
+          _busStop.name,
+        );
+        final picture = recorder.endRecording();
+        addTearDown(picture.dispose);
+
+        final image = await picture.toImage(
+          icon.size.width.ceil(),
+          icon.size.height.ceil(),
+        );
+        addTearDown(image.dispose);
+
+        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        final bytes = data!.buffer.asUint8List();
+        final width = icon.size.width.ceil();
+
+        // Região do nome: acima e à direita do anel.
+        final ringTop = icon.ringCenter.dy - nearbyStopMarkerDiameter / 2;
+        final ringRight = icon.ringCenter.dx + nearbyStopMarkerDiameter / 2;
+        final primary = AppColors.primary.toARGB32();
+
+        var paintedPixels = 0;
+        var regionPixels = 0;
+        var greenPixels = 0;
+        var whitePixels = 0;
+        for (var y = 0; y < ringTop.ceil(); y++) {
+          for (var x = ringRight.ceil(); x < width; x++) {
+            final index = (y * width + x) * 4;
+            regionPixels++;
+
+            final alpha = bytes[index + 3];
+            if (alpha == 0) {
+              continue;
+            }
+            paintedPixels++;
+
+            // Sem anti-aliasing, os píxeis do nome são a letra verde ou a
+            // borda branca ao redor dela.
+            final red = bytes[index];
+            final green = bytes[index + 1];
+            final blue = bytes[index + 2];
+            if (alpha == 255 &&
+                red == ((primary >> 16) & 0xFF) &&
+                green == ((primary >> 8) & 0xFF) &&
+                blue == (primary & 0xFF)) {
+              greenPixels++;
+            } else if (alpha == 255 &&
+                red == 255 &&
+                green == 255 &&
+                blue == 255) {
+              whitePixels++;
+            }
+          }
+        }
+
+        // As letras verdes e a borda branca aparecem na região...
+        expect(greenPixels, greaterThan(0));
+        expect(whitePixels, greaterThan(0));
+        // ...ocupando só o desenho do nome, sem um retângulo de fundo.
+        expect(paintedPixels, greaterThan(0));
+        expect(paintedPixels / regionPixels, lessThan(0.6));
+      },
+    );
+  });
+
+  group('buildNearbyStopLabelFillStyle', () {
+    test('preenche as letras com a cor principal do app', () {
+      final style = buildNearbyStopLabelFillStyle();
+
+      expect(style.color?.toARGB32(), AppColors.primary.toARGB32());
+      expect(style.foreground, isNull);
+      expect(style.fontSize, nearbyStopLabelTextSize);
+    });
+  });
+
+  group('buildNearbyStopLabelStrokeStyle', () {
+    test('desenha a borda branca apenas com contorno', () {
+      final style = buildNearbyStopLabelStrokeStyle();
+      final foreground = style.foreground;
+
+      expect(foreground, isNotNull);
+      expect(foreground!.style, ui.PaintingStyle.stroke);
+      expect(foreground.color.toARGB32(), 0xFFFFFFFF);
+      expect(
+        foreground.strokeWidth,
+        moreOrLessEquals(nearbyStopLabelStrokeWidth, epsilon: 1e-6),
+      );
+
+      // Sem `color`, o preenchimento fica por conta do estilo de fundo.
+      expect(style.color, isNull);
+    });
+  });
+
   group('NearbyStopMarkerIcons', () {
     test('gera o ícone com a âncora no centro do anel', () async {
       final icons = NearbyStopMarkerIcons();
