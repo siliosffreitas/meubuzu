@@ -135,7 +135,9 @@ void main() {
         );
         addTearDown(image.dispose);
 
-        final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        final data = await image.toByteData(
+          format: ui.ImageByteFormat.rawStraightRgba,
+        );
         final bytes = data!.buffer.asUint8List();
         final width = icon.size.width.ceil();
 
@@ -144,46 +146,55 @@ void main() {
         final ringRight = icon.ringCenter.dx + nearbyStopMarkerDiameter / 2;
         final primary = AppColors.primary.toARGB32();
 
-        var paintedPixels = 0;
-        var regionPixels = 0;
         var greenPixels = 0;
         var whitePixels = 0;
+        var textBottom = 0;
         for (var y = 0; y < ringTop.ceil(); y++) {
           for (var x = ringRight.ceil(); x < width; x++) {
             final index = (y * width + x) * 4;
-            regionPixels++;
-
-            final alpha = bytes[index + 3];
-            if (alpha == 0) {
+            if (bytes[index + 3] == 0) {
               continue;
             }
-            paintedPixels++;
+            textBottom = y;
 
-            // Sem anti-aliasing, os píxeis do nome são a letra verde ou a
-            // borda branca ao redor dela.
+            // Em RGBA sem premultiplicação, o anti-aliasing muda apenas o
+            // canal alfa: os píxeis do nome são a letra verde ou a borda
+            // branca ao redor dela.
             final red = bytes[index];
             final green = bytes[index + 1];
             final blue = bytes[index + 2];
-            if (alpha == 255 &&
-                red == ((primary >> 16) & 0xFF) &&
+            if (red == ((primary >> 16) & 0xFF) &&
                 green == ((primary >> 8) & 0xFF) &&
                 blue == (primary & 0xFF)) {
               greenPixels++;
-            } else if (alpha == 255 &&
-                red == 255 &&
-                green == 255 &&
-                blue == 255) {
+            } else if (red == 255 && green == 255 && blue == 255) {
               whitePixels++;
             }
           }
         }
 
-        // As letras verdes e a borda branca aparecem na região...
+        // Colunas da faixa do nome sem nenhuma tinta: o espaço entre as
+        // palavras fica transparente porque não há fundo atrás do nome.
+        var transparentColumns = 0;
+        for (var x = ringRight.ceil(); x < width; x++) {
+          var painted = false;
+          for (var y = 0; y <= textBottom; y++) {
+            if (bytes[(y * width + x) * 4 + 3] != 0) {
+              painted = true;
+              break;
+            }
+          }
+          if (!painted) {
+            transparentColumns++;
+          }
+        }
+
+        // As letras verdes na cor principal do app e a borda branca
+        // aparecem na região do nome...
         expect(greenPixels, greaterThan(0));
         expect(whitePixels, greaterThan(0));
-        // ...ocupando só o desenho do nome, sem um retângulo de fundo.
-        expect(paintedPixels, greaterThan(0));
-        expect(paintedPixels / regionPixels, lessThan(0.6));
+        // ...e o espaço entre as palavras não é coberto por um fundo.
+        expect(transparentColumns, greaterThan(5));
       },
     );
   });

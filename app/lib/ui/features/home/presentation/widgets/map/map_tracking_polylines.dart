@@ -3,6 +3,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../core/extensions/line_map_color.dart';
 
+/// Espessura da polyline que representa o traçado acompanhado no mapa.
+const int trackingPolylineWidth = 4;
+
 /// Cria as polylines dos traçados acompanhados.
 ///
 /// A cor de cada traçado é a mesma identificação visual usada para a linha na
@@ -23,7 +26,7 @@ Set<Polyline> buildTrackingPolylines(List<TrackedLine> trackedLines) {
             .map((position) => LatLng(position.latitude, position.longitude))
             .toList(growable: false),
         color: tracked.line.mapColor,
-        width: 5,
+        width: trackingPolylineWidth,
         jointType: JointType.round,
         startCap: Cap.roundCap,
         endCap: Cap.roundCap,
@@ -35,4 +38,5 @@ Set<Polyline> buildTrackingPolylines(List<TrackedLine> trackedLines) {
 }
 
 /// Identificador estável da linha acompanhada.
-String trackedLineKey(TrackedLine tracked) => tracked.line.boardingCode ?? '${tracked.line.id}-${tracked.line.name}';
+String trackedLineKey(TrackedLine tracked) =>
+    tracked.line.boardingCode ?? '${tracked.line.id}-${tracked.line.name}';

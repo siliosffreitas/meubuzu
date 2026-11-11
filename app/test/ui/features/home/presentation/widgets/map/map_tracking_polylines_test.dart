@@ -48,6 +48,7 @@ void main() {
       final polyline = polylines.single;
       expect(polyline.polylineId.value, 'tracked-0301');
       expect(polyline.points, const [LatLng(-5.1, -42.8), LatLng(-5.2, -42.9)]);
+      expect(polyline.width, trackingPolylineWidth);
     });
 
     test('usa a mesma cor de identificação da linha', () {
