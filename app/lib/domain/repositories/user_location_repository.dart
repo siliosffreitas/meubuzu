@@ -30,12 +30,13 @@ abstract interface class UserLocationRepository implements Repository {
   /// [UserLocationException].
   Stream<UserCoordinates> get location;
 
-  /// Paradas de ônibus próximas da última localização obtida.
+  /// Paradas de ônibus dentro da última área visível consultada.
   ///
-  /// Considera as paradas a até 500 metros do usuário. A última lista obtida é
+  /// Considera as paradas contidas no quadrado formado pelos cantos sudoeste e
+  /// nordeste informados em [updateVisibleArea]. A última lista obtida é
   /// reemitida para novos ouvintes. Quando o catálogo de paradas não pode ser
   /// consultado, o stream publica o erro correspondente.
-  Stream<List<BusStop>> get nearbyStops;
+  Stream<List<BusStop>> get visibleStops;
 
   /// Busca a localização atual no dispositivo.
   ///
@@ -43,6 +44,22 @@ abstract interface class UserLocationRepository implements Repository {
   /// posição. Use [requestPermission] como `false` para apenas revalidar o
   /// estado, sem abrir o diálogo de permissão novamente.
   Future<void> refresh({bool requestPermission = true});
+
+  /// Atualiza a área visível do mapa e publica as paradas contidas nela.
+  ///
+  /// [southwest] e [northeast] são os cantos opostos do quadrado visível. A
+  /// ordem dos cantos não importa: a implementação normaliza as coordenadas.
+  Future<void> updateVisibleArea({
+    required UserCoordinates southwest,
+    required UserCoordinates northeast,
+  });
+
+  /// Limpa as paradas da área visível.
+  ///
+  /// Usado quando o mapa se afasta o suficiente para que os marcadores não
+  /// façam sentido. A próxima chamada de [updateVisibleArea] consulta o
+  /// catálogo novamente.
+  void clearVisibleStops();
 
   /// Abre as configurações de localização do sistema.
   Future<void> openLocationSettings();

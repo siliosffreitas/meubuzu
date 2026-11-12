@@ -138,7 +138,7 @@ class _MapTabState extends State<MapTab>
         _busDirections.update(_trackingViewModel.trackedLines);
         _busAnimator.jumpTo(_trackedBusPositions());
         _ensureBusIcons();
-        _ensureStopIcons(_locationViewModel.nearbyStops);
+        _ensureStopIcons(_locationViewModel.visibleStops);
       }
     });
   }
@@ -207,7 +207,7 @@ class _MapTabState extends State<MapTab>
     }
     setState(() {});
 
-    _ensureStopIcons(_locationViewModel.nearbyStops);
+    _ensureStopIcons(_locationViewModel.visibleStops);
 
     final position = _locationViewModel.position;
     if (position != null && !_centeredOnUser) {
@@ -251,9 +251,9 @@ class _MapTabState extends State<MapTab>
         return;
       }
       _fitPositions(
-        userAndNearbyStopsCoordinates(
+        userAndVisibleStopsCoordinates(
           position: position,
-          nearbyStops: _locationViewModel.nearbyStops,
+          visibleStops: _locationViewModel.visibleStops,
         ),
       );
       return;
@@ -320,6 +320,38 @@ class _MapTabState extends State<MapTab>
     await _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(target, _userZoom),
     );
+  }
+
+  /// Consulta as paradas da área visível sempre que a câmera para de mover.
+  ///
+  /// O zoom é repassado ao view model, que limpa os marcadores quando o mapa
+  /// está afastado demais para exibi-los.
+  Future<void> _syncVisibleStops() async {
+    final controller = _mapController;
+    if (controller == null || !mounted) {
+      return;
+    }
+
+    try {
+      final zoom = await controller.getZoomLevel();
+      final region = await controller.getVisibleRegion();
+      if (!mounted) {
+        return;
+      }
+      await _locationViewModel.updateVisibleArea(
+        southwest: UserCoordinates(
+          latitude: region.southwest.latitude,
+          longitude: region.southwest.longitude,
+        ),
+        northeast: UserCoordinates(
+          latitude: region.northeast.latitude,
+          longitude: region.northeast.longitude,
+        ),
+        zoom: zoom,
+      );
+    } catch (_) {
+      // Sem a área visível, o mapa mantém as paradas já carregadas.
+    }
   }
 
   /// Ajusta a câmera para a rota mais recente ainda não enquadrada.
@@ -518,7 +550,7 @@ class _MapTabState extends State<MapTab>
     final hasTrackedLines = trackedLines.isNotEmpty;
     final markers = <Marker>{
       ...buildNearbyStopMarkers(
-        locationState.nearbyStops,
+        _locationViewModel.visibleStops,
         iconFor: (stop) => _stopIcons.iconFor(stop.name),
         anchorFor: (stop) => _stopIcons.anchorFor(stop.name),
         onTap: _handleNearbyStopTap,
@@ -550,18 +582,24 @@ class _MapTabState extends State<MapTab>
             if (_trackingViewModel.state.hasRoutes) {
               _fittedLineCodes.clear();
               _fitLatestRoute();
-              return;
+            } else {
+              final position = _locationViewModel.position;
+              if (position != null) {
+                _mapController?.moveCamera(
+                  CameraUpdate.newLatLngZoom(
+                    LatLng(position.latitude, position.longitude),
+                    _userZoom,
+                  ),
+                );
+              }
             }
-            final position = _locationViewModel.position;
-            if (position != null) {
-              _mapController?.moveCamera(
-                CameraUpdate.newLatLngZoom(
-                  LatLng(position.latitude, position.longitude),
-                  _userZoom,
-                ),
-              );
-            }
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _syncVisibleStops();
+              }
+            });
           },
+          onCameraIdle: _syncVisibleStops,
           zoomControlsEnabled: false,
           mapToolbarEnabled: false,
           compassEnabled: false,

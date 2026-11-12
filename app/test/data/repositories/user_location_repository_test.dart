@@ -10,6 +10,8 @@ import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 
 const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
 const _otherPosition = UserCoordinates(latitude: -5.07, longitude: -42.8);
+const _southwest = UserCoordinates(latitude: -5.08, longitude: -42.85);
+const _northeast = UserCoordinates(latitude: -5.05, longitude: -42.75);
 const _busStop = BusStop(
   id: '1',
   code: '2362',
@@ -107,15 +109,15 @@ class _FakeBusStopService implements BusStopService {
   List<BusStop> stops;
   Object? error;
   bool manualResponses;
-  final requests = <UserCoordinates>[];
+  final requests = <({UserCoordinates southwest, UserCoordinates northeast})>[];
   final _responses = <Completer<List<BusStop>>>[];
 
   @override
-  Future<List<BusStop>> findNearby(
-    UserCoordinates position, {
-    double maxDistanceInMeters = nearbyBusStopsRadiusInMeters,
-  }) {
-    requests.add(position);
+  Future<List<BusStop>> findWithinBounds(
+    UserCoordinates southwest,
+    UserCoordinates northeast,
+  ) {
+    requests.add((southwest: southwest, northeast: northeast));
     if (manualResponses) {
       final response = Completer<List<BusStop>>();
       _responses.add(response);
@@ -333,59 +335,123 @@ void main() {
       expect(service.openAppSettingsCalled, isTrue);
     });
 
-    test('publica as paradas próximas da posição obtida', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
-      );
+    test('publica as paradas da área visível informada', () async {
       final busStopService = _FakeBusStopService(stops: const [_busStop]);
-      final repository = _repository(service, busStopService: busStopService);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
+      );
       addTearDown(repository.dispose);
 
       final expectation = expectLater(
-        repository.nearbyStops,
+        repository.visibleStops,
         emits(const [_busStop]),
       );
 
-      await repository.refresh();
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
       await expectation;
 
-      expect(busStopService.requests, const [_position]);
+      final request = busStopService.requests.single;
+      expect(request.southwest.latitude, _southwest.latitude);
+      expect(request.southwest.longitude, _southwest.longitude);
+      expect(request.northeast.latitude, _northeast.latitude);
+      expect(request.northeast.longitude, _northeast.longitude);
     });
 
-    test('guarda as últimas paradas para novos ouvintes', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
+    test('normaliza os cantos quando chegam em ordem invertida', () async {
+      final busStopService = _FakeBusStopService();
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
       );
-      final busStopService = _FakeBusStopService(stops: const [_busStop]);
-      final repository = _repository(service, busStopService: busStopService);
       addTearDown(repository.dispose);
 
-      await repository.refresh();
-      await pumpEventQueue();
+      await repository.updateVisibleArea(
+        southwest: _northeast,
+        northeast: _southwest,
+      );
 
-      await expectLater(repository.nearbyStops, emits(const [_busStop]));
+      final request = busStopService.requests.single;
+      expect(request.southwest.latitude, _southwest.latitude);
+      expect(request.southwest.longitude, _southwest.longitude);
+      expect(request.northeast.latitude, _northeast.latitude);
+      expect(request.northeast.longitude, _northeast.longitude);
     });
 
-    test('ignora resposta antiga quando uma posição mais nova chega', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
+    test('ignora consulta repetida para a mesma área', () async {
+      final busStopService = _FakeBusStopService(stops: const [_busStop]);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
       );
-      final busStopService = _FakeBusStopService(manualResponses: true);
-      final repository = _repository(service, busStopService: busStopService);
       addTearDown(repository.dispose);
 
       final emissions = <List<BusStop>>[];
-      final subscription = repository.nearbyStops.listen(emissions.add);
+      final subscription = repository.visibleStops.listen(emissions.add);
       addTearDown(subscription.cancel);
 
-      await repository.refresh();
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
+      await pumpEventQueue();
 
-      service.position = _otherPosition;
-      await repository.refresh();
+      expect(busStopService.requests, hasLength(1));
+      expect(emissions, const [
+        [_busStop],
+      ]);
+    });
+
+    test('guarda as últimas paradas para novos ouvintes', () async {
+      final busStopService = _FakeBusStopService(stops: const [_busStop]);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
+      );
+      addTearDown(repository.dispose);
+
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
+      await pumpEventQueue();
+
+      await expectLater(repository.visibleStops, emits(const [_busStop]));
+    });
+
+    test('ignora resposta antiga quando uma área mais nova chega', () async {
+      final busStopService = _FakeBusStopService(manualResponses: true);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
+      );
+      addTearDown(repository.dispose);
+
+      final emissions = <List<BusStop>>[];
+      final subscription = repository.visibleStops.listen(emissions.add);
+      addTearDown(subscription.cancel);
+
+      final firstRequest = repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
+      final secondRequest = repository.updateVisibleArea(
+        southwest: _otherPosition,
+        northeast: _position,
+      );
 
       busStopService.complete(1, const [_otherBusStop]);
+      await secondRequest;
       await pumpEventQueue();
       busStopService.complete(0, const [_busStop]);
+      await firstRequest;
       await pumpEventQueue();
 
       expect(emissions, [
@@ -394,28 +460,59 @@ void main() {
     });
 
     test('erro ao consultar paradas é publicado no stream', () async {
-      final service = _FakeLocationService(
-        permission: LocationPermissionStatus.granted,
-      );
       final busStopService = _FakeBusStopService(
         error: StateError('catálogo indisponível'),
       );
-      final repository = _repository(service, busStopService: busStopService);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
+      );
       addTearDown(repository.dispose);
 
       final expectation = expectLater(
-        repository.nearbyStops,
+        repository.visibleStops,
         emitsError(isA<StateError>()),
       );
 
-      await repository.refresh();
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
       await expectation;
     });
 
-    test('não consulta paradas quando a localização falha', () async {
-      final service = _FakeLocationService(hasGps: false);
-      final busStopService = _FakeBusStopService();
-      final repository = _repository(service, busStopService: busStopService);
+    test('limpar a área visível publica uma lista vazia', () async {
+      final busStopService = _FakeBusStopService(stops: const [_busStop]);
+      final repository = _repository(
+        _FakeLocationService(),
+        busStopService: busStopService,
+      );
+      addTearDown(repository.dispose);
+
+      await repository.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+      );
+      await pumpEventQueue();
+
+      final emissions = <List<BusStop>>[];
+      final subscription = repository.visibleStops.listen(emissions.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      repository.clearVisibleStops();
+      await pumpEventQueue();
+
+      expect(emissions.first, const [_busStop]);
+      expect(emissions.last, isEmpty);
+    });
+
+    test('o refresh da localização não consulta paradas', () async {
+      final busStopService = _FakeBusStopService(stops: const [_busStop]);
+      final repository = _repository(
+        _FakeLocationService(permission: LocationPermissionStatus.granted),
+        busStopService: busStopService,
+      );
       addTearDown(repository.dispose);
 
       await repository.refresh();
@@ -431,12 +528,12 @@ void main() {
       await expectLater(repository.location, emitsDone);
     });
 
-    test('dispose encerra o stream de paradas', () async {
+    test('dispose encerra o stream de paradas da área visível', () async {
       final repository = _repository(_FakeLocationService());
 
       repository.dispose();
 
-      await expectLater(repository.nearbyStops, emitsDone);
+      await expectLater(repository.visibleStops, emitsDone);
     });
   });
 }

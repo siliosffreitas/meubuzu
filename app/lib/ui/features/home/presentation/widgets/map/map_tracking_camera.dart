@@ -42,12 +42,12 @@ List<UserCoordinates> trackedLinesCoordinates(
   return coordinates;
 }
 
-/// Coordenadas do usuário e das paradas próximas exibidas no mapa.
+/// Coordenadas do usuário e das paradas da área visível exibidas no mapa.
 ///
 /// Retorna uma lista vazia quando a localização do usuário não está disponível.
-List<UserCoordinates> userAndNearbyStopsCoordinates({
+List<UserCoordinates> userAndVisibleStopsCoordinates({
   required UserCoordinates? position,
-  required Iterable<BusStop> nearbyStops,
+  required Iterable<BusStop> visibleStops,
 }) {
   if (position == null) {
     return const [];
@@ -55,7 +55,7 @@ List<UserCoordinates> userAndNearbyStopsCoordinates({
 
   return [
     position,
-    for (final stop in nearbyStops)
+    for (final stop in visibleStops)
       UserCoordinates(latitude: stop.latitude, longitude: stop.longitude),
   ];
 }

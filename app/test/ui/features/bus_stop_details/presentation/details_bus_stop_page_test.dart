@@ -87,7 +87,7 @@ class _FakeDetailsBusStopRepository implements DetailsBusStopRepository {
 
 class _FakeUserLocationRepository implements UserLocationRepository {
   final _locationController = StreamController<UserCoordinates>.broadcast();
-  final _nearbyStopsController = StreamController<List<BusStop>>.broadcast();
+  final _visibleStopsController = StreamController<List<BusStop>>.broadcast();
 
   void emitLocation(UserCoordinates position) {
     _locationController.add(position);
@@ -97,10 +97,19 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   Stream<UserCoordinates> get location => _locationController.stream;
 
   @override
-  Stream<List<BusStop>> get nearbyStops => _nearbyStopsController.stream;
+  Stream<List<BusStop>> get visibleStops => _visibleStopsController.stream;
 
   @override
   Future<void> refresh({bool requestPermission = true}) async {}
+
+  @override
+  Future<void> updateVisibleArea({
+    required UserCoordinates southwest,
+    required UserCoordinates northeast,
+  }) async {}
+
+  @override
+  void clearVisibleStops() {}
 
   @override
   Future<void> openLocationSettings() async {}
@@ -111,7 +120,7 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   @override
   void dispose() {
     _locationController.close();
-    _nearbyStopsController.close();
+    _visibleStopsController.close();
   }
 }
 

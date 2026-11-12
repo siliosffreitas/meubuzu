@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 
-const _position = UserCoordinates(latitude: -5.165446, longitude: -42.791169);
+const _southwest = UserCoordinates(latitude: -5.166, longitude: -42.792);
+const _northeast = UserCoordinates(latitude: -5.164, longitude: -42.789);
 
 const _csv =
     '"id","codigo","denominacao","endereco","lat","long","created_at","updated_at"\n'
@@ -29,10 +30,10 @@ class _FakeAssetBundle extends AssetBundle {
 
 void main() {
   group('AssetBusStopService', () {
-    test('retorna apenas paradas em até 500 metros', () async {
+    test('retorna apenas paradas dentro dos limites informados', () async {
       final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
 
-      final stops = await service.findNearby(_position);
+      final stops = await service.findWithinBounds(_southwest, _northeast);
 
       expect(stops, hasLength(2));
       expect(stops.map((stop) => stop.id), ['1', '2']);
@@ -44,33 +45,22 @@ void main() {
       );
       expect(stops.first.latitude, -5.165446);
       expect(stops.first.longitude, -42.791169);
-      expect(
-        stops.every(
-          (stop) =>
-              stop.distanceInMetersTo(_position) <=
-              nearbyBusStopsRadiusInMeters,
-        ),
-        isTrue,
-      );
     });
 
-    test('respeita um raio de busca customizado', () async {
+    test('aceita os cantos em qualquer ordem', () async {
       final service = AssetBusStopService(bundle: _FakeAssetBundle(_csv));
 
-      final stops = await service.findNearby(
-        _position,
-        maxDistanceInMeters: 600,
-      );
+      final stops = await service.findWithinBounds(_northeast, _southwest);
 
-      expect(stops.map((stop) => stop.id), ['1', '2', '3']);
+      expect(stops.map((stop) => stop.id), ['1', '2']);
     });
 
     test('carrega o catálogo uma única vez', () async {
       final bundle = _FakeAssetBundle(_csv);
       final service = AssetBusStopService(bundle: bundle);
 
-      await service.findNearby(_position);
-      await service.findNearby(_position);
+      await service.findWithinBounds(_southwest, _northeast);
+      await service.findWithinBounds(_southwest, _northeast);
 
       expect(bundle.loadCount, 1);
     });
@@ -81,7 +71,7 @@ void main() {
       );
 
       await expectLater(
-        service.findNearby(_position),
+        service.findWithinBounds(_southwest, _northeast),
         throwsA(isA<FormatException>()),
       );
     });
@@ -89,7 +79,7 @@ void main() {
     test('catálogo vazio retorna lista vazia', () async {
       final service = AssetBusStopService(bundle: _FakeAssetBundle(''));
 
-      final stops = await service.findNearby(_position);
+      final stops = await service.findWithinBounds(_southwest, _northeast);
 
       expect(stops, isEmpty);
     });

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 
 import '../../domain/contracts/contracts.dart';
@@ -6,16 +8,17 @@ import '../../domain/models/user_coordinates.dart';
 import '../utils/csv_catalog.dart';
 import '../utils/search_normalizer.dart';
 
-/// Raio padrão usado para considerar uma parada próxima do usuário.
-const double nearbyBusStopsRadiusInMeters = 500;
-
 /// Contrato de consulta às paradas de ônibus disponíveis no app.
 abstract interface class BusStopService implements Service {
-  /// Retorna as paradas a até [maxDistanceInMeters] de [position].
-  Future<List<BusStop>> findNearby(
-    UserCoordinates position, {
-    double maxDistanceInMeters = nearbyBusStopsRadiusInMeters,
-  });
+  /// Retorna as paradas contidas no quadrado formado por [southwest] e
+  /// [northeast].
+  ///
+  /// Os cantos podem ser informados em qualquer ordem: a implementação
+  /// normaliza as coordenadas antes de filtrar.
+  Future<List<BusStop>> findWithinBounds(
+    UserCoordinates southwest,
+    UserCoordinates northeast,
+  );
 
   /// Busca paradas por código, denominação ou endereço no catálogo.
   Future<List<BusStop>> search(String query);
@@ -37,14 +40,23 @@ class AssetBusStopService implements BusStopService {
   Future<List<BusStop>>? _stops;
 
   @override
-  Future<List<BusStop>> findNearby(
-    UserCoordinates position, {
-    double maxDistanceInMeters = nearbyBusStopsRadiusInMeters,
-  }) async {
+  Future<List<BusStop>> findWithinBounds(
+    UserCoordinates southwest,
+    UserCoordinates northeast,
+  ) async {
     final stops = await (_stops ??= _loadStops());
+    final minLatitude = math.min(southwest.latitude, northeast.latitude);
+    final maxLatitude = math.max(southwest.latitude, northeast.latitude);
+    final minLongitude = math.min(southwest.longitude, northeast.longitude);
+    final maxLongitude = math.max(southwest.longitude, northeast.longitude);
+
     return stops
         .where(
-          (stop) => stop.distanceInMetersTo(position) <= maxDistanceInMeters,
+          (stop) =>
+              stop.latitude >= minLatitude &&
+              stop.latitude <= maxLatitude &&
+              stop.longitude >= minLongitude &&
+              stop.longitude <= maxLongitude,
         )
         .toList(growable: false);
   }

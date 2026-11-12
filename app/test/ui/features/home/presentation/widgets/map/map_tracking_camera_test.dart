@@ -139,13 +139,13 @@ void main() {
     });
   });
 
-  group('userAndNearbyStopsCoordinates', () {
+  group('userAndVisibleStopsCoordinates', () {
     const position = UserCoordinates(latitude: -5.15, longitude: -42.85);
 
-    test('monta a posição do usuário e as paradas próximas', () {
-      final coordinates = userAndNearbyStopsCoordinates(
+    test('monta a posição do usuário e as paradas da área visível', () {
+      final coordinates = userAndVisibleStopsCoordinates(
         position: position,
-        nearbyStops: [_stop('1'), _stop('2')],
+        visibleStops: [_stop('1'), _stop('2')],
       );
 
       expect(_coordinatesOf(coordinates), const [
@@ -156,18 +156,18 @@ void main() {
     });
 
     test('retorna apenas o usuário quando não há paradas', () {
-      final coordinates = userAndNearbyStopsCoordinates(
+      final coordinates = userAndVisibleStopsCoordinates(
         position: position,
-        nearbyStops: const [],
+        visibleStops: const [],
       );
 
       expect(_coordinatesOf(coordinates), const [(-5.15, -42.85)]);
     });
 
     test('retorna vazio quando a localização não está disponível', () {
-      final coordinates = userAndNearbyStopsCoordinates(
+      final coordinates = userAndVisibleStopsCoordinates(
         position: null,
-        nearbyStops: [_stop('1')],
+        visibleStops: [_stop('1')],
       );
 
       expect(coordinates, isEmpty);

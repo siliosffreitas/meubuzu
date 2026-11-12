@@ -8,6 +8,8 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_s
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 
 const _position = UserCoordinates(latitude: -5.0629, longitude: -42.7932);
+const _southwest = UserCoordinates(latitude: -5.08, longitude: -42.85);
+const _northeast = UserCoordinates(latitude: -5.05, longitude: -42.75);
 const _busStop = BusStop(
   id: '1',
   code: '2362',
@@ -23,39 +25,36 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   UserCoordinates? position;
   UserLocationFailure? failure;
   Object? error;
-  Completer<void>? refreshGate;
 
   final _controller = StreamController<UserCoordinates>.broadcast();
-  final _nearbyStopsController = StreamController<List<BusStop>>.broadcast();
+  final _visibleStopsController = StreamController<List<BusStop>>.broadcast();
 
   bool refreshCalled = false;
   bool? lastRequestPermission;
   bool openLocationSettingsCalled = false;
   bool openAppSettingsCalled = false;
+  int clearVisibleStopsCalls = 0;
+  final visibleAreaRequests =
+      <({UserCoordinates southwest, UserCoordinates northeast})>[];
 
   @override
   Stream<UserCoordinates> get location => _controller.stream;
 
   @override
-  Stream<List<BusStop>> get nearbyStops => _nearbyStopsController.stream;
+  Stream<List<BusStop>> get visibleStops => _visibleStopsController.stream;
 
-  void emitNearbyStops(List<BusStop> stops) {
-    _nearbyStopsController.add(stops);
+  void emitVisibleStops(List<BusStop> stops) {
+    _visibleStopsController.add(stops);
   }
 
-  void emitNearbyStopsError(Object error) {
-    _nearbyStopsController.addError(error);
+  void emitVisibleStopsError(Object error) {
+    _visibleStopsController.addError(error);
   }
 
   @override
   Future<void> refresh({bool requestPermission = true}) async {
     refreshCalled = true;
     lastRequestPermission = requestPermission;
-
-    final gate = refreshGate;
-    if (gate != null) {
-      await gate.future;
-    }
 
     final error = this.error;
     if (error != null) {
@@ -76,6 +75,19 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   }
 
   @override
+  Future<void> updateVisibleArea({
+    required UserCoordinates southwest,
+    required UserCoordinates northeast,
+  }) async {
+    visibleAreaRequests.add((southwest: southwest, northeast: northeast));
+  }
+
+  @override
+  void clearVisibleStops() {
+    clearVisibleStopsCalls++;
+  }
+
+  @override
   Future<void> openLocationSettings() async {
     openLocationSettingsCalled = true;
   }
@@ -88,7 +100,7 @@ class _FakeUserLocationRepository implements UserLocationRepository {
   @override
   void dispose() {
     _controller.close();
-    _nearbyStopsController.close();
+    _visibleStopsController.close();
   }
 }
 
@@ -134,7 +146,7 @@ void main() {
       expect(viewModel.position?.longitude, _position.longitude);
     });
 
-    test('paradas próximas geram um estado específico', () async {
+    test('paradas da área visível ficam disponíveis sem novo estado', () async {
       final repository = _FakeUserLocationRepository(position: _position);
       final viewModel = MapLocationViewModel(repository);
       addTearDown(viewModel.dispose);
@@ -143,12 +155,11 @@ void main() {
       await viewModel.initialize();
       await pumpEventQueue();
 
-      repository.emitNearbyStops(const [_busStop]);
+      repository.emitVisibleStops(const [_busStop]);
       await pumpEventQueue();
 
-      expect(viewModel.state, isA<MapLocationNearbyStopsReady>());
+      expect(viewModel.visibleStops, const [_busStop]);
       expect(viewModel.state, isA<MapLocationReady>());
-      expect(viewModel.nearbyStops, const [_busStop]);
       expect(viewModel.position, same(_position));
       expect(viewModel.isReady, isTrue);
     });
@@ -162,40 +173,27 @@ void main() {
       await viewModel.initialize();
       await pumpEventQueue();
 
-      repository.emitNearbyStops(const []);
+      repository.emitVisibleStops(const []);
       await pumpEventQueue();
 
       expect(viewModel.state.runtimeType, MapLocationReady);
-      expect(viewModel.nearbyStops, isEmpty);
+      expect(viewModel.visibleStops, isEmpty);
       expect(viewModel.isReady, isTrue);
     });
 
-    test(
-      'paradas recebidas antes da posição aparecem quando ela chega',
-      () async {
-        final gate = Completer<void>();
-        final repository = _FakeUserLocationRepository(position: _position)
-          ..refreshGate = gate;
-        final viewModel = MapLocationViewModel(repository);
-        addTearDown(viewModel.dispose);
-        addTearDown(repository.dispose);
+    test('paradas da área visível aparecem mesmo antes da posição', () async {
+      final repository = _FakeUserLocationRepository();
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
 
-        final initialization = viewModel.initialize();
+      repository.emitVisibleStops(const [_busStop]);
+      await pumpEventQueue();
 
-        repository.emitNearbyStops(const [_busStop]);
-        await pumpEventQueue();
-
-        expect(viewModel.state, isA<MapLocationChecking>());
-        expect(viewModel.nearbyStops, isEmpty);
-
-        gate.complete();
-        await initialization;
-        await pumpEventQueue();
-
-        expect(viewModel.state, isA<MapLocationNearbyStopsReady>());
-        expect(viewModel.nearbyStops, const [_busStop]);
-      },
-    );
+      expect(viewModel.visibleStops, const [_busStop]);
+      expect(viewModel.state, isA<MapLocationIdle>());
+      expect(viewModel.isReady, isFalse);
+    });
 
     test('erro nas paradas não invalida a localização', () async {
       final repository = _FakeUserLocationRepository(position: _position);
@@ -206,12 +204,57 @@ void main() {
       await viewModel.initialize();
       await pumpEventQueue();
 
-      repository.emitNearbyStopsError(StateError('catálogo indisponível'));
+      repository.emitVisibleStopsError(StateError('catálogo indisponível'));
       await pumpEventQueue();
 
       expect(viewModel.position, same(_position));
-      expect(viewModel.nearbyStops, isEmpty);
+      expect(viewModel.visibleStops, isEmpty);
       expect(viewModel.isReady, isTrue);
+    });
+
+    test('zooms abaixo do mínimo limpam as paradas da área visível', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      await viewModel.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+        zoom: minVisibleStopsZoom - 0.1,
+      );
+
+      expect(repository.clearVisibleStopsCalls, 1);
+      expect(repository.visibleAreaRequests, isEmpty);
+    });
+
+    test('zoom mínimo consulta a área visível', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      await viewModel.updateVisibleArea(
+        southwest: _southwest,
+        northeast: _northeast,
+        zoom: minVisibleStopsZoom,
+      );
+
+      expect(repository.clearVisibleStopsCalls, 0);
+      final request = repository.visibleAreaRequests.single;
+      expect(request.southwest, same(_southwest));
+      expect(request.northeast, same(_northeast));
+    });
+
+    test('limpar a área visível repassa ao repositório', () async {
+      final repository = _FakeUserLocationRepository(position: _position);
+      final viewModel = MapLocationViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      viewModel.clearVisibleStops();
+
+      expect(repository.clearVisibleStopsCalls, 1);
     });
 
     test('initialize sinaliza carregamento antes da resposta', () async {

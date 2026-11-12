@@ -14,10 +14,10 @@ class _FakeBusStopService implements BusStopService {
   final codeQueries = <Iterable<String>>[];
 
   @override
-  Future<List<BusStop>> findNearby(
-    UserCoordinates position, {
-    double maxDistanceInMeters = nearbyBusStopsRadiusInMeters,
-  }) async {
+  Future<List<BusStop>> findWithinBounds(
+    UserCoordinates southwest,
+    UserCoordinates northeast,
+  ) async {
     return const [];
   }
 

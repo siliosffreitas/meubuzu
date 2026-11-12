@@ -36,17 +36,24 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
 - **iOS:** a descrição de uso `NSLocationWhenInUseUsageDescription` está no
   `Info.plist`.
 
-### Paradas próximas
+### Paradas da área visível
 
 O catálogo local de paradas fica em `assets/paradas.csv` e é lido pelo
-`AssetBusStopService`. O `UserLocationRepository` consulta esse service sempre
-que obtém uma nova posição e publica no stream `nearbyStops` apenas as paradas a
-até 500 metros do usuário. O `MapLocationViewModel` transforma essa lista em um
-estado específico e o mapa exibe cada parada como um marcador: um anel pequeno
-na cor principal do app, com o centro transparente e o nome da parada no canto
-superior direito. Os ícones são desenhados uma vez por nome e ficam em cache.
-O mesmo anel (`StopRingIcon`) identifica as paradas no itinerário da tela de
-detalhes da linha.
+`AssetBusStopService`. Sempre que a câmera do mapa para de mover
+(`onCameraIdle`), o `MapTab` lê o retângulo visível (`getVisibleRegion`) e pede
+ao `UserLocationRepository`, via `updateVisibleArea`, as paradas contidas nele.
+O service filtra o catálogo por latitude/longitude, o repositório normaliza os
+cantos, ignora áreas repetidas e descarta respostas antigas, e publica a lista
+no stream `visibleStops`. O `MapLocationViewModel` mantém essa lista
+independente da localização do usuário.
+
+As paradas só aparecem a partir do zoom `minVisibleStopsZoom` (14,5); abaixo
+disso o mapa mostra uma região grande demais, os marcadores são limpos e uma
+nova consulta só acontece quando o usuário se aproxima. O mapa exibe cada
+parada como um marcador: um anel pequeno na cor principal do app, com o centro
+transparente e o nome da parada no canto superior direito. Os ícones são
+desenhados uma vez por nome e ficam em cache. O mesmo anel (`StopRingIcon`)
+identifica as paradas no itinerário da tela de detalhes da linha.
 
 ### Linhas acompanhadas
 
@@ -110,7 +117,7 @@ linha que sai do mapa pela própria tela de detalhes tem a seleção do mapa
 limpa, para a barra de busca não exibir um código que não está mais ativo.
 
 Ao remover uma linha do rastreamento, a câmera do mapa se reenquadra: quando
-não restam linhas, mostra o usuário e as paradas próximas; quando ainda há
+não restam linhas, mostra o usuário e as paradas da área visível; quando ainda há
 outras linhas, enquadra o traçado de todas as que permaneceram (com fallback
 para as posições dos ônibus ou para a coordenada da linha).
 
