@@ -118,8 +118,10 @@ TextPainter _labelPainter(String name, TextStyle style) {
 /// Cria os marcadores das paradas próximas exibidas no mapa.
 ///
 /// [iconFor] e [anchorFor] recebem o ícone e a âncora de cada parada, que
-/// incluem o nome ao lado do anel. Sem eles, o marcador usa o pino verde padrão
-/// do Google Maps até o ícone ficar pronto.
+/// incluem o nome ao lado do anel. Quando [iconFor] é informado, as paradas
+/// cujo ícone ainda não foi gerado são omitidas: assim o mapa não exibe o pino
+/// padrão do Google Maps antes do ícone personalizado. Sem [iconFor], o
+/// marcador usa o pino verde padrão.
 ///
 /// [onTap] é chamado quando o usuário toca no marcador da parada.
 Set<Marker> buildNearbyStopMarkers(
@@ -128,19 +130,29 @@ Set<Marker> buildNearbyStopMarkers(
   Offset? Function(BusStop stop)? anchorFor,
   void Function(BusStop stop)? onTap,
 }) {
-  return {
-    for (final stop in stops)
+  final markers = <Marker>{};
+
+  for (final stop in stops) {
+    final icon = iconFor?.call(stop);
+    if (iconFor != null && icon == null) {
+      continue;
+    }
+
+    markers.add(
       Marker(
         markerId: MarkerId('stop-${stop.id}'),
         position: LatLng(stop.latitude, stop.longitude),
         anchor: anchorFor?.call(stop) ?? const Offset(0.5, 1.0),
         infoWindow: InfoWindow(title: stop.name, snippet: stop.address),
         icon:
-            iconFor?.call(stop) ??
+            icon ??
             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         onTap: onTap == null ? null : () => onTap(stop),
       ),
-  };
+    );
+  }
+
+  return markers;
 }
 
 /// Gera e mantém em cache o ícone de cada parada próxima.
@@ -222,7 +234,12 @@ class NearbyStopMarkerIcons {
         picture.dispose();
       }
     } catch (_) {
-      // Sem o ícone exato, o mapa mantém o pino verde padrão.
+      // Se o desenho falhar, mantém a parada visível com o pino padrão em vez
+      // de omiti-la para sempre.
+      _icons[name] = BitmapDescriptor.defaultMarkerWithHue(
+        BitmapDescriptor.hueGreen,
+      );
+      _anchors[name] = const Offset(0.5, 1.0);
     }
   }
 }

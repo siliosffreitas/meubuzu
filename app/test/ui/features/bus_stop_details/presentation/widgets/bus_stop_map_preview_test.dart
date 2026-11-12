@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/widgets/bus_stop_map_preview.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/map/nearby_stop_markers.dart';
 
 const _busStop = BusStop(
   id: '1',
@@ -17,9 +18,14 @@ void main() {
   testWidgets('BusStopMapPreview mostra o marcador na posição da parada', (
     tester,
   ) async {
+    final icons = NearbyStopMarkerIcons();
+    await tester.runAsync(() => icons.ensure([_busStop.name]));
+
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: BusStopMapPreview(busStop: _busStop)),
+        home: Scaffold(
+          body: BusStopMapPreview(busStop: _busStop, markerIcons: icons),
+        ),
       ),
     );
 

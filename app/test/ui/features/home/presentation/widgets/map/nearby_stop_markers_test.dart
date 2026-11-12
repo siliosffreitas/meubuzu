@@ -56,6 +56,19 @@ void main() {
       expect(marker.anchor, anchor);
     });
 
+    test('omite paradas cujo ícone personalizado ainda não está pronto', () {
+      const icon = BitmapDescriptor.defaultMarker;
+
+      final markers = buildNearbyStopMarkers(const [
+        _busStop,
+        _otherBusStop,
+      ], iconFor: (stop) => stop.id == _busStop.id ? icon : null);
+
+      expect(markers, hasLength(1));
+      expect(markers.single.markerId.value, 'stop-1');
+      expect(markers.single.icon, same(icon));
+    });
+
     test('não cria marcadores quando não há paradas', () {
       expect(buildNearbyStopMarkers(const []), isEmpty);
     });

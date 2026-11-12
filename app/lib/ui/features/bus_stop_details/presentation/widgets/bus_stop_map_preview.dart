@@ -9,18 +9,25 @@ import '../../../home/presentation/widgets/map/nearby_stop_markers.dart';
 /// O marcador usa o mesmo ícone (anel + nome) e a mesma lógica dos marcadores
 /// de paradas próximas exibidos no mapa principal.
 class BusStopMapPreview extends StatefulWidget {
-  const BusStopMapPreview({super.key, required this.busStop});
+  const BusStopMapPreview({super.key, required this.busStop, this.markerIcons});
 
   static const double height = 190;
 
   final BusStop busStop;
+
+  /// Ícones dos marcadores. Quando não informado, a própria prévia gera e
+  /// mantém o cache do ícone da parada.
+  ///
+  /// Exposto para testes que precisam de um ícone já pronto no primeiro frame.
+  final NearbyStopMarkerIcons? markerIcons;
 
   @override
   State<BusStopMapPreview> createState() => _BusStopMapPreviewState();
 }
 
 class _BusStopMapPreviewState extends State<BusStopMapPreview> {
-  final NearbyStopMarkerIcons _stopIcons = NearbyStopMarkerIcons();
+  late final NearbyStopMarkerIcons _stopIcons =
+      widget.markerIcons ?? NearbyStopMarkerIcons();
 
   @override
   void initState() {
@@ -37,8 +44,8 @@ class _BusStopMapPreviewState extends State<BusStopMapPreview> {
   }
 
   Future<void> _ensureIcon() async {
-    await _stopIcons.ensure([widget.busStop.name]);
-    if (mounted) {
+    final created = await _stopIcons.ensure([widget.busStop.name]);
+    if (created && mounted) {
       setState(() {});
     }
   }
