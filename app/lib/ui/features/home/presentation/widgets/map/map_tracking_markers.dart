@@ -109,6 +109,10 @@ class TrackingBusMarkerIcons {
   static const double _arrowDisplayWidth = 32;
   static const double _arrowDisplayHeight = 40;
 
+  /// Largura do selo de referência (`bus_mark.png`), usada como base para as
+  /// medidas do glifo do ônibus.
+  static const double _busDesignSize = 62;
+
   final Map<int, BitmapDescriptor> _icons = <int, BitmapDescriptor>{};
   final Map<int, BitmapDescriptor> _arrowIcons = <int, BitmapDescriptor>{};
   final Map<int, Future<void>> _pending = <int, Future<void>>{};
@@ -222,59 +226,104 @@ class TrackingBusMarkerIcons {
   }
 
   /// Desenha um selo circular na cor da linha com um ônibus branco no centro.
+  ///
+  /// O desenho segue o `bus_mark.png`: o círculo é preenchido inteiramente com
+  /// a cor da linha (sem anel branco) e o ônibus é branco, com letreiro,
+  /// para-brisa, faróis e vão inferior vazados mostrando a cor do selo.
   void _paintBusIcon(Canvas canvas, Color color) {
     const center = Offset(_size / 2, _size / 2);
     final white = Paint()..color = Colors.white;
     final fill = Paint()..color = color;
 
-    canvas.drawCircle(center, _size / 2, white);
-    canvas.drawCircle(center, _size / 2 - 4, fill);
+    canvas.drawCircle(center, _size / 2, fill);
 
+    // As medidas do glifo foram tiradas de um selo de 62 px.
+    canvas.save();
+    canvas.scale(_size / _busDesignSize);
+
+    // Corpo do ônibus.
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(26, 30, 44, 34),
-        const Radius.circular(8),
+        const Rect.fromLTWH(15, 12, 31, 39),
+        const Radius.circular(4),
       ),
       white,
     );
 
-    for (final left in const [32.0, 50.0]) {
+    // Letreiro, com um brilho claro na borda de cima como na referência.
+    final signTop = Paint()..color = Color.lerp(color, Colors.white, 0.5)!;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(26, 14, 10, 1.5),
+        const Radius.circular(0.8),
+      ),
+      signTop,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(26, 15.5, 10, 1.5),
+        const Radius.circular(0.8),
+      ),
+      fill,
+    );
+
+    // Para-brisa vazado.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(17, 19.5, 27, 16),
+        const Radius.circular(2),
+      ),
+      fill,
+    );
+
+    // Retrovisores laterais.
+    for (final left in const [9.5, 50.5]) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, 36, 14, 12),
-          const Radius.circular(3),
+          Rect.fromLTWH(left, 22, 2, 8.5),
+          const Radius.circular(1),
+        ),
+        white,
+      );
+    }
+
+    // Faróis vazados.
+    for (final left in const [17.5, 39.5]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, 38.5, 4.5, 4.5),
+          const Radius.circular(1.2),
         ),
         fill,
       );
     }
 
-    canvas.drawCircle(const Offset(36, 66), 5, white);
-    canvas.drawCircle(const Offset(60, 66), 5, white);
+    // Vão inferior central.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(25.5, 46, 10, 4.5),
+        const Radius.circular(1.2),
+      ),
+      fill,
+    );
+
+    canvas.restore();
   }
 
   /// Desenha a seta na parte de cima do ícone, apontando para cima.
   ///
   /// A âncora do marcador fica na base do canvas, então a seta aparece logo
-  /// acima do selo do ônibus e gira em volta dele.
+  /// acima do selo do ônibus e gira em volta dele. Segue o `arrow.png`: um
+  /// triângulo preenchido na cor da linha, com um entalhe em "V" na base.
   void _paintArrowIcon(Canvas canvas, Color color) {
-    final white = Paint()..color = Colors.white;
-    final fill = Paint()..color = color;
-
     canvas.drawPath(
       Path()
-        ..moveTo(_arrowWidth / 2, 2)
-        ..lineTo(12, 44)
-        ..lineTo(_arrowWidth - 12, 44)
+        ..moveTo(_arrowWidth / 2, 26)
+        ..lineTo(18, 47)
+        ..lineTo(_arrowWidth / 2, 41.5)
+        ..lineTo(46, 47)
         ..close(),
-      white,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(_arrowWidth / 2, 10)
-        ..lineTo(19, 40)
-        ..lineTo(_arrowWidth - 19, 40)
-        ..close(),
-      fill,
+      Paint()..color = color,
     );
   }
 }

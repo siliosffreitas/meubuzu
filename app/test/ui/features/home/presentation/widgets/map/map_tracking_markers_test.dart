@@ -266,6 +266,44 @@ void main() {
       expect(icons.arrow(Colors.red), isNot(same(icons.arrow(Colors.blue))));
     });
 
+    test('gera PNGs com os tamanhos exibidos no mapa', () async {
+      final icons = TrackingBusMarkerIcons();
+
+      await icons.ensure([Colors.red]);
+
+      final bus = icons[Colors.red]!.toJson() as List<dynamic>;
+      final arrow = icons.arrow(Colors.red)!.toJson() as List<dynamic>;
+
+      const pngSignature = <int>[
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+      ];
+
+      final busData = bus[1] as Map<String, Object?>;
+      expect(bus.first, 'bytes');
+      expect(busData['width'], 30);
+      expect(busData['height'], 30);
+      expect(
+        (busData['byteData'] as List<int>).take(pngSignature.length),
+        pngSignature,
+      );
+
+      final arrowData = arrow[1] as Map<String, Object?>;
+      expect(arrow.first, 'bytes');
+      expect(arrowData['width'], 32);
+      expect(arrowData['height'], 40);
+      expect(
+        (arrowData['byteData'] as List<int>).take(pngSignature.length),
+        pngSignature,
+      );
+    });
+
     test('não gera duas vezes a mesma cor em chamadas concorrentes', () async {
       final icons = TrackingBusMarkerIcons();
 
