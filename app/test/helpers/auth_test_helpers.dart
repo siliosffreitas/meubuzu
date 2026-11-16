@@ -3,23 +3,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:meubuzu/data/repositories/auth_repository.dart';
+import 'package:meubuzu/domain/models/auth_user.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
 import 'package:meubuzu/ui/routing/app_routes.dart';
+
+import 'fake_auth_repository.dart';
 
 /// Repositório que registra as chamadas recebidas durante o teste.
 ///
 /// Use [rejectCode] para simular código inválido, [failRequest]/[failVerify]
 /// para simular falha de conexão e [requestGate]/[verifyGate] para controlar
 /// quando cada chamada termina.
-class RecordingAuthRepository implements AuthRepository {
+class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
   RecordingAuthRepository({
     this.rejectCode = false,
     this.failRequest = false,
     this.failVerify = false,
-  });
+    AuthUser? user,
+  }) {
+    _user = user;
+  }
 
   final bool rejectCode;
   final bool failRequest;
@@ -34,6 +39,17 @@ class RecordingAuthRepository implements AuthRepository {
   final emails = <String>[];
   final confirmed = <String>[];
   final verifiedEmails = <String>[];
+
+  AuthUser? _user;
+  int restoreCalls = 0;
+  int validateCalls = 0;
+  int logoutCalls = 0;
+
+  @override
+  AuthUser? get currentUser => _user;
+
+  @override
+  bool get isAuthenticated => _user != null;
 
   @override
   Future<void> requestEmailCode(String email) async {
@@ -58,10 +74,26 @@ class RecordingAuthRepository implements AuthRepository {
     }
     verifiedEmails.add(email);
     confirmed.add(code);
+    _user = AuthUser(id: 'user-1', email: email);
+    notifyListeners();
   }
 
   @override
-  void dispose() {}
+  Future<void> restoreSession() async {
+    restoreCalls++;
+  }
+
+  @override
+  Future<void> validateSession() async {
+    validateCalls++;
+  }
+
+  @override
+  Future<void> logout() async {
+    logoutCalls++;
+    _user = null;
+    notifyListeners();
+  }
 }
 
 /// Envolve [home] no app mínimo usado pelos testes de widget.
@@ -81,7 +113,7 @@ Widget appWith(Widget home) {
         name: AppRoutes.authCodeName,
         builder: (context, state) => AuthCodePage(
           email: state.extra! as String,
-          repository: FakeAuthRepository(latency: Duration.zero),
+          repository: FakeAuthRepository(),
         ),
       ),
     ],

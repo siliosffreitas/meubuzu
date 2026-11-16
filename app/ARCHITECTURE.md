@@ -121,23 +121,29 @@ Exemplo atual:
 
 ```text
 data/
+  config/
+    api_config.dart                  # URL do backend por plataforma/dart-define
   models/
+    auth_user.dart                   # AuthUser (id, e-mail, nível de acesso)
     line.dart                       # Line (origem/destino, coordenadas opcionais)
     place_suggestion.dart            # PlaceSuggestion + PlaceSuggestionType
+    stored_auth_session.dart         # StoredAuthSession (tokens + usuário)
     user_coordinates.dart            # modelo imutável
   repositories/
     asset_place_search_repository.dart  # AssetPlaceSearchRepository
-    auth_repository.dart             # FakeAuthRepository
+    auth_repository.dart             # ApiAuthRepository
     details_line_repository.dart     # DetailsLineRepositoryImpl
     place_search_repository.dart     # PlaceSearchRepository
     tracking_repository.dart         # TrackingRepositoryImpl
     user_location_repository.dart    # DeviceUserLocationRepository
   services/
+    api_client.dart                  # ApiClient + ApiException/NetworkException
     bus_stop_service.dart            # BusStopService + AssetBusStopService
     line_search_service.dart        # LineSearchService + AssetLineSearchService
     line_stops_service.dart          # LineStopsService + AssetLineStopsService
     location_service.dart            # LocationService + DeviceLocationService
     route_service.dart               # RouteService + AssetRouteService
+    session_storage.dart             # SessionStorage + SecureSessionStorage
 
 domain/
   repositories/
@@ -272,14 +278,16 @@ app/test/
 - Sufixos por papel: `*_page.dart`, `*_tab.dart`, `*_view_model.dart`,
   `*_repository.dart`, `*_service.dart`.
 - Contratos sem prefixo (`AuthRepository`, `LocationService`); implementações
-  com prefixo de origem (`FakeAuthRepository`, `DeviceLocationService`).
+  com prefixo de origem (`ApiAuthRepository`, `DeviceLocationService`).
+  Fakes de teste ficam em `test/helpers/`, não em `lib/`.
 - Prefira construtores `const` e modelos imutáveis.
 - Nunca versione segredos nem registre códigos temporários de autenticação.
 
 ## Erros e estados
 
 - A camada de dados traduz exceções de plugins/HTTP para erros da aplicação
-  (`UserLocationException` com `UserLocationFailure`, `InvalidCodeException`).
+  (`UserLocationException` com `UserLocationFailure`, `InvalidCodeException`,
+  `RateLimitedException`).
 - **State Pattern (Padrão de Estado)**. Os ViewModels emitem estados para a UI que refletem o comportamento da tela. Cada estado é uma classe abstrata com implementações concretas, e a UI observa esses estados para se comportar corretamente.
 - O view model emite estados para a UI para controle de comportamento visual e interativo.
 - A UI não faz chamadas diretas aos ViewModels nem serviços; ela apenas observa os estados.
@@ -297,6 +305,10 @@ app/test/
 - As páginas resolvem seus view models pelo injetor. Elas mantêm parâmetros
   opcionais de repository/view model para permitir fakes em testes, sem
   depender do injetor.
+- `ApiClient`, `SessionStorage` e `ApiAuthRepository` são registrados no
+  injetor. O `AuthRepository` é a fonte de verdade da sessão e o
+  `refreshListenable` do GoRouter: ao entrar ou sair, a guarda redireciona
+  entre `/auth` e `/`.
 - O `MapTab` aceita overrides de repository para testes; quando não há override,
   usa as dependências registradas no injetor. A `MapSearchPage` segue o mesmo
   padrão para o repositório de busca.
@@ -339,9 +351,9 @@ enquanto.
 
 | Feature        | Presentation                                                   | Dados usados                                                                                | Domain |
 | -------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
-| auth           | e-mail e código, com view models                               | `AuthRepository` + `FakeAuthRepository`                                                     | —      |
+| auth           | e-mail e código, com view models e guarda de rota              | `AuthRepository` + `ApiAuthRepository`, `ApiClient`, `SessionStorage`                        | —      |
 | home           | `HomePage` e navegação por abas                                | —                                                                                           | —      |
-| home/account   | `AccountTab`                                                   | —                                                                                           | —      |
+| home/account   | `AccountTab` e `AccountViewModel`                              | `AuthRepository` (e-mail e logout)                                                          | —      |
 | home/favorites | `FavoritesTab`                                                 | —                                                                                           | —      |
 | home/map       | `MapTab`, `MapLocationViewModel`, `MapTrackingViewModel`, `MapSearchViewModel`, `TrackingPanel` | `UserLocationRepository`, `TrackingRepository`, `PlaceSearchRepository`, `LocationService`, `UserCoordinates` | —      |
 | line_details   | `DetailsLinePage` e `DetailsLineViewModel`                       | `DetailsLineRepository`, `LineStopsService`, `BusStopService`, `Line`, `BusStop`              | —      |

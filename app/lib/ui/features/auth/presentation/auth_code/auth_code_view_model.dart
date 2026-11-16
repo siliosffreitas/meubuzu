@@ -1,5 +1,6 @@
 import '../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../domain/contracts/contracts.dart';
+import '../auth_messages.dart';
 
 /// Regras de apresentação da tela de confirmação do código.
 class AuthCodeViewModel extends ViewmodelBase {
@@ -54,11 +55,13 @@ class AuthCodeViewModel extends ViewmodelBase {
     try {
       await _repository.verifyEmailCode(email: email, code: _code);
       return true;
-    } on InvalidCodeException {
-      _errorTitle = 'Código inválido';
-      _errorMessage =
-          'Confira os 6 dígitos e tente novamente. Se precisar, solicite '
-          'outro código.';
+    } on InvalidCodeException catch (error) {
+      _errorTitle = invalidCodeTitle(error.code);
+      _errorMessage = invalidCodeMessage(error.code);
+      return false;
+    } on RateLimitedException catch (error) {
+      _errorTitle = 'Aguarde um pouco';
+      _errorMessage = rateLimitMessage(error);
       return false;
     } catch (_) {
       _errorTitle = null;
@@ -85,6 +88,10 @@ class AuthCodeViewModel extends ViewmodelBase {
     try {
       await _repository.requestEmailCode(email);
       return true;
+    } on RateLimitedException catch (error) {
+      _errorTitle = 'Aguarde um pouco';
+      _errorMessage = rateLimitMessage(error);
+      return false;
     } catch (_) {
       _errorTitle = null;
       _errorMessage =

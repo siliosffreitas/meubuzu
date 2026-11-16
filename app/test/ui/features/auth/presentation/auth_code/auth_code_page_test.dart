@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
 import 'package:meubuzu/ui/routing/app_routes.dart';
 
@@ -101,27 +100,6 @@ void main() {
         findsOneWidget,
       );
       expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
-    });
-
-    testWidgets('recusa o código 123456 do protótipo', (tester) async {
-      await tester.pumpWidget(
-        appWith(
-          const AuthCodePage(
-            email: 'ana.lima@exemplo.com',
-            repository: FakeAuthRepository(latency: Duration.zero),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), '123456');
-      await tapVisible(
-        tester,
-        find.widgetWithText(FilledButton, 'Confirmar código'),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Código inválido'), findsOneWidget);
     });
 
     testWidgets('sem histórico volta para a tela de e-mail', (tester) async {

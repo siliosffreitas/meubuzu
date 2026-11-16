@@ -42,7 +42,7 @@ void main() {
     final searchCache = injector.getService<MapSearchCache>();
     expect(searchCache, isA<MapSearchCache>());
     expect(injector.getService<MapSearchCache>(), same(searchCache));
-    expect(injector.getRepository<AuthRepository>(), isA<FakeAuthRepository>());
+    expect(injector.getRepository<AuthRepository>(), isA<ApiAuthRepository>());
     expect(
       injector.getRepository<PlaceSearchRepository>(),
       isA<AssetPlaceSearchRepository>(),

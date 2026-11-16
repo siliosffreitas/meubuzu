@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../di/dependencies.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/place_search_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
@@ -13,17 +15,29 @@ import 'app_routes.dart';
 
 /// Configura as rotas do aplicativo com GoRouter.
 ///
-/// O app inicia no fluxo de autenticação (`/auth`) e, após confirmar o código,
-/// navega para a Home (`/`).
+/// Sem sessão, qualquer rota leva para a autenticação por e-mail. Com sessão,
+/// as rotas de autenticação levam para a Home.
 class AppRouter {
   AppRouter({this.authRepository});
 
-  /// Quando não informado, as páginas resolvem o repositório pelo injetor.
+  /// Quando não informado, o repositório é resolvido pelo injetor.
   final AuthRepository? authRepository;
 
   GoRouter createRouter() {
+    final repository =
+        authRepository ?? injector.getRepository<AuthRepository>();
+
     return GoRouter(
-      initialLocation: AppRoutes.home,
+      initialLocation: AppRoutes.authEmail,
+      refreshListenable: repository,
+      redirect: (context, state) {
+        final email = state.extra;
+        return authRedirect(
+          isAuthenticated: repository.isAuthenticated,
+          location: state.matchedLocation,
+          hasEmail: email is String && email.isNotEmpty,
+        );
+      },
       routes: [
         GoRoute(
           path: AppRoutes.home,
@@ -69,13 +83,6 @@ class AppRouter {
         GoRoute(
           path: AppRoutes.authCode,
           name: AppRoutes.authCodeName,
-          redirect: (context, state) {
-            final email = state.extra;
-            if (email is! String || email.isEmpty) {
-              return AppRoutes.authEmail;
-            }
-            return null;
-          },
           builder: (context, state) => AuthCodePage(
             email: state.extra! as String,
             repository: authRepository,
@@ -84,4 +91,26 @@ class AppRouter {
       ],
     );
   }
+}
+
+/// Regra de redirecionamento da autenticação, isolada para testes.
+@visibleForTesting
+String? authRedirect({
+  required bool isAuthenticated,
+  required String location,
+  required bool hasEmail,
+}) {
+  final isAuthRoute =
+      location == AppRoutes.authEmail || location == AppRoutes.authCode;
+
+  if (!isAuthenticated && !isAuthRoute) {
+    return AppRoutes.authEmail;
+  }
+  if (isAuthenticated && isAuthRoute) {
+    return AppRoutes.home;
+  }
+  if (location == AppRoutes.authCode && !hasEmail) {
+    return AppRoutes.authEmail;
+  }
+  return null;
 }

@@ -57,13 +57,13 @@ void main() {
       expect(polylines.single.color, _line.mapColor);
     });
 
-    test('usa o id da linha quando não há código de embarque', () {
+    test('usa id e nome quando não há código de embarque', () {
       const line = Line(
         id: '46',
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
         origin: 'MOCAMBINHO',
         destination: 'MOCAMBINHO',
-        boardingCode: '0101',
+        boardingCode: null,
       );
       final tracked = TrackedLine(
         line: line,
@@ -75,8 +75,11 @@ void main() {
 
       final polylines = buildTrackingPolylines([tracked]);
 
-      expect(polylines.single.polylineId.value, 'tracked-46');
-      expect(trackedLineKey(tracked), '46');
+      expect(
+        polylines.single.polylineId.value,
+        'tracked-46-MOCAMBINHO DUQUE DE CAXIAS',
+      );
+      expect(trackedLineKey(tracked), '46-MOCAMBINHO DUQUE DE CAXIAS');
     });
   });
 }

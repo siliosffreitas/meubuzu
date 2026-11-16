@@ -85,8 +85,9 @@ app/test/                   # espelha a estrutura de lib/
 ```
 
 O app inicia no fluxo de autenticação (`/auth`), em `ui/features/auth`, e a
-confirmação do código navega para a Home. Não remova a autenticação ao ajustar
-a Home.
+confirmação do código navega para a Home. A guarda do GoRouter decide a rota
+inicial: sem sessão válida, rotas internas vão para `/auth`; com sessão, as
+rotas de autenticação vão para `/`. Não remova a autenticação ao ajustar a Home.
 
 ## Comandos
 

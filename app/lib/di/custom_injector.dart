@@ -5,7 +5,7 @@ import '../domain/contracts/contracts.dart';
 /// Custom dependency injection wrapper around [AutoInjector].
 ///
 /// Provides methods to register and retrieve dependencies with proper lifecycle management.
-/// Supports resetting all dependencies on logout to ensure clean state for new user sessions.
+/// Supports resetting dependencies when the whole app state must be discarded.
 class CustomInjector {
   AutoInjector _injector = AutoInjector();
   bool _isCommitted = false;
@@ -42,8 +42,8 @@ class CustomInjector {
 
   /// Resets all registered dependencies by disposing and recreating the injector.
   ///
-  /// This should be called on logout to clear all cached data and ensure
-  /// fresh instances are created for the next user session.
+  /// Use only when the whole app state must be discarded; logout keeps the
+  /// injector alive so the router can observe the session change.
   void reset() {
     if (_isCommitted) {
       _injector.dispose();

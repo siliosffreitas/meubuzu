@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/app.dart';
-import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_email/auth_email_page.dart';
 import 'package:meubuzu/ui/routing/app_router.dart';
 
 import '../../../../../helpers/auth_test_helpers.dart';
+import '../../../../../helpers/fake_auth_repository.dart';
 
 void main() {
   group('tela de e-mail', () {
     testWidgets('mostra erro ao enviar sem e-mail', (tester) async {
       await tester.pumpWidget(
-        appWith(const AuthEmailPage(repository: FakeAuthRepository())),
+        appWith(AuthEmailPage(repository: FakeAuthRepository())),
       );
 
       await tapVisible(tester, find.byType(FilledButton));
@@ -21,7 +21,7 @@ void main() {
 
     testWidgets('mostra erro para e-mail inválido', (tester) async {
       await tester.pumpWidget(
-        appWith(const AuthEmailPage(repository: FakeAuthRepository())),
+        appWith(AuthEmailPage(repository: FakeAuthRepository())),
       );
 
       await tester.enterText(find.byType(TextField), 'voce@exemplo');
@@ -48,7 +48,7 @@ void main() {
     });
 
     testWidgets('inicia na autenticação', (tester) async {
-      final router = AppRouter(authRepository: const FakeAuthRepository())
+      final router = AppRouter(authRepository: FakeAuthRepository())
           .createRouter();
       addTearDown(router.dispose);
 
@@ -67,7 +67,7 @@ void main() {
       await tester.pumpWidget(
         MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
-          child: appWith(const AuthEmailPage(repository: FakeAuthRepository())),
+          child: appWith(AuthEmailPage(repository: FakeAuthRepository())),
         ),
       );
       await tester.pumpAndSettle();

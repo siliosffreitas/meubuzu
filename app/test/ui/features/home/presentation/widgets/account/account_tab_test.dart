@@ -1,0 +1,63 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:meubuzu/domain/models/auth_user.dart';
+import 'package:meubuzu/ui/core/theme/app_theme.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/account/account_tab.dart';
+import 'package:meubuzu/ui/features/home/presentation/widgets/account/account_view_model.dart';
+
+import '../../../../../../helpers/fake_auth_repository.dart';
+
+void main() {
+  group('aba Conta', () {
+    testWidgets('mostra o e-mail e o nível de acesso', (tester) async {
+      final repository = FakeAuthRepository(
+        user: const AuthUser(
+          id: 'user-1',
+          email: 'ana.lima@exemplo.com',
+          accessLevel: 'trial',
+        ),
+      );
+      final viewModel = AccountViewModel(repository);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: AccountTab(viewModel: viewModel)),
+        ),
+      );
+
+      expect(find.text('ana.lima@exemplo.com'), findsOneWidget);
+      expect(find.text('Teste de 7 dias'), findsOneWidget);
+    });
+
+    testWidgets('sair encerra a sessão', (tester) async {
+      final repository = FakeAuthRepository(
+        user: const AuthUser(id: 'user-1', email: 'ana.lima@exemplo.com'),
+      );
+      final viewModel = AccountViewModel(repository);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: AccountTab(viewModel: viewModel)),
+        ),
+      );
+
+      await tester.tap(find.text('Sair da conta'));
+      await tester.pumpAndSettle();
+
+      expect(repository.logoutCalls, 1);
+      expect(repository.isAuthenticated, isFalse);
+      expect(find.text('Conta sem sessão'), findsOneWidget);
+    });
+
+    test('expõe o nível de acesso padrão sem sessão', () {
+      final viewModel = AccountViewModel(FakeAuthRepository());
+
+      expect(viewModel.email, isNull);
+      expect(viewModel.accessLevel, 'catalog_only');
+
+      viewModel.dispose();
+    });
+  });
+}

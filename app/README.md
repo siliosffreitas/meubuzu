@@ -6,7 +6,9 @@ O aplicativo é desenvolvido com **Flutter** e **Dart** para **Android e iOS**. 
 
 ## Backend local nos testes
 
-Enquanto a API não estiver integrada, o app usa os catálogos locais de `app/assets`. Para testar o app contra o backend Django rodando na sua máquina:
+A autenticação já usa o backend Django. Catálogo, rastreamento e favoritos
+continuam com os catálogos locais de `app/assets` nesta etapa. Para testar o app
+contra o backend rodando na sua máquina:
 
 ```sh
 cd backend
@@ -16,9 +18,38 @@ cd backend
 - **Emulador Android:** use `http://10.0.2.2:8000` (endereço do host visto de dentro do emulador) e inclua `10.0.2.2` em `DJANGO_ALLOWED_HOSTS`.
 - **Simulador iOS:** use `http://127.0.0.1:8000`.
 - **Celular físico:** use o IP do Mac na mesma rede Wi-Fi e inclua esse IP em `DJANGO_ALLOWED_HOSTS`.
-- Em builds futuros que chamem HTTP local, o Android exige liberar *cleartext* apenas no debug; nunca no release.
+- Em builds de debug, o Android libera HTTP local (`usesCleartextTraffic`) e o
+  iOS permite rede local (`NSAllowsLocalNetworking`). Builds de release exigem
+  HTTPS.
 
 Detalhes de execução, containers e segundo plano estão em `backend/README.md`.
+
+### Autenticação e sessão
+
+O endereço do backend vem de `--dart-define=API_BASE_URL`. Sem a definição,
+builds de debug usam `http://10.0.2.2:8000` no Android e
+`http://127.0.0.1:8000` no iOS; builds de release falham se a URL não for
+informada.
+
+```sh
+flutter run --dart-define=API_BASE_URL=http://192.168.0.10:8000
+```
+
+Fluxo implementado:
+
+1. `AuthEmailPage` chama `POST /v1/auth/request-code`.
+2. `AuthCodePage` chama `POST /v1/auth/verify-code`; o backend cria a conta no
+   primeiro acesso.
+3. `ApiAuthRepository` guarda os tokens no `flutter_secure_storage`
+   (Keychain/Keystore) e notifica o app.
+4. `main()` restaura a sessão antes do `runApp` e valida em segundo plano com
+   `GET /v1/me`; se o access token expirar, usa o refresh rotativo.
+5. Sem rede, a sessão local é mantida (restauração otimista). Se o refresh for
+   recusado, a sessão é limpa e o app volta para `/auth`.
+6. A aba Conta mostra o e-mail, o nível de acesso e o botão Sair.
+
+A guarda do GoRouter observa o `AuthRepository`: rotas internas sem sessão vão
+para `/auth`, e rotas de autenticação com sessão vão para `/`.
 
 ## Acesso, cidade e planos
 
@@ -173,8 +204,10 @@ O `MaterialApp.router` é montado em `lib/app.dart` e usa o router criado por
 `AppRouter`.
 
 > **Autenticação como rota inicial:** `AppRouter` define
-> `initialLocation: AppRoutes.authEmail`; após confirmar o código, o app navega
-> para a Home com `context.goNamed(AppRoutes.homeName)`.
+> `initialLocation: AppRoutes.authEmail` e uma guarda baseada no
+> `AuthRepository`. Sem sessão, rotas internas levam para `/auth`; com sessão,
+> `/auth` e `/auth/code` levam para a Home. Após confirmar o código, o app
+> navega para a Home com `context.goNamed(AppRoutes.homeName)`.
 
 Navegação entre as telas:
 

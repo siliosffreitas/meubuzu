@@ -28,6 +28,13 @@
 	<string>$(MAPS_API_KEY_IOS)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Permite falar com o backend local em desenvolvimento
+		     (127.0.0.1:8000) sem liberar HTTP para a internet. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Usamos sua localização para mostrar onde você está no mapa e encontrar paradas próximas.</string>
 	<key>UIApplicationSceneManifest</key>

@@ -1,14 +1,17 @@
+import '../data/config/api_config.dart';
 import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/details_bus_stop_repository.dart';
 import '../data/repositories/details_line_repository.dart';
 import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
+import '../data/services/api_client.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
 import '../data/services/route_service.dart';
+import '../data/services/session_storage.dart';
 import '../data/services/tracking_service.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/details_bus_stop_repository.dart';
@@ -19,6 +22,7 @@ import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import '../ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
+import '../ui/features/home/presentation/widgets/account/account_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_view_model.dart';
@@ -41,8 +45,15 @@ Future<void> setupDependencies() async {
   injector.addService<RouteService>(AssetRouteService.new);
   injector.addService<TrackingService>(AssetTrackingService.new);
   injector.addService<MapSearchCache>(MapSearchCache.new);
+  injector.addService<ApiClient>(() => ApiClient(ApiConfig.baseUrl));
+  injector.addService<SessionStorage>(SecureSessionStorage.new);
 
-  injector.addRepository<AuthRepository>(() => const FakeAuthRepository());
+  injector.addRepository<AuthRepository>(
+    () => ApiAuthRepository(
+      injector.getService<ApiClient>(),
+      injector.getService<SessionStorage>(),
+    ),
+  );
   injector.addRepository<PlaceSearchRepository>(
     () => AssetPlaceSearchRepository(),
   );
@@ -83,6 +94,9 @@ Future<void> setupDependencies() async {
       email: email,
     ),
   );
+  injector.addViewModel<AccountViewModel>(
+    () => AccountViewModel(injector.getRepository<AuthRepository>()),
+  );
   injector.addViewModel<MapSearchViewModel>(
     () => MapSearchViewModel(
       injector.getRepository<PlaceSearchRepository>(),
@@ -121,9 +135,10 @@ void disposeDependencies() {
   injector.dispose();
 }
 
-/// Recria as dependências, descartando o estado da sessão atual.
+/// Recria as dependências, descartando todo o estado em memória.
 ///
-/// Deve ser chamado no logout para que a próxima sessão use instâncias novas.
+/// Não é chamado no logout: o `AuthRepository` é observado pelo GoRouter e
+/// precisa continuar vivo para notificar a mudança de sessão.
 Future<void> resetDependencies() async {
   injector.reset();
   await setupDependencies();

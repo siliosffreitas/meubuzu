@@ -1,5 +1,6 @@
 import '../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../domain/contracts/contracts.dart';
+import '../auth_messages.dart';
 
 /// Regras de apresentação da tela de entrada por e-mail.
 class AuthEmailViewModel extends ViewmodelBase {
@@ -43,6 +44,9 @@ class AuthEmailViewModel extends ViewmodelBase {
     try {
       await _repository.requestEmailCode(_email.trim());
       return true;
+    } on RateLimitedException catch (error) {
+      _errorMessage = rateLimitMessage(error);
+      return false;
     } catch (_) {
       _errorMessage =
           'Não foi possível enviar o código. Verifique sua conexão e tente '
