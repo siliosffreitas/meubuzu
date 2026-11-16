@@ -2,36 +2,60 @@
 
 ## Tecnologia
 
-O backend será desenvolvido em **Dart** usando o framework [Vaden](https://github.com/Flutterando/vaden).
+O backend será desenvolvido em **Python 3.12+** com **Django 5.2 LTS**, **Django REST Framework**, **PostgreSQL + PostGIS**, **Redis** e **Celery**. Ele substitui o protótipo em Dart/Vaden que ainda está em `backend/`.
+
+As decisões completas — modelo, API, cotas, billing, importação e gate de lançamento — estão em `docs/PRD-backend-meubuzu.md`.
 
 ## Armazenamento de dados
 
-### Dados cadastrais e operacionais
+### Cidades e catálogo
 
-Usar **PostgreSQL** como fonte de verdade para os dados estruturados do produto, como ônibus e suas características, paradas, linhas e variantes de itinerário. A extensão [PostGIS](https://postgis.net/) permitirá armazenar e consultar dados geográficos, como coordenadas de paradas e trajetos.
+O catálogo é sempre escopado por cidade (`catalog_city`). Teresina é a cidade de lançamento, com fuso `America/Fortaleza` e ciclo de importação semanal ou mensal, configurável por cidade.
 
-A relação entre ônibus e linha pode mudar conforme o dia ou a operação. Ela deve ser armazenada separadamente dos dados permanentes do veículo, com período de validade, para representar mudanças e preservar o histórico.
+Usar **PostgreSQL** como fonte de verdade para os dados estruturados: ônibus, paradas, linhas, itinerários e trajetos. A extensão [PostGIS](https://postgis.net/) armazena e consulta coordenadas, paradas e trajetos.
+
+A relação entre ônibus e linha muda conforme o dia ou a operação. Ela é armazenada separadamente, com período de validade, preservando o histórico.
+
+O catálogo é **importado** da API da cidade, não editado manualmente como fonte primária. Edições do admin ficam em `catalog_admin_override` e sobrevivem ao import apenas quando marcadas como "manter esta edição". Itens ausentes na origem são desativados, nunca apagados. Aliases locais (`codigoLinha` × `sgLinha`) nunca são sobrescritos pelo import.
 
 ### Posições dos veículos
 
-As posições recebidas frequentemente devem ser armazenadas como eventos de rastreamento, identificados pelo veículo e pelo horário da observação, com coordenadas e outros dados disponíveis, como velocidade e direção.
+As posições são armazenadas como eventos de rastreamento, identificados por veículo e horário de captura, com coordenadas, velocidade, direção e `dataMode`. A tabela `tracking_latest_position` guarda a última posição por veículo para consulta rápida.
 
-Se o produto precisar consultar o histórico de posições, usar **TimescaleDB**, extensão de séries temporais do PostgreSQL, para esse fluxo. Os dados cadastrais e o rastreamento podem compartilhar a mesma infraestrutura PostgreSQL, mantendo tabelas e responsabilidades separadas. Se for necessário somente consultar a posição atual, uma tabela PostgreSQL otimizada para esse estado pode ser suficiente no início.
+A retenção de posições é de **30 dias**. Não há uso de TimescaleDB no lançamento: particionamento por tempo e índices BRIN/GiST atendem o MVP.
 
-O Redis poderá ser considerado posteriormente como cache ou apoio à distribuição de atualizações em tempo real, mas não será a fonte permanente dos dados.
+O Redis é usado como cache, rate limit, lock distribuído e broker do Celery, nunca como fonte permanente.
 
 ### Usuários e autenticação
 
-Os dados da conta, como identificador, e-mail verificado e datas de criação e atualização, serão armazenados no **PostgreSQL**. Os códigos temporários enviados por e-mail para autenticação devem ter validade curta, ser de uso único e nunca ser armazenados em texto aberto ou registrados em logs. Registros expirados devem ser removidos; tentativas de envio e validação também precisam ser limitadas.
+Conta, e-mail verificado, preferência de cidade e sessões ficam no **PostgreSQL**. Códigos temporários de autenticação têm validade curta, uso único e são armazenados apenas como hash; nunca aparecem em logs. Tentativas de envio e validação são limitadas.
 
 ### Assinaturas e pagamentos
 
-O estado da assinatura e do acesso do usuário será mantido no **PostgreSQL**, associado à conta. Os registros devem incluir somente os dados necessários para controlar o acesso, como plano, status, início e término do teste ou assinatura, além de identificadores fornecidos pelo provedor de cobrança.
+O estado da assinatura fica no **PostgreSQL**, associado à conta: provedor, loja, produto, status, tipo de período, início e fim do período, renovação e identificadores da transação.
 
-O backend deve validar compras e mudanças na assinatura com o provedor de cobrança ou com a loja da plataforma, por meio de APIs de servidor e notificações verificadas. O app cliente não deve ser a fonte de verdade para conceder acesso. O provedor de cobrança ainda será definido.
+**RevenueCat** é a fonte de verdade para iOS e Android. O trial de 7 dias é uma oferta introdutória da loja, **com cartão**; não existe trial concedido pelo backend. Compras e mudanças chegam por webhooks assinados e idempotentes. O app nunca concede acesso pago.
 
-O MeuBuzu não armazenará números completos de cartão nem códigos de segurança (CVV). Quando necessário, poderão ser armazenados identificadores ou tokens emitidos pelo provedor, sem dados que permitam recuperar o número do cartão. O processamento dos dados de cartão ficará a cargo do provedor de pagamento ou da loja da plataforma.
+Assinatura **mensal apenas**: sem plano anual, sem web e sem Stripe.
+
+O MeuBuzu não armazena números de cartão nem CVV. Apenas identificadores emitidos pela loja ou pelo provedor.
 
 ### Linhas favoritas
 
-As linhas favoritas serão associadas à conta no PostgreSQL, para que o usuário as encontre em qualquer dispositivo. O limite de **1 linha favorita** durante o teste de 7 dias deve ser validado no backend, e não apenas no app, junto com a checagem do estado da assinatura. O backend deve rejeitar a tentativa de favoritar uma segunda linha informando que o limite do plano foi atingido, permitindo que o app apresente a oferta de assinatura. Favoritar, desfavoritar e remover uma linha favorita não contam como rastreamento e não alteram a cota diária. Após a contratação da assinatura, o limite deixa de ser aplicado.
+Favoritos ficam associados à conta no PostgreSQL, para aparecerem em qualquer dispositivo. Antes do trial são bloqueados; no trial, o limite é **1 linha favorita**, validado no backend, não apenas no app. Após o contrato, o limite deixa de existir; após o trial sem assinatura, os favoritos ficam somente leitura.
+
+Favoritar, desfavoritar e abrir uma linha favorita não contam como rastreamento nem alteram a cota.
+
+### Rastreamento e cotas
+
+A cota é global por conta. O "dia" é calculado no fuso da cidade selecionada, definido em `catalog_city.timezone`. Cada sessão registra o dia e o fuso usados na contagem.
+
+O app envia heartbeat a cada 30 s; sem sinal por cerca de 120 s, o backend encerra a sessão e libera o slot do trial. No trial há no máximo uma sessão ativa.
+
+### Dados de demonstração
+
+Enquanto o acesso à API de Teresina não for liberado, os CSVs de `app/assets` alimentam apenas **staging**, com `dataMode=demo` e banner de demonstração no app. Produção recusa iniciar com dados de demonstração e exige a API da cidade.
+
+### Gate de lançamento
+
+Não há data de lançamento. Produção só é liberada com acesso total à API de Teresina, dual-run de 7 dias com mismatch abaixo de 1%, billing validado e checklist do PRD cumprido.

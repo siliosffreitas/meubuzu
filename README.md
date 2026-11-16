@@ -6,7 +6,7 @@ O MeuBuzu ajuda as pessoas a planejar suas viagens de ônibus, acompanhando veí
 
 - Exibir ônibus em operação em um mapa, com posição atualizada em tempo real quando os dados estiverem disponíveis.
 - Ajudar o usuário a encontrar linhas, paradas e informações úteis para sua viagem.
-- Oferecer uma experiência simples e consistente em dispositivos móveis e na web.
+- Oferecer uma experiência simples e consistente em Android e iOS.
 
 ## Funcionalidades principais
 
@@ -33,34 +33,47 @@ O MeuBuzu ajuda as pessoas a planejar suas viagens de ônibus, acompanhando veí
 
 ## Planos e assinatura
 
-O MeuBuzu não terá um plano gratuito permanente. Novos usuários podem acessar o aplicativo durante um teste de 7 dias, com as mesmas limitações do antigo plano Free. Depois do teste, é necessária uma assinatura paga para continuar usando o serviço.
+O MeuBuzu não terá plano gratuito com rastreamento em tempo real. O catálogo (busca, linhas, paradas e itinerários) é aberto em **modo somente leitura**. O rastreamento é liberado por um **teste de 7 dias** e, depois, por **assinatura mensal**.
 
-| Recurso | Teste de 7 dias | Assinatura paga |
-| --- | --- | --- |
-| Linhas acompanhadas simultaneamente | 1 | Várias |
-| Rastreamentos iniciados | Até 5 por dia | Sem limite diário |
-| Busca de localidades, linhas e paradas | Não consome a cota de rastreamentos | Não consome a cota de rastreamentos |
-| Anúncios | Exibe anúncios | Sem anúncios |
-| Favoritar linhas | 1 linha | Várias |
-| Cache de dados cadastrais de paradas, linhas e ônibus | Baixa os dados novamente ao abrir o app | Mantém os dados em cache local para acelerar consultas e reduzir downloads repetidos |
+| Recurso | Catálogo gratuito | Teste de 7 dias | Assinatura mensal | Após o teste |
+| --- | --- | --- | --- | --- |
+| Buscar linhas e paradas | Sim | Sim | Sim | Sim |
+| Ver itinerário e paradas no mapa | Sim | Sim | Sim | Sim |
+| Acompanhar ônibus em tempo real | Não | 1 linha por vez | Várias linhas | Não |
+| Rastreamentos iniciados | 0 | Até 5 por dia | Sem limite diário | 0 |
+| Favoritos | Não | 1 linha | Ilimitados | Somente leitura |
+| Anúncios | Sem anúncios | A definir | Sem anúncios | A definir |
 
 Pesquisar ou consultar localidades, linhas e paradas não consome a cota. Cada vez que o usuário inicia o rastreamento de uma linha, essa ação conta como um rastreamento, inclusive quando a linha é escolhida para chegar a uma localidade pesquisada. No teste, o usuário pode acompanhar apenas uma linha por vez e iniciar até 5 rastreamentos por dia.
 
-O cache Premium cobre dados cadastrais que mudam com pouca frequência, como paradas, linhas e características dos ônibus. As posições dos veículos continuam sendo atualizadas online. O primeiro carregamento e a sincronização de alterações ainda podem usar internet; o cache reduz downloads repetidos nas próximas consultas.
+Regras do modelo de acesso:
+
+- **O teste começa no primeiro rastreamento.** O usuário pode explorar o catálogo sem prazo. Quando tenta acompanhar uma linha, o app apresenta a oferta de 7 dias.
+- **O teste é oferecido pela loja, com cartão.** A oferta introdutória é gerenciada pela App Store ou Google Play via RevenueCat. Ela só começa quando o usuário aceita a oferta; recusar mantém o catálogo somente leitura.
+- **A elegibilidade é da loja.** Quem já usou o teste não recebe a oferta de novo. Excluir a conta no app não reinicia a elegibilidade.
+- **Assinatura mensal, sem plano anual e sem cobrança fora das lojas.** Restaurar compras e cancelar são feitos pela loja.
+- **Após o teste**, o app continua útil em modo somente leitura: busca, linhas, paradas, itinerários e favoritos existentes. O rastreamento e a edição de favoritos ficam bloqueados com oferta de assinatura.
+- **1 rastreamento = 1 linha acompanhada.** Duas linhas ao mesmo tempo, no plano pago, contam como dois rastreamentos. Fechar e abrir a mesma linha novamente conta como um novo rastreamento.
+- **A cota é global por conta**, independente de cidade, e reinicia à meia-noite no fuso da cidade selecionada (Teresina: `America/Fortaleza`).
+- **A cidade é escolhida no app.** Teresina é a cidade de lançamento; a escolha é salva no backend e restaurada em outro dispositivo.
+
+O cache de dados cadastrais de paradas, linhas e ônibus está previsto para o plano pago. As posições dos veículos continuam sendo atualizadas online.
 
 - Informar com clareza a data de término do teste, o preço da assinatura e as condições de cobrança antes de iniciar o período de teste.
 - Permitir gerenciar ou cancelar a assinatura e restaurar compras, conforme as regras da plataforma de pagamento.
 
 ### Favoritos no teste de 7 dias
 
-O teste permite favoritar **uma linha**. O favorito é o atalho para o trajeto do dia a dia e serve como demonstração do benefício: o usuário sente o valor de ter a linha sempre à mão e, ao tentar favoritar uma segunda, encontra a oferta de assinatura. O limite existe para que o hábito criado no teste não se sustente sem a assinatura.
+Antes do teste, o catálogo é somente leitura e **não é possível favoritar**. Ao tocar em favoritar, o app apresenta a oferta de 7 dias. O teste permite favoritar **uma linha**. O favorito é o atalho para o trajeto do dia a dia e serve como demonstração do benefício: o usuário sente o valor de ter a linha sempre à mão e, ao tentar favoritar uma segunda, encontra a oferta de assinatura. O limite existe para que o hábito criado no teste não se sustente sem a assinatura.
 
 Regras de comportamento:
 
-- Ao tentar favoritar uma segunda linha, o app não aplica o favorito e apresenta a oferta de assinatura, explicando que o teste inclui apenas uma linha favorita.
+- Antes do teste, favoritar abre a oferta de assinatura; o favorito não é aplicado.
+- Ao tentar favoritar uma segunda linha no teste, o app não aplica o favorito e apresenta a oferta de assinatura, explicando que o teste inclui apenas uma linha favorita.
 - A oferta deve permitir remover a linha já favoritada e favoritar outra, sem cobrança e sem consumir rastreamento. O usuário nunca fica impedido de trocar de favorito.
 - A linha favoritada não precisa estar sendo rastreada no momento. Favoritar, desfavoritar e abrir a linha favoritada não consome a cota de rastreamentos.
 - O favorito não substitui a regra de uma linha acompanhada por vez. Para acompanhar uma linha diferente da favoritada, o usuário inicia um novo rastreamento, respeitando o limite de 5 por dia.
+- Depois do teste, os favoritos existentes ficam **somente leitura**: podem ser consultados, mas não podem ser adicionados, removidos ou trocados até a assinatura.
 - A assinatura paga remove o limite de favoritos e o app deve deixar a diferença explícita na tela de planos, antes do fim do teste.
 
 ## Ideias para evolução
@@ -96,22 +109,24 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 
 ## Requisitos não funcionais
 
-- **Plataformas:** compartilhar a maior parte da interface e da lógica entre Android, iOS e web usando Flutter.
+- **Plataformas:** compartilhar a maior parte da interface e da lógica entre Android e iOS usando Flutter. O app é mobile-first; não há versão web no lançamento.
 - **Desempenho:** manter o mapa utilizável com muitos veículos e atualizar posições sem redesenhar elementos desnecessariamente.
 - **Confiabilidade:** tratar erros de rede, permissões negadas e dados incompletos sem bloquear a navegação.
 - **Privacidade:** solicitar localização apenas para recursos que precisem dela e explicar seu uso antes da permissão.
 - **Segurança:** proteger sessões, códigos de acesso e dados da conta; nunca registrar códigos temporários em logs.
-- **Acessibilidade:** oferecer suporte a leitores de tela, navegação por teclado na web e preferências de tamanho de texto.
+- **Acessibilidade:** oferecer suporte a leitores de tela e preferências de tamanho de texto.
 
 ## Decisões em aberto
 
-- Quais cidades e fontes de dados serão atendidas no lançamento? Há disponibilidade de localização em tempo real, itinerários e previsões?
-- Qual será o horário e o fuso de renovação da cota diária de 5 rastreamentos durante o teste?
-- Quais meios de pagamento e regras de renovação serão usados para a assinatura?
-- O teste de 7 dias exigirá o cadastro de um meio de pagamento? Haverá cobrança automática ao final do período?
-- O que acontecerá com os dados do usuário e sua linha favorita se o teste terminar sem a contratação de uma assinatura? O favorito é mantido, apenas em modo somente leitura, ou removido?
-- O planejador de viagem e os alertas entram no lançamento ou ficam para uma fase posterior?
+- Qual será o preço da assinatura mensal? O valor será configurado em BRL na App Store e no Google Play.
+- Haverá anúncios durante o teste de 7 dias? O plano pago é sem anúncios.
+- Qual provedor de analytics será usado e com qual base legal?
+- Quais serão os termos de uso, a política de privacidade e o canal de suporte?
+- Como tratar transferência de assinatura entre contas, reembolsos e chargebacks?
+- Quando o app será lançado? Não há data: o lançamento depende do acesso total à API de Teresina.
 
 ## Tecnologia
 
-O aplicativo será desenvolvido em Flutter para oferecer uma experiência consistente em dispositivos móveis e também na web. O backend ficará no diretório `backend/` e será escrito em Dart usando o framework [Vaden](https://github.com/Flutterando/vaden). A disponibilidade de recursos como mapas, notificações e compras pode variar por plataforma e deve ser validada durante a implementação.
+O aplicativo é desenvolvido em Flutter para Android e iOS. O backend fica no diretório `backend/` e será implementado em **Python + Django 5.2 LTS + Django REST Framework + PostgreSQL/PostGIS**, com Redis e Celery para cache e tarefas assíncronas. O protótipo atual em Dart/Vaden será substituído; as decisões de backend estão em `docs/PRD-backend-meubuzu.md`.
+
+A fonte de dados é a API de Teresina. Enquanto o acesso não é liberado, o backend usa os CSVs de `app/assets` apenas em staging, com `dataMode=demo` e aviso explícito de dados de demonstração.

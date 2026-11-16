@@ -5,26 +5,37 @@ Instruções para agentes de IA (opencode) que trabalham neste repositório.
 ## Visão geral
 
 O MeuBuzu mostra a localização de ônibus em tempo real e ajuda o usuário a
-encontrar linhas e paradas. Este repositório é um monorepo com:
+encontrar linhas e paradas. A cidade de lançamento é **Teresina-PI**, que possui
+API própria de rastreamento. Este repositório é um monorepo com:
 
-- `app/`: aplicativo Flutter (Android, iOS e web).
-- `backend/`: API em Dart usando o framework Vaden.
+- `app/`: aplicativo Flutter (Android e iOS; sem web).
+- `backend/`: API. O protótipo atual é Dart/Vaden e está sendo substituído por
+  Python + Django 5.2 LTS + DRF + PostgreSQL/PostGIS + Redis + Celery.
 
 Documentação de referência:
 
 - `README.md`: visão de produto, planos e requisitos.
 - `CLAUDE.md`: regras de negócio e diretrizes gerais.
+- `docs/PRD-backend-meubuzu.md`: PRD do backend e decisões D1–D40 (fonte de
+  verdade para backend, dados, API e billing).
 - `app/README.md`: arquitetura do app, Google Maps e localização.
 - `backend/README.md`: decisões de armazenamento e backend.
 
 ## Regras rápidas
 
 - Trabalhe no subprojeto correto: comandos Flutter são executados dentro de
-  `app/`; comandos Dart do backend dentro de `backend/`.
+  `app/`; comandos do backend dentro de `backend/`.
+- Consulte `docs/PRD-backend-meubuzu.md` antes de mudar contrato de API, modelo
+  de dados, cotas, billing ou importação. As decisões numeradas prevalecem sobre
+  suposições.
+- **Nunca** trate dados de demonstração como dados reais: staging usa CSVs com
+  `dataMode=demo`, exibe banner e não vai para produção. Produção exige a API de
+  Teresina.
 - **Nunca** versione ou exponha segredos. As chaves do Google Maps ficam em
   `app/.env`, que é ignorado pelo git. Não imprima o conteúdo do `.env` em logs
   ou respostas.
-- **Nunca** registre códigos temporários de autenticação em logs.
+- **Nunca** registre códigos temporários de autenticação, tokens ou dados
+  pessoais em logs.
 - Preserve as telas e a lógica de autenticação ao mexer na navegação.
 - Textos de interface e comentários são em português; nomes de classes,
   variáveis e arquivos seguem o inglês já usado no projeto.
@@ -35,7 +46,8 @@ Documentação de referência:
   flutter test
   ```
 - Não edite `backend/lib/vaden_application.dart` à mão: ele é gerado pelo
-  Vaden.
+  Vaden. O `backend/` ainda é o protótipo; a substituição por Django está
+  planejada no PRD.
 - Não apague arquivos não rastreados sem investigar antes (por exemplo,
   `app/ios/Podfile`, que pode ser configuração local do usuário).
 - Mudanças nativas (Android/iOS) devem ser validadas também com build, não
@@ -112,17 +124,33 @@ O package/bundle ID é `br.com.meubuzu.meubuzu`.
 
 ### Backend
 
+O `backend/` atual ainda é o protótipo Dart/Vaden. Comandos válidos hoje:
+
 ```sh
 cd backend
 dart pub get
 dart run bin/server.dart
 dart analyze
-dart run build_runner build --delete-conflicting-outputs
 ```
 
-O backend usa PostgreSQL/PostGIS (e futuramente TimescaleDB) como fonte de
-verdade. `application.yaml` contém configuração local; não versione credenciais
-reais.
+Após o scaffold Django, os comandos passam a ser:
+
+```sh
+cd backend
+python manage.py runserver
+python manage.py test
+python manage.py makemigrations
+python manage.py migrate
+ruff check .
+python manage.py check --deploy
+python manage.py import_catalog --city teresina
+```
+
+O backend usa PostgreSQL/PostGIS como fonte de verdade, com Redis e Celery para
+cache, locks e tarefas. Catálogo é importado em ciclo semanal (default) ou
+mensal por cidade; posições são ingeridas a cada 30 s. `application.yaml`
+(protótipo) e `.env` do Django contêm configuração local; não versione
+credenciais reais.
 
 ## Configuração das chaves do Google Maps
 
@@ -230,19 +258,39 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 
 ## Regras de negócio que não devem regredir
 
-- Teste gratuito de 7 dias:
-  - 1 linha acompanhada por vez;
-  - até 5 rastreamentos iniciados por dia;
-  - 1 linha favorita.
-- Assinatura paga: várias linhas, rastreamentos ilimitados, favoritos
-  ilimitados e sem anúncios.
-- Favoritar, desfavoritar e abrir uma linha favorita não consomem cota de
-  rastreamento.
-- Acesso por e-mail + código temporário de uso único e curta validade (não é
+- **Catálogo gratuito somente leitura:** buscar linhas, paradas e itinerários não
+  exige trial nem assinatura. Rastreamento, posições e escrita de favoritos
+  exigem acesso ativo.
+- **Teste de 7 dias oferecido no primeiro rastreamento**, concedido pela loja
+  (App Store/Google Play) com cartão, via RevenueCat. Não iniciar trial no login
+  nem no backend.
+- **Teste:** 1 linha acompanhada por vez, até 5 rastreamentos iniciados por dia e
+  1 linha favorita.
+- **Assinatura mensal:** várias linhas, rastreamentos ilimitados, favoritos
+  ilimitados e sem anúncios. Sem plano anual, sem web e sem Stripe.
+- **Após o teste:** `read_only`; catálogo e favoritos existentes somente leitura,
+  rastreamento bloqueado.
+- **Antes do teste:** favoritar é bloqueado e abre a oferta de assinatura.
+- **1 rastreamento = 1 linha acompanhada.** Duas linhas simultâneas no plano pago
+  contam como dois. Fechar e reabrir a mesma linha conta como novo rastreamento.
+  Retry com a mesma `Idempotency-Key` e reabertura de sessão viva não contam.
+- **Cota global por conta**, com dia calculado no fuso da cidade selecionada
+  (`America/Fortaleza` para Teresina). O fuso é campo da cidade, nunca constante
+  no código.
+- **Heartbeat de 30 s** mantém a sessão viva; sem sinal por ~120 s a sessão
+  expira e libera o slot do trial.
+- **Favoritar, desfavoritar e abrir uma linha favorita** não consomem cota de
+  rastreamento nem substituem o limite de linhas acompanhadas.
+- **Cidade explícita:** toda requisição de catálogo usa `/{citySlug}`. A
+  preferência fica no backend para sincronizar entre dispositivos. O seletor de
+  cidade aparece mesmo com apenas Teresina ativa.
+- **Acesso por e-mail + código temporário** de uso único e curta validade (não é
   senha permanente).
-- O backend é a fonte de verdade para limites e favoritos; não confie apenas em
-  contadores locais do app.
-- Privacidade: explique o uso da localização antes de solicitar a permissão.
+- **O backend é a fonte de verdade** para limites, favoritos, entitlements e
+  cidade; não confie apenas em contadores locais do app.
+- **Exclusão de conta remove todos os dados**, mas a assinatura da loja não é
+  cancelada automaticamente e o trial não é reiniciado.
+- **Privacidade:** explique o uso da localização antes de solicitar a permissão.
 
 ## Armadilhas conhecidas
 
@@ -260,6 +308,14 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
   ```
 - Evite `print` no app; use `debugPrint` apenas em diagnóstico protegido por
   `kDebugMode`.
+- **Fuso da cota:** nunca use `America/Sao_Paulo`, UTC ou o horário do servidor
+  para calcular o dia. Use `catalog_city.timezone`.
+- **Dados demo:** `dataMode=demo` só existe em staging. Se um endpoint de
+  produção devolver demo, é bug crítico.
+- **Alinhamento de cidade:** não crie rota de catálogo sem `{citySlug}`. A
+  preferência do usuário não substitui o path.
+- **Billing:** o app nunca concede acesso pago; ele lê `GET /v1/me/entitlements`.
+  Trial e assinatura só mudam por webhook do RevenueCat.
 
 ## Checklist de entrega
 
@@ -267,8 +323,13 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - [ ] Testes adicionados/atualizados quando houver lógica nova.
 - [ ] `flutter analyze` sem problemas.
 - [ ] `flutter test` passando.
+- [ ] `python manage.py test` e `ruff check .` passando quando houver mudança
+      no backend.
+- [ ] `python manage.py makemigrations --check` sem alterações pendentes.
+- [ ] OpenAPI atualizado quando o contrato mudar.
 - [ ] Build Android validado quando houver mudança nativa.
 - [ ] Build iOS validado (`--no-codesign --simulator`) quando houver mudança
       nativa/plugin.
 - [ ] Nenhum segredo, chave ou código temporário exposto.
+- [ ] Nenhum dado de demonstração fora de staging.
 - [ ] Documentação atualizada se configuração ou arquitetura mudou.

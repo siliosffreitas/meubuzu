@@ -2,7 +2,24 @@
 
 ## Tecnologia
 
-O aplicativo será desenvolvido com **Flutter** e **Dart**, compartilhando a maior parte do código entre Android, iOS e web.
+O aplicativo é desenvolvido com **Flutter** e **Dart** para **Android e iOS**. Não há versão web no lançamento.
+
+## Acesso, cidade e planos
+
+Comportamento alvo do produto, detalhado em `docs/PRD-backend-meubuzu.md` e `CLAUDE.md`:
+
+- **Cidade:** Teresina-PI no lançamento. A tela de seleção de cidade aparece
+  mesmo com uma única cidade ativa; a escolha é salva no backend e restaurada em
+  outro dispositivo.
+- **Catálogo gratuito somente leitura:** buscar linhas, ver paradas e itinerário
+  não exige pagamento.
+- **Teste de 7 dias:** oferecido no primeiro rastreamento, concedido pela loja
+  com cartão via RevenueCat. Libera 1 linha por vez, 5 rastreamentos/dia e 1
+  favorito.
+- **Assinatura mensal:** várias linhas, rastreamentos e favoritos ilimitados.
+- **Após o teste:** modo somente leitura, com oferta de assinatura.
+- **Heartbeat:** enquanto houver rastreamento ativo, o app envia sinal a cada
+  30 s para o backend manter a sessão viva.
 
 ## Mapa (Google Maps)
 
