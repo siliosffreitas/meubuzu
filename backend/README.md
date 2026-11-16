@@ -51,6 +51,61 @@ O `docker compose` procura o `docker-compose.yml` na pasta atual. Da raiz do rep
 
 **`meubuzu_mailpit`** recebe e-mails na porta `1025` e os exibe em `http://127.0.0.1:8025`, sem enviar nada para caixas reais. É exclusivo de desenvolvimento. Para usá-lo em vez do console, defina `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` no `.env` e reinicie o `runserver`. Em produção será substituído por um provedor real.
 
+### Rodando o servidor
+
+Durante o desenvolvimento, use o servidor do Django:
+
+```sh
+cd backend
+.venv/bin/python manage.py runserver
+```
+
+Ele recarrega sozinho ao salvar arquivos e responde em `http://127.0.0.1:8000`. Confira com:
+
+```sh
+curl http://127.0.0.1:8000/healthz
+```
+
+Para deixar em segundo plano (o processo continua após fechar o terminal):
+
+```sh
+cd backend
+nohup .venv/bin/python manage.py runserver 127.0.0.1:8000 \
+  > /tmp/meubuzu-api.log 2>&1 &
+echo $! > /tmp/meubuzu-api.pid
+```
+
+- Logs: `tail -f /tmp/meubuzu-api.log`.
+- Parar: `kill $(cat /tmp/meubuzu-api.pid)`.
+- Alternativa mais confortável: rodar dentro de `tmux`.
+
+#### Acesso pelo emulador e pelo celular
+
+`127.0.0.1` só aceita conexões da própria máquina. Para o app acessar, escute em todas as interfaces:
+
+```sh
+cd backend
+.venv/bin/python manage.py runserver 0.0.0.0:8000
+```
+
+E ajuste o `.env`:
+
+```sh
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2
+```
+
+| Destino | URL do backend |
+| --- | --- |
+| Emulador Android | `http://10.0.2.2:8000` |
+| Simulador iOS | `http://127.0.0.1:8000` |
+| Celular físico na mesma rede Wi-Fi | `http://<ip-do-mac>:8000` |
+
+No celular físico, inclua também o IP do Mac em `DJANGO_ALLOWED_HOSTS`.
+
+> O app ainda usa os catálogos locais de `app/assets`, então os testes do backend no emulador são feitos por `curl` ou pelo Admin até a integração da API. Quando o app passar a chamar a API via HTTP local, o Android exigirá liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
+
+O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS. O deploy público usa Gunicorn (já configurado no `Dockerfile`) e faz parte da etapa M6 do PRD.
+
 ### Endpoints de autenticação
 
 | Método | Rota | Descrição |

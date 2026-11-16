@@ -4,6 +4,22 @@
 
 O aplicativo é desenvolvido com **Flutter** e **Dart** para **Android e iOS**. Não há versão web no lançamento.
 
+## Backend local nos testes
+
+Enquanto a API não estiver integrada, o app usa os catálogos locais de `app/assets`. Para testar o app contra o backend Django rodando na sua máquina:
+
+```sh
+cd backend
+.venv/bin/python manage.py runserver 0.0.0.0:8000
+```
+
+- **Emulador Android:** use `http://10.0.2.2:8000` (endereço do host visto de dentro do emulador) e inclua `10.0.2.2` em `DJANGO_ALLOWED_HOSTS`.
+- **Simulador iOS:** use `http://127.0.0.1:8000`.
+- **Celular físico:** use o IP do Mac na mesma rede Wi-Fi e inclua esse IP em `DJANGO_ALLOWED_HOSTS`.
+- Em builds futuros que chamem HTTP local, o Android exige liberar *cleartext* apenas no debug; nunca no release.
+
+Detalhes de execução, containers e segundo plano estão em `backend/README.md`.
+
 ## Acesso, cidade e planos
 
 Comportamento alvo do produto, detalhado em `docs/PRD-backend-meubuzu.md` e `CLAUDE.md`:

@@ -142,6 +142,11 @@ Celery para cache, locks e tarefas. Catálogo é importado em ciclo semanal
 (default) ou mensal por cidade; posições são ingeridas a cada 30 s. O `.env` do
 Django contém configuração local; não versione credenciais reais.
 
+Para testes no emulador Android, rode `.venv/bin/python manage.py runserver
+0.0.0.0:8000`, inclua `10.0.2.2` em `DJANGO_ALLOWED_HOSTS` e acesse
+`http://10.0.2.2:8000`. Simulador iOS usa `127.0.0.1`. Detalhes de execução,
+segundo plano e liberação de HTTP local estão em `backend/README.md`.
+
 ## Configuração das chaves do Google Maps
 
 As chaves ficam em `app/.env`, com uma variável por plataforma:
