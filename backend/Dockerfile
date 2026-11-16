@@ -1,17 +1,20 @@
-FROM dart:3.6.0 AS build
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
-COPY pubspec.* ./
-RUN dart pub get
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 COPY . .
-RUN dart pub get --offline
-RUN dart run build_runner build --delete-conflicting-outputs
-RUN dart compile exe bin/server.dart -o bin/server
 
-FROM scratch
-WORKDIR /app
-COPY --from=build /runtime/ /
-COPY --from=build /app/bin/server /app/
-EXPOSE 8080
-CMD ["./server"]
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

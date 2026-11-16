@@ -27,7 +27,7 @@ Este projeto é o aplicativo MeuBuzu, que permite aos usuários acompanhar a loc
 - **Checks:** `ruff check .` e `python manage.py check --deploy`
 - **Import de catálogo:** `python manage.py import_catalog --city teresina`
 
-> O `backend/` atual ainda contém o protótipo Dart/Vaden. Não edite `backend/lib/vaden_application.dart` à mão: ele é gerado.
+> O `backend/` usa Django; o protótipo antigo em Dart/Vaden está preservado na tag `backend-vaden`.
 
 ## 📏 Padrões de Código e Diretrizes
 - **Linguagem do app:** Dart; **linguagem do backend:** Python.

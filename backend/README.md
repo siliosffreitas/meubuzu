@@ -2,9 +2,78 @@
 
 ## Tecnologia
 
-O backend será desenvolvido em **Python 3.12+** com **Django 5.2 LTS**, **Django REST Framework**, **PostgreSQL + PostGIS**, **Redis** e **Celery**. Ele substitui o protótipo em Dart/Vaden que ainda está em `backend/`.
+O backend é desenvolvido em **Python 3.12+** com **Django 5.2 LTS**, **Django REST Framework**, **PostgreSQL + PostGIS**, **Redis** e **Celery**. Ele substituiu o protótipo em Dart/Vaden, preservado na tag `backend-vaden`.
 
 As decisões completas — modelo, API, cotas, billing, importação e gate de lançamento — estão em `docs/PRD-backend-meubuzu.md`.
+
+## Como rodar localmente
+
+Pré-requisitos: Docker Desktop em execução, Python 3.12 e portas `5432`, `6379`, `1025`, `8025` e `8000` livres.
+
+```sh
+cd backend
+
+# 1. Dependências de infraestrutura (PostGIS, Redis e Mailpit)
+docker compose up -d
+
+# 2. Ambiente virtual e dependências
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 3. Configuração local (nunca versione o .env)
+cp .env.example .env
+
+# 4. Banco de dados
+.venv/bin/python manage.py migrate
+
+# 5. Servidor de desenvolvimento
+.venv/bin/python manage.py runserver
+```
+
+- API: `http://127.0.0.1:8000`.
+- Admin: `http://127.0.0.1:8000/admin/` (crie o usuário com `manage.py createsuperuser`).
+- Mailpit: `http://127.0.0.1:8025`. Com o backend de e-mail em `console` (padrão), o código aparece no terminal.
+- A imagem do PostGIS roda como `linux/amd64` em Apple Silicon, via emulação.
+
+O `docker compose` procura o `docker-compose.yml` na pasta atual. Da raiz do repositório, use `docker compose -f backend/docker-compose.yml up -d` (o mesmo vale para `ps`, `logs` e `down`).
+
+### Containers do ambiente local
+
+| Container | Portas | Para que serve |
+| --- | --- | --- |
+| `meubuzu_db` | `5432` | PostgreSQL 17 + PostGIS: fonte de verdade do backend. |
+| `meubuzu_redis` | `6379` | Cache, rate limit, locks distribuídos e, no futuro, broker do Celery. |
+| `meubuzu_mailpit` | `1025` (SMTP), `8025` (web) | Servidor SMTP falso que captura os e-mails de desenvolvimento. |
+
+**`meubuzu_db`** guarda as tabelas de conta (`accounts_user`, `accounts_email_code`, `accounts_refresh_session`) e, no futuro, catálogo, paradas, linhas, itinerários, posições e favoritos com tipos geoespaciais. Os dados ficam no volume `backend_meubuzu_pgdata` e sobrevivem a `down`/`up`; só são apagados com `docker compose down -v`. É o único container obrigatório para o login funcionar.
+
+**`meubuzu_redis`** mantém contadores de rate limit por e-mail e por IP, o cooldown entre códigos, cache e locks. Não é fonte permanente: reiniciar perde os contadores, o que é aceitável. Sem `REDIS_URL`, o Django usa `LocMemCache` — funciona em um processo, mas não em produção ou com múltiplos workers.
+
+**`meubuzu_mailpit`** recebe e-mails na porta `1025` e os exibe em `http://127.0.0.1:8025`, sem enviar nada para caixas reais. É exclusivo de desenvolvimento. Para usá-lo em vez do console, defina `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` no `.env` e reinicie o `runserver`. Em produção será substituído por um provedor real.
+
+### Endpoints de autenticação
+
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| `POST` | `/v1/auth/request-code` | Envia código de 6 dígitos por e-mail |
+| `POST` | `/v1/auth/verify-code` | Valida o código e devolve a sessão |
+| `POST` | `/v1/auth/refresh` | Rotaciona o refresh token |
+| `POST` | `/v1/auth/logout` | Revoga a sessão atual |
+| `GET` | `/v1/me` | Conta, preferências e entitlements |
+| `GET` | `/healthz` | Liveness |
+| `GET` | `/readyz` | Readiness (verifica o banco) |
+
+Erros usam Problem Details (RFC 9457, `application/problem+json`) com um campo `code` estável.
+
+### Testes e qualidade
+
+```sh
+cd backend
+.venv/bin/python manage.py test
+.venv/bin/ruff check .
+.venv/bin/python manage.py check --deploy
+```
+
 
 ## Armazenamento de dados
 

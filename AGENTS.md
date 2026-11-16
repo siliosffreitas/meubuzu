@@ -9,8 +9,9 @@ encontrar linhas e paradas. A cidade de lançamento é **Teresina-PI**, que poss
 API própria de rastreamento. Este repositório é um monorepo com:
 
 - `app/`: aplicativo Flutter (Android e iOS; sem web).
-- `backend/`: API. O protótipo atual é Dart/Vaden e está sendo substituído por
-  Python + Django 5.2 LTS + DRF + PostgreSQL/PostGIS + Redis + Celery.
+- `backend/`: API em Python + Django 5.2 LTS + DRF + PostgreSQL/PostGIS +
+  Redis + Celery. O protótipo antigo em Dart/Vaden está preservado na tag
+  `backend-vaden`.
 
 Documentação de referência:
 
@@ -45,9 +46,8 @@ Documentação de referência:
   flutter analyze
   flutter test
   ```
-- Não edite `backend/lib/vaden_application.dart` à mão: ele é gerado pelo
-  Vaden. O `backend/` ainda é o protótipo; a substituição por Django está
-  planejada no PRD.
+- O `backend/` é Django; não há mais código Dart/Vaden no diretório. Consulte
+  a tag `backend-vaden` apenas como referência histórica.
 - Não apague arquivos não rastreados sem investigar antes (por exemplo,
   `app/ios/Podfile`, que pode ser configuração local do usuário).
 - Mudanças nativas (Android/iOS) devem ser validadas também com build, não
@@ -124,33 +124,23 @@ O package/bundle ID é `br.com.meubuzu.meubuzu`.
 
 ### Backend
 
-O `backend/` atual ainda é o protótipo Dart/Vaden. Comandos válidos hoje:
+O `backend/` usa Django e roda com o ambiente virtual em `backend/.venv`:
 
 ```sh
 cd backend
-dart pub get
-dart run bin/server.dart
-dart analyze
+.venv/bin/python manage.py runserver
+.venv/bin/python manage.py test
+.venv/bin/python manage.py makemigrations
+.venv/bin/python manage.py migrate
+.venv/bin/ruff check .
+.venv/bin/python manage.py check --deploy
 ```
 
-Após o scaffold Django, os comandos passam a ser:
-
-```sh
-cd backend
-python manage.py runserver
-python manage.py test
-python manage.py makemigrations
-python manage.py migrate
-ruff check .
-python manage.py check --deploy
-python manage.py import_catalog --city teresina
-```
-
-O backend usa PostgreSQL/PostGIS como fonte de verdade, com Redis e Celery para
-cache, locks e tarefas. Catálogo é importado em ciclo semanal (default) ou
-mensal por cidade; posições são ingeridas a cada 30 s. `application.yaml`
-(protótipo) e `.env` do Django contêm configuração local; não versione
-credenciais reais.
+A infraestrutura local sobe com `docker compose up -d` (PostGIS, Redis e
+Mailpit). O backend usa PostgreSQL/PostGIS como fonte de verdade, com Redis e
+Celery para cache, locks e tarefas. Catálogo é importado em ciclo semanal
+(default) ou mensal por cidade; posições são ingeridas a cada 30 s. O `.env` do
+Django contém configuração local; não versione credenciais reais.
 
 ## Configuração das chaves do Google Maps
 

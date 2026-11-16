@@ -127,6 +127,6 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 
 ## Tecnologia
 
-O aplicativo é desenvolvido em Flutter para Android e iOS. O backend fica no diretório `backend/` e será implementado em **Python + Django 5.2 LTS + Django REST Framework + PostgreSQL/PostGIS**, com Redis e Celery para cache e tarefas assíncronas. O protótipo atual em Dart/Vaden será substituído; as decisões de backend estão em `docs/PRD-backend-meubuzu.md`.
+O aplicativo é desenvolvido em Flutter para Android e iOS. O backend fica no diretório `backend/` e é implementado em **Python + Django 5.2 LTS + Django REST Framework + PostgreSQL/PostGIS**, com Redis e Celery para cache e tarefas assíncronas. O protótipo antigo em Dart/Vaden está preservado na tag `backend-vaden`; as decisões de backend estão em `docs/PRD-backend-meubuzu.md`.
 
 A fonte de dados é a API de Teresina. Enquanto o acesso não é liberado, o backend usa os CSVs de `app/assets` apenas em staging, com `dataMode=demo` e aviso explícito de dados de demonstração.
