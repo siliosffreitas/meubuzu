@@ -45,6 +45,8 @@ O `docker compose` procura o `docker-compose.yml` na pasta atual. Da raiz do rep
 | `meubuzu_redis` | `6379` | Cache, rate limit, locks distribuídos e, no futuro, broker do Celery. |
 | `meubuzu_mailpit` | `1025` (SMTP), `8025` (web) | Servidor SMTP falso que captura os e-mails de desenvolvimento. |
 
+As portas são publicadas apenas em `127.0.0.1`, então os serviços não ficam acessíveis por outros dispositivos da rede local.
+
 **`meubuzu_db`** guarda as tabelas de conta (`accounts_user`, `accounts_email_code`, `accounts_refresh_session`) e, no futuro, catálogo, paradas, linhas, itinerários, posições e favoritos com tipos geoespaciais. Os dados ficam no volume `backend_meubuzu_pgdata` e sobrevivem a `down`/`up`; só são apagados com `docker compose down -v`. É o único container obrigatório para o login funcionar.
 
 **`meubuzu_redis`** mantém contadores de rate limit por e-mail e por IP, o cooldown entre códigos, cache e locks. Não é fonte permanente: reiniciar perde os contadores, o que é aceitável. Sem `REDIS_URL`, o Django usa `LocMemCache` — funciona em um processo, mas não em produção ou com múltiplos workers.
@@ -78,6 +80,12 @@ echo $! > /tmp/meubuzu-api.pid
 - Logs: `tail -f /tmp/meubuzu-api.log`.
 - Parar: `kill $(cat /tmp/meubuzu-api.pid)`.
 - Alternativa mais confortável: rodar dentro de `tmux`.
+
+#### Pelo VS Code
+
+A configuração **`backend (Django)`** está em `.vscode/launch.json`. No painel **Run and Debug**, selecione-a e clique em **Play** (ou pressione `F5`). Para parar, use `Shift+F5` ou o botão quadrado vermelho.
+
+Ela usa o Python de `backend/.venv`, roda com `cwd` em `backend/`, escuta em `0.0.0.0:8000` e passa `--noreload` para o debugger não conflitar com o autoreload. Por causa do `--noreload`, alterações no código exigem parar e iniciar de novo. É necessário ter as extensões **Python** e **Python Debugger** instaladas.
 
 #### Acesso pelo emulador e pelo celular
 

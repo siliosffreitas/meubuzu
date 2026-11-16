@@ -38,10 +38,19 @@
             "flutterMode": "release"
         },
         {
-            "name": "backend",
-            "cwd": "backend",
+            // Sobe a API Django com o interpretador do backend/.venv.
+            // Play (F5) inicia; Shift+F5 ou o quadrado vermelho param.
+            // `--noreload` evita conflito entre o debugger e o autoreload.
+            "name": "backend (Django)",
+            "type": "debugpy",
             "request": "launch",
-            "type": "dart"
+            "program": "${workspaceFolder}/backend/manage.py",
+            "args": ["runserver", "0.0.0.0:8000", "--noreload"],
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/backend/.venv/bin/python",
+            "django": true,
+            "justMyCode": true,
+            "console": "integratedTerminal"
         }
     ]
 }

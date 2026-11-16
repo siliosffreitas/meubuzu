@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: meubuzu
       POSTGRES_PASSWORD: meubuzu
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - meubuzu_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,7 @@ services:
     container_name: meubuzu_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,8 +37,8 @@ services:
     container_name: meubuzu_mailpit
     restart: unless-stopped
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   meubuzu_pgdata:
