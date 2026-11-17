@@ -25,4 +25,9 @@ abstract final class AppRoutes {
   /// Segunda etapa da autenticação (código). Recebe o e-mail por `extra`.
   static const authCode = '/auth/code';
   static const authCodeName = 'authCode';
+
+  /// Seleção de cidade. É a primeira tela após o login e também é aberta pela
+  /// aba Conta com `?change=1`.
+  static const selectCity = '/select-city';
+  static const selectCityName = 'selectCity';
 }

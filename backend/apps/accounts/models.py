@@ -122,3 +122,37 @@ class RefreshSession(models.Model):
     @property
     def is_active(self) -> bool:
         return self.revoked_at is None and self.expires_at > timezone.now()
+
+
+class UserPreference(models.Model):
+    """Cidade escolhida pelo usuário, sincronizada entre dispositivos."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="preference",
+        verbose_name="usuário",
+    )
+    selected_city = models.ForeignKey(
+        "catalog.City",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="user_preferences",
+        verbose_name="cidade selecionada",
+    )
+    version = models.PositiveIntegerField("versão", default=0)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+
+    class Meta:
+        db_table = "accounts_user_preference"
+        verbose_name = "preferência do usuário"
+        verbose_name_plural = "preferências dos usuários"
+        indexes = [
+            models.Index(fields=["selected_city"], name="userpref_city_idx"),
+        ]
+
+    def __str__(self) -> str:
+        city = self.selected_city.slug if self.selected_city_id else "sem cidade"
+        return f"{self.user_id} ({city})"

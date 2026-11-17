@@ -1,14 +1,16 @@
 """Formato das respostas de conta.
 
-Os nomes seguem o contrato do app (camelCase). Enquanto cidade, cotas e billing
-não existem, os campos correspondentes são neutros e explícitos.
+Os nomes seguem o contrato do app (camelCase). A cidade selecionada vem da
+preferência do usuário; cotas e billing ainda são neutros.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from .models import User
+from apps.catalog.payloads import city_payload
+
+from .models import User, UserPreference
 
 
 def _iso(value: datetime | None) -> str | None:
@@ -26,9 +28,16 @@ def user_payload(user: User) -> dict:
     }
 
 
-def preferences_payload() -> dict:
-    # A cidade será implementada junto do catálogo (RF-019).
-    return {"selectedCity": None, "version": 0, "updatedAt": None}
+def preferences_payload(user: User, *, preference: UserPreference | None = None) -> dict:
+    if preference is None:
+        preference = getattr(user, "preference", None)
+
+    selected_city = preference.selected_city if preference is not None else None
+    return {
+        "selectedCity": city_payload(selected_city),
+        "version": preference.version if preference is not None else 0,
+        "updatedAt": _iso(preference.updated_at) if preference is not None else None,
+    }
 
 
 def entitlements_payload() -> dict:
@@ -59,6 +68,6 @@ def session_payload(user: User, *, access_token: str, refresh_token: str) -> dic
         "accessToken": access_token,
         "refreshToken": refresh_token,
         "user": user_payload(user),
-        "preferences": preferences_payload(),
+        "preferences": preferences_payload(user),
         "entitlements": entitlements_payload(),
     }

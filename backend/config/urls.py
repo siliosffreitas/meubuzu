@@ -5,7 +5,7 @@ from django.db import connection
 from django.http import JsonResponse
 from django.urls import include, path
 
-from apps.accounts.views import MeView
+from apps.accounts.views import MeView, PreferencesView
 
 
 def healthz(_request):
@@ -23,7 +23,10 @@ def readyz(_request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("v1/", include("apps.catalog.urls")),
     path("v1/auth/", include("apps.accounts.urls")),
+    path("v1/me/preferences", PreferencesView.as_view()),
+    path("v1/me/preferences/", PreferencesView.as_view()),
     path("v1/me", MeView.as_view()),
     path("v1/me/", MeView.as_view()),
     path("healthz", healthz),

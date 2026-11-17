@@ -65,7 +65,11 @@ class _AuthCodePageState extends State<AuthCodePage> {
     if (!mounted || !confirmed) {
       return;
     }
-    context.goNamed(AppRoutes.homeName);
+    context.goNamed(
+      _viewModel.hasSelectedCity
+          ? AppRoutes.homeName
+          : AppRoutes.selectCityName,
+    );
   }
 
   /// Volta para a etapa de e-mail.

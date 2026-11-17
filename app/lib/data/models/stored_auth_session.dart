@@ -1,4 +1,5 @@
 import '../../domain/models/auth_user.dart';
+import '../../domain/models/city.dart';
 
 /// Sessão serializada no armazenamento seguro do dispositivo.
 class StoredAuthSession {
@@ -6,21 +7,28 @@ class StoredAuthSession {
     required this.accessToken,
     required this.refreshToken,
     required this.user,
+    this.selectedCity,
   });
 
   final String accessToken;
   final String refreshToken;
   final AuthUser user;
 
+  /// Cidade escolhida pelo usuário, persistida junto da sessão.
+  final City? selectedCity;
+
   StoredAuthSession copyWith({
     String? accessToken,
     String? refreshToken,
     AuthUser? user,
+    City? selectedCity,
+    bool clearCity = false,
   }) {
     return StoredAuthSession(
       accessToken: accessToken ?? this.accessToken,
       refreshToken: refreshToken ?? this.refreshToken,
       user: user ?? this.user,
+      selectedCity: clearCity ? null : selectedCity ?? this.selectedCity,
     );
   }
 
@@ -29,6 +37,7 @@ class StoredAuthSession {
       'accessToken': accessToken,
       'refreshToken': refreshToken,
       'user': user.toJson(),
+      'selectedCity': selectedCity?.toJson(),
     };
   }
 
@@ -49,6 +58,7 @@ class StoredAuthSession {
       accessToken: accessToken,
       refreshToken: refreshToken,
       user: AuthUser.fromJson(user),
+      selectedCity: City.fromJsonOrNull(json['selectedCity']),
     );
   }
 }

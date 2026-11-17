@@ -2,16 +2,28 @@ import 'package:flutter/foundation.dart';
 
 import '../contracts/contracts.dart';
 import '../models/auth_user.dart';
+import '../models/city.dart';
 
 /// Contrato de autenticação por e-mail com código temporário.
 ///
-/// O repositório é a fonte de verdade da sessão: persiste os tokens no
-/// armazenamento seguro e notifica quando o usuário entra ou sai.
+/// O repositório é a fonte de verdade da sessão: persiste os tokens e a cidade
+/// selecionada no armazenamento seguro e notifica quando o usuário entra ou sai.
 abstract interface class AuthRepository implements Repository, Listenable {
   /// Conta autenticada, ou `null` quando não há sessão.
   AuthUser? get currentUser;
 
   bool get isAuthenticated;
+
+  /// Cidade escolhida pelo usuário, ou `null` quando ainda não escolheu.
+  City? get selectedCity;
+
+  bool get hasSelectedCity;
+
+  /// Token de acesso da sessão atual.
+  ///
+  /// Exposto apenas para repositórios autenticados (por exemplo, o catálogo de
+  /// cidades). Não deve ser usado na camada de UI.
+  String? get accessToken;
 
   /// Solicita o envio de um código de verificação para [email].
   ///
@@ -23,6 +35,12 @@ abstract interface class AuthRepository implements Repository, Listenable {
   /// Lança [InvalidCodeException] quando o código está incorreto, expirado ou
   /// já foi utilizado.
   Future<void> verifyEmailCode({required String email, required String code});
+
+  /// Salva a cidade escolhida e sincroniza com o backend.
+  ///
+  /// A escolha é aplicada localmente antes do `PUT`; se a rede falhar, ela é
+  /// mantida e sincronizada na próxima validação da sessão.
+  Future<void> selectCity(City city);
 
   /// Carrega a sessão salva no dispositivo, sem chamar a API.
   Future<void> restoreSession();
@@ -51,4 +69,12 @@ class RateLimitedException implements Exception {
 
   /// Tempo sugerido de espera, quando informado pela API.
   final Duration? retryAfter;
+}
+
+/// Erro lançado quando a cidade escolhida não existe ou está inativa.
+class CityUnavailableException implements Exception {
+  const CityUnavailableException([this.code = 'city_inactive']);
+
+  /// `city_not_found` ou `city_inactive`.
+  final String code;
 }

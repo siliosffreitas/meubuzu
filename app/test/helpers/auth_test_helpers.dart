@@ -4,12 +4,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meubuzu/domain/models/auth_user.dart';
+import 'package:meubuzu/domain/models/city.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/auth/presentation/auth_code/auth_code_page.dart';
 import 'package:meubuzu/ui/routing/app_routes.dart';
 
 import 'fake_auth_repository.dart';
+
+/// Cidade usada nos testes de UI.
+const testCity = City(
+  slug: 'teresina',
+  name: 'Teresina',
+  label: 'Teresina - PI',
+  state: 'PI',
+  country: 'BR',
+  timezone: 'America/Fortaleza',
+  latitude: -5.16,
+  longitude: -42.79,
+);
 
 /// Repositório que registra as chamadas recebidas durante o teste.
 ///
@@ -21,14 +34,20 @@ class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
     this.rejectCode = false,
     this.failRequest = false,
     this.failVerify = false,
+    this.cityError,
     AuthUser? user,
+    City? city,
   }) {
     _user = user;
+    _selectedCity = city;
   }
 
   final bool rejectCode;
   final bool failRequest;
   final bool failVerify;
+
+  /// Quando definido, [selectCity] lança o erro informado.
+  final CityUnavailableException? cityError;
 
   /// Quando definido, [requestEmailCode] espera o gate ser completado.
   Completer<void>? requestGate;
@@ -39,8 +58,10 @@ class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
   final emails = <String>[];
   final confirmed = <String>[];
   final verifiedEmails = <String>[];
+  final selectedCities = <String>[];
 
   AuthUser? _user;
+  City? _selectedCity;
   int restoreCalls = 0;
   int validateCalls = 0;
   int logoutCalls = 0;
@@ -50,6 +71,15 @@ class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
 
   @override
   bool get isAuthenticated => _user != null;
+
+  @override
+  City? get selectedCity => _selectedCity;
+
+  @override
+  bool get hasSelectedCity => _selectedCity != null;
+
+  @override
+  String? get accessToken => _user == null ? null : 'fake-access-token';
 
   @override
   Future<void> requestEmailCode(String email) async {
@@ -79,6 +109,17 @@ class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
   }
 
   @override
+  Future<void> selectCity(City city) async {
+    final error = cityError;
+    if (error != null) {
+      throw error;
+    }
+    selectedCities.add(city.slug);
+    _selectedCity = city;
+    notifyListeners();
+  }
+
+  @override
   Future<void> restoreSession() async {
     restoreCalls++;
   }
@@ -92,6 +133,7 @@ class RecordingAuthRepository extends ChangeNotifier implements AuthRepository {
   Future<void> logout() async {
     logoutCalls++;
     _user = null;
+    _selectedCity = null;
     notifyListeners();
   }
 }

@@ -8,6 +8,7 @@ import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/data/services/api_client.dart';
 import 'package:meubuzu/data/services/session_storage.dart';
 import 'package:meubuzu/domain/models/auth_user.dart';
+import 'package:meubuzu/domain/models/city.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
 
 /// Armazenamento em memória para os testes, sem plugins de plataforma.
@@ -43,14 +44,39 @@ StoredAuthSession _storedSession({String access = 'access-1'}) {
 String _sessionBody({
   String access = 'access-1',
   String refresh = 'refresh-1',
+  Map<String, dynamic>? selectedCity,
 }) {
   return jsonEncode({
     'accessToken': access,
     'refreshToken': refresh,
     'user': {'id': 'user-1', 'email': 'ana@exemplo.com'},
+    'preferences': {'selectedCity': selectedCity, 'version': 0},
     'entitlements': {'accessLevel': 'catalog_only'},
   });
 }
+
+const _teresinaJson = {
+  'slug': 'teresina',
+  'name': 'Teresina',
+  'label': 'Teresina - PI',
+  'state': 'PI',
+  'country': 'BR',
+  'timezone': 'America/Fortaleza',
+  'center': {'latitude': -5.16, 'longitude': -42.79},
+  'isActive': true,
+  'coverageNote': null,
+};
+
+const _teresina = City(
+  slug: 'teresina',
+  name: 'Teresina',
+  label: 'Teresina - PI',
+  state: 'PI',
+  country: 'BR',
+  timezone: 'America/Fortaleza',
+  latitude: -5.16,
+  longitude: -42.79,
+);
 
 void main() {
   group('ApiAuthRepository', () {
@@ -270,6 +296,155 @@ void main() {
 
       expect(repository.isAuthenticated, isFalse);
       expect(storage.session, isNull);
+    });
+
+    test('verify-code restaura a cidade salva no backend', () async {
+      final repository = buildRepository(
+        MockClient(
+          (_) async =>
+              http.Response(_sessionBody(selectedCity: _teresinaJson), 200),
+        ),
+      );
+
+      await repository.verifyEmailCode(
+        email: 'ana@exemplo.com',
+        code: '123456',
+      );
+
+      expect(repository.selectedCity?.slug, 'teresina');
+      expect(repository.selectedCity?.timezone, 'America/Fortaleza');
+      expect(repository.hasSelectedCity, isTrue);
+      expect(storage.session?.selectedCity?.slug, 'teresina');
+    });
+
+    test('selectCity envia a cidade e persiste a resposta', () async {
+      storage.session = _storedSession();
+      late http.Request captured;
+      final repository = buildRepository(
+        MockClient((request) async {
+          captured = request;
+          return http.Response(
+            jsonEncode({
+              'selectedCity': _teresinaJson,
+              'version': 1,
+              'updatedAt': '2026-11-16T12:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+      await repository.restoreSession();
+
+      await repository.selectCity(_teresina);
+
+      expect(captured.method, 'PUT');
+      expect(captured.url.path, '/v1/me/preferences');
+      expect(captured.headers['Authorization'], 'Bearer access-1');
+      expect(jsonDecode(captured.body), {'selectedCitySlug': 'teresina'});
+      expect(repository.selectedCity?.slug, 'teresina');
+      expect(storage.session?.selectedCity?.slug, 'teresina');
+    });
+
+    test('selectCity mantém a escolha local quando a rede falha', () async {
+      storage.session = _storedSession();
+      final repository = buildRepository(
+        MockClient((_) async => throw http.ClientException('sem rede')),
+      );
+      await repository.restoreSession();
+
+      await repository.selectCity(_teresina);
+
+      expect(repository.selectedCity?.slug, 'teresina');
+      expect(storage.session?.selectedCity?.slug, 'teresina');
+    });
+
+    test('reenvia a cidade pendente na próxima validação', () async {
+      storage.session = _storedSession();
+      var offline = true;
+      var putCalls = 0;
+      final repository = buildRepository(
+        MockClient((request) async {
+          if (request.url.path == '/v1/me') {
+            return http.Response(
+              jsonEncode({
+                'id': 'user-1',
+                'email': 'ana@exemplo.com',
+                'preferences': {'selectedCity': null, 'version': 0},
+                'entitlements': {'accessLevel': 'catalog_only'},
+              }),
+              200,
+            );
+          }
+          if (request.url.path == '/v1/me/preferences') {
+            putCalls++;
+            if (offline) {
+              throw http.ClientException('sem rede');
+            }
+            return http.Response(
+              jsonEncode({'selectedCity': _teresinaJson, 'version': 1}),
+              200,
+            );
+          }
+          return http.Response('', 404);
+        }),
+      );
+      await repository.restoreSession();
+
+      await repository.selectCity(_teresina);
+      expect(repository.selectedCity?.slug, 'teresina');
+
+      offline = false;
+      await repository.validateSession();
+
+      expect(putCalls, 2);
+      expect(repository.selectedCity?.slug, 'teresina');
+      expect(storage.session?.selectedCity?.slug, 'teresina');
+    });
+
+    test('selectCity reverte quando a cidade está inativa', () async {
+      storage.session = _storedSession();
+      final repository = buildRepository(
+        MockClient((_) async => http.Response('{"code":"city_inactive"}', 409)),
+      );
+      await repository.restoreSession();
+
+      await expectLater(
+        repository.selectCity(_teresina),
+        throwsA(
+          isA<CityUnavailableException>().having(
+            (error) => error.code,
+            'code',
+            'city_inactive',
+          ),
+        ),
+      );
+
+      expect(repository.selectedCity, isNull);
+      expect(storage.session?.selectedCity, isNull);
+    });
+
+    test('validateSession limpa a cidade removida no backend', () async {
+      storage.session = _storedSession().copyWith(selectedCity: _teresina);
+      final repository = buildRepository(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'id': 'user-1',
+              'email': 'ana@exemplo.com',
+              'preferences': {'selectedCity': null, 'version': 1},
+              'entitlements': {'accessLevel': 'catalog_only'},
+            }),
+            200,
+          ),
+        ),
+      );
+      await repository.restoreSession();
+      expect(repository.hasSelectedCity, isTrue);
+
+      await repository.validateSession();
+
+      expect(repository.selectedCity, isNull);
+      expect(storage.session?.selectedCity, isNull);
     });
   });
 }

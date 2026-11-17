@@ -59,10 +59,32 @@ Fluxo implementado:
    `GET /v1/me`; se o access token expirar, usa o refresh rotativo.
 5. Sem rede, a sessão local é mantida (restauração otimista). Se o refresh for
    recusado, a sessão é limpa e o app volta para `/auth`.
-6. A aba Conta mostra o e-mail, o nível de acesso e o botão Sair.
+6. Sem cidade selecionada, o app vai para `/select-city`; a escolha é enviada
+   com `PUT /v1/me/preferences` e fica na sessão local.
+7. A aba Conta mostra o e-mail, o nível de acesso, a cidade atual e o botão para
+   trocar a cidade (`/select-city?change=1`).
 
 A guarda do GoRouter observa o `AuthRepository`: rotas internas sem sessão vão
-para `/auth`, e rotas de autenticação com sessão vão para `/`.
+para `/auth`, rotas de autenticação com sessão vão para `/` ou `/select-city`
+(quando ainda não há cidade), e rotas internas sem cidade vão para
+`/select-city`. A lista de cidades vem de `GET /v1/cities` e o mapa abre
+centralizado na cidade selecionada.
+
+### Seleção de cidade
+
+- `City` (`lib/domain/models/city.dart`) carrega `slug`, `name`, `label`,
+  `state`, `country`, `timezone`, centro (`latitude`/`longitude`), `isActive` e
+  `coverageNote`.
+- `CityRepository`/`ApiCityRepository` buscam as cidades ativas; o view model
+  `SelectCityViewModel` cuida de carregar, pré-selecionar a cidade atual e
+  salvar.
+- `ApiAuthRepository.selectCity` aplica a escolha localmente antes do `PUT`
+  (otimista). Sem rede, a escolha é mantida e reenviada na próxima validação da
+  sessão; se o backend responder `city_inactive`/`city_not_found`, a escolha é
+  revertida e `CityUnavailableException` é lançada.
+- `StoredAuthSession.selectedCity` persiste a cidade junto dos tokens.
+- `ApiPaths.city(citySlug, path)` monta os caminhos `/v1/cities/{citySlug}/...`
+  para o catálogo e o rastreamento, que ainda usam os assets locais.
 
 ## Acesso, cidade e planos
 
@@ -213,21 +235,24 @@ rotas. A configuração fica em `lib/ui/routing/`:
 - `app_routes.dart`: caminhos e nomes das rotas.
 - `app_router.dart`: criação do `GoRouter` e injeção do `AuthRepository`.
 
-| Rota         | Nome       | Tela                                                  |
-| ------------ | ---------- | ----------------------------------------------------- |
-| `/`          | `home`     | `HomePage` (abas Mapa, Favoritos e Conta)             |
-| `/search`    | `mapSearch` | `MapSearchPage` (busca de linhas e paradas)          |
-| `/auth`      | `auth`     | `AuthEmailPage` (coleta do e-mail)                    |
-| `/auth/code` | `authCode` | `AuthCodePage` (recebe o e-mail por `extra`)          |
+| Rota           | Nome        | Tela                                                  |
+| -------------- | ----------- | ----------------------------------------------------- |
+| `/`            | `home`      | `HomePage` (abas Mapa, Favoritos e Conta)             |
+| `/search`      | `mapSearch` | `MapSearchPage` (busca de linhas e paradas)           |
+| `/auth`        | `auth`      | `AuthEmailPage` (coleta do e-mail)                    |
+| `/auth/code`   | `authCode`  | `AuthCodePage` (recebe o e-mail por `extra`)          |
+| `/select-city` | `selectCity`| `SelectCityPage` (`?change=1` abre o modo de troca)   |
 
 O `MaterialApp.router` é montado em `lib/app.dart` e usa o router criado por
 `AppRouter`.
 
-> **Autenticação como rota inicial:** `AppRouter` define
+> **Autenticação e cidade como rota inicial:** `AppRouter` define
 > `initialLocation: AppRoutes.authEmail` e uma guarda baseada no
 > `AuthRepository`. Sem sessão, rotas internas levam para `/auth`; com sessão,
-> `/auth` e `/auth/code` levam para a Home. Após confirmar o código, o app
-> navega para a Home com `context.goNamed(AppRoutes.homeName)`.
+> `/auth` e `/auth/code` levam para a Home ou para `/select-city` quando ainda
+> não há cidade, e rotas internas sem cidade também levam para `/select-city`.
+> Após confirmar o código, o app navega para a Home ou para a seleção de cidade
+> com `context.goNamed(...)`.
 
 Navegação entre as telas:
 

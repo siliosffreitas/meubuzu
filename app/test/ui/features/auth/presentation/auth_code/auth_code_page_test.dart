@@ -27,7 +27,9 @@ void main() {
       expect(find.text('Informe os 6 dígitos do código.'), findsOneWidget);
     });
 
-    testWidgets('confirma o código digitado', (tester) async {
+    testWidgets('confirma o código e pede a cidade quando não há seleção', (
+      tester,
+    ) async {
       final repository = RecordingAuthRepository();
 
       await tester.pumpWidget(
@@ -41,6 +43,12 @@ void main() {
                 email: 'ana.lima@exemplo.com',
                 repository: repository,
               ),
+            ),
+            GoRoute(
+              path: AppRoutes.selectCity,
+              name: AppRoutes.selectCityName,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('Seleção de cidade de teste')),
             ),
             GoRoute(
               path: AppRoutes.home,
@@ -59,6 +67,51 @@ void main() {
       expect(find.text('1'), findsOneWidget);
       expect(find.text('6'), findsOneWidget);
 
+      await tapVisible(
+        tester,
+        find.widgetWithText(FilledButton, 'Confirmar código'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repository.confirmed, ['123456']);
+      expect(find.text('Seleção de cidade de teste'), findsOneWidget);
+    });
+
+    testWidgets('confirma o código e vai para a Home quando há cidade', (
+      tester,
+    ) async {
+      final repository = RecordingAuthRepository(city: testCity);
+
+      await tester.pumpWidget(
+        appWithRoutes(
+          initialLocation: AppRoutes.authCode,
+          routes: [
+            GoRoute(
+              path: AppRoutes.authCode,
+              name: AppRoutes.authCodeName,
+              builder: (context, state) => AuthCodePage(
+                email: 'ana.lima@exemplo.com',
+                repository: repository,
+              ),
+            ),
+            GoRoute(
+              path: AppRoutes.selectCity,
+              name: AppRoutes.selectCityName,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('Seleção de cidade de teste')),
+            ),
+            GoRoute(
+              path: AppRoutes.home,
+              name: AppRoutes.homeName,
+              builder: (context, state) =>
+                  const Scaffold(body: Text('Home de teste')),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '123456');
       await tapVisible(
         tester,
         find.widgetWithText(FilledButton, 'Confirmar código'),

@@ -7,6 +7,7 @@ import '../../domain/repositories/place_search_repository.dart';
 import '../features/auth/presentation/auth_code/auth_code_page.dart';
 import '../features/auth/presentation/auth_email/auth_email_page.dart';
 import '../features/bus_stop_details/presentation/details_bus_stop_page.dart';
+import '../features/city_selection/presentation/select_city_page.dart';
 import '../features/home/presentation/home_page.dart';
 import '../features/home/presentation/widgets/map/map_search_arguments.dart';
 import '../features/home/presentation/widgets/map/map_search_page.dart';
@@ -34,6 +35,7 @@ class AppRouter {
         final email = state.extra;
         return authRedirect(
           isAuthenticated: repository.isAuthenticated,
+          hasSelectedCity: repository.hasSelectedCity,
           location: state.matchedLocation,
           hasEmail: email is String && email.isNotEmpty,
         );
@@ -75,6 +77,13 @@ class AppRouter {
           ),
         ),
         GoRoute(
+          path: AppRoutes.selectCity,
+          name: AppRoutes.selectCityName,
+          builder: (context, state) => SelectCityPage(
+            isChangeMode: state.uri.queryParameters['change'] == '1',
+          ),
+        ),
+        GoRoute(
           path: AppRoutes.authEmail,
           name: AppRoutes.authEmailName,
           builder: (context, state) =>
@@ -93,10 +102,11 @@ class AppRouter {
   }
 }
 
-/// Regra de redirecionamento da autenticação, isolada para testes.
+/// Regra de redirecionamento da autenticação e da cidade, isolada para testes.
 @visibleForTesting
 String? authRedirect({
   required bool isAuthenticated,
+  required bool hasSelectedCity,
   required String location,
   required bool hasEmail,
 }) {
@@ -107,7 +117,10 @@ String? authRedirect({
     return AppRoutes.authEmail;
   }
   if (isAuthenticated && isAuthRoute) {
-    return AppRoutes.home;
+    return hasSelectedCity ? AppRoutes.home : AppRoutes.selectCity;
+  }
+  if (isAuthenticated && !hasSelectedCity && location != AppRoutes.selectCity) {
+    return AppRoutes.selectCity;
   }
   if (location == AppRoutes.authCode && !hasEmail) {
     return AppRoutes.authEmail;

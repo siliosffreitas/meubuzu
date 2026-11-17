@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import EmailCode, RefreshSession, User
+from .models import EmailCode, RefreshSession, User, UserPreference
 
 
 @admin.register(User)
@@ -78,4 +78,15 @@ class RefreshSessionAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(UserPreference)
+class UserPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "selected_city", "version", "updated_at")
+    list_filter = ("selected_city",)
+    search_fields = ("user__email",)
+    readonly_fields = ("user", "version", "updated_at")
+
+    def has_add_permission(self, request):
         return False

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/auth_user.dart';
+import '../../domain/models/city.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../models/stored_auth_session.dart';
 import '../services/api_client.dart';
@@ -9,7 +10,7 @@ import '../services/session_storage.dart';
 /// Implementação real da autenticação, usando a API do backend.
 ///
 /// Os tokens nunca saem deste repositório: a interface expõe apenas o usuário
-/// atual e o estado da sessão.
+/// atual, a cidade selecionada e o estado da sessão.
 class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
   ApiAuthRepository(this._client, this._storage);
 
@@ -17,6 +18,7 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
   final SessionStorage _storage;
 
   StoredAuthSession? _session;
+  City? _pendingCity;
   int _generation = 0;
 
   @override
@@ -24,6 +26,15 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
 
   @override
   bool get isAuthenticated => _session != null;
+
+  @override
+  City? get selectedCity => _session?.selectedCity;
+
+  @override
+  bool get hasSelectedCity => selectedCity != null;
+
+  @override
+  String? get accessToken => _session?.accessToken;
 
   @override
   Future<void> requestEmailCode(String email) async {
@@ -49,6 +60,35 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
     );
 
     await _storeAndApply(_sessionFromAuthResponse(body));
+  }
+
+  @override
+  Future<void> selectCity(City city) async {
+    final previous = _session;
+    if (previous == null) {
+      return;
+    }
+
+    // A escolha aparece imediatamente; a sincronização acontece em seguida.
+    // `_pendingCity` é marcado antes do PUT para que uma validação concorrente
+    // não apague a escolha local enquanto o backend ainda não respondeu.
+    _pendingCity = city;
+    await _storeAndApply(previous.copyWith(selectedCity: city));
+
+    try {
+      await _putCity(city);
+      _pendingCity = null;
+    } on NetworkException {
+      // Mantém a escolha local e tenta de novo na próxima validação.
+      _pendingCity = city;
+    } on ApiException catch (error) {
+      if (_isCityError(error)) {
+        _pendingCity = null;
+        await _storeAndApply(previous);
+        throw CityUnavailableException(error.code);
+      }
+      _pendingCity = city;
+    }
   }
 
   @override
@@ -88,12 +128,14 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
         return;
       }
       await _applyProfile(profile, initial);
+      await _syncPendingCity();
       return;
     } on NetworkException {
       // Sem conexão: mantém a sessão e tenta novamente na próxima chamada.
       return;
     } on ApiException catch (error) {
       if (error.statusCode != 401) {
+        await _syncPendingCity();
         return;
       }
     }
@@ -126,11 +168,13 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
         return;
       }
       await _applyProfile(profile, refreshed);
+      await _syncPendingCity();
     } on NetworkException {
       if (_isStale(generation)) {
         return;
       }
       await _storeAndApply(refreshed);
+      await _syncPendingCity();
     } on ApiException catch (error) {
       if (_isStale(generation)) {
         return;
@@ -139,6 +183,7 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
         await _clearSession();
       } else {
         await _storeAndApply(refreshed);
+        await _syncPendingCity();
       }
     }
   }
@@ -157,6 +202,47 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
     } catch (_) {
       // Logout local já aconteceu; a revogação no servidor é melhor esforço.
     }
+  }
+
+  Future<void> _putCity(City city) async {
+    final current = _session;
+    if (current == null) {
+      return;
+    }
+
+    final body = await _client.put(
+      '/v1/me/preferences',
+      body: {'selectedCitySlug': city.slug},
+      accessToken: current.accessToken,
+    );
+
+    final latest = _session;
+    if (latest == null) {
+      return;
+    }
+
+    final serverCity = City.fromJsonOrNull(body['selectedCity']) ?? city;
+    await _storeAndApply(latest.copyWith(selectedCity: serverCity));
+  }
+
+  Future<void> _syncPendingCity() async {
+    final pending = _pendingCity;
+    if (pending == null) {
+      return;
+    }
+
+    try {
+      await _putCity(pending);
+      _pendingCity = null;
+    } on NetworkException {
+      _pendingCity = pending;
+    } on ApiException catch (error) {
+      _pendingCity = _isCityError(error) ? null : pending;
+    }
+  }
+
+  bool _isCityError(ApiException error) {
+    return error.code == 'city_inactive' || error.code == 'city_not_found';
   }
 
   Future<Map<String, dynamic>> _mapApiErrors(
@@ -184,12 +270,17 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
       '/v1/auth/refresh',
       body: {'refreshToken': current.refreshToken},
     );
-    return _sessionFromAuthResponse(body, fallbackUser: current.user);
+    return _sessionFromAuthResponse(
+      body,
+      fallbackUser: current.user,
+      fallbackCity: current.selectedCity,
+    );
   }
 
   StoredAuthSession _sessionFromAuthResponse(
     Map<String, dynamic> json, {
     AuthUser? fallbackUser,
+    City? fallbackCity,
   }) {
     final accessToken = json['accessToken'];
     final refreshToken = json['refreshToken'];
@@ -207,6 +298,11 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
         ? entitlements['accessLevel'] as String?
         : null;
 
+    final preferences = json['preferences'];
+    final selectedCity = preferences is Map<String, dynamic>
+        ? City.fromJsonOrNull(preferences['selectedCity'])
+        : fallbackCity;
+
     return StoredAuthSession(
       accessToken: accessToken,
       refreshToken: refreshToken,
@@ -219,6 +315,7 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
             : fallbackUser?.email ?? '',
         accessLevel: accessLevel ?? fallbackUser?.accessLevel ?? 'catalog_only',
       ),
+      selectedCity: selectedCity,
     );
   }
 
@@ -237,7 +334,30 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
       accessLevel: accessLevel,
     );
 
-    await _storeAndApply(session.copyWith(user: user));
+    final preferences = profile['preferences'];
+    City? selectedCity = session.selectedCity;
+    var clearCity = false;
+
+    if (preferences is Map<String, dynamic>) {
+      final backendCity = City.fromJsonOrNull(preferences['selectedCity']);
+      if (backendCity != null) {
+        selectedCity = backendCity;
+        _pendingCity = null;
+      } else if (_pendingCity != null) {
+        // A escolha local ainda não chegou ao backend; preserva e reenvia.
+        selectedCity = _pendingCity;
+      } else {
+        clearCity = true;
+      }
+    }
+
+    await _storeAndApply(
+      session.copyWith(
+        user: user,
+        selectedCity: selectedCity,
+        clearCity: clearCity,
+      ),
+    );
   }
 
   Future<void> _storeAndApply(StoredAuthSession session) async {
@@ -249,6 +369,7 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
 
   Future<void> _clearSession() async {
     _session = null;
+    _pendingCity = null;
     _generation++;
     notifyListeners();
     try {

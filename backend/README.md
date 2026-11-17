@@ -123,10 +123,45 @@ O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS
 | `POST` | `/v1/auth/refresh` | Rotaciona o refresh token |
 | `POST` | `/v1/auth/logout` | Revoga a sessão atual |
 | `GET` | `/v1/me` | Conta, preferências e entitlements |
+| `GET` | `/v1/cities` | Lista as cidades ativas |
+| `GET` | `/v1/cities/{citySlug}` | Detalhe de uma cidade ativa |
+| `GET` | `/v1/me/preferences` | Preferências da conta (cidade selecionada) |
+| `PUT` | `/v1/me/preferences` | Define a cidade selecionada (`selectedCitySlug`) |
 | `GET` | `/healthz` | Liveness |
 | `GET` | `/readyz` | Readiness (verifica o banco) |
 
-Erros usam Problem Details (RFC 9457, `application/problem+json`) com um campo `code` estável.
+Erros usam Problem Details (RFC 9457, `application/problem+json`) com um campo `code` estável. Para cidade, os códigos são `city_not_found` (404) e `city_inactive` (409).
+
+### Cidades e preferências
+
+A tabela `catalog_city` (app `apps.catalog`) guarda `slug`, `name`, `state`,
+`country`, `timezone`, centro (`latitude`/`longitude`), `import_interval`,
+`is_active` e `coverage_note`. Teresina é criada pela migration
+`catalog/0002_seed_teresina` com fuso `America/Fortaleza`.
+
+`GET /v1/cities` devolve apenas cidades ativas, ordenadas pelo nome. O payload é
+o mesmo em todos os endpoints:
+
+```json
+{
+  "slug": "teresina",
+  "name": "Teresina",
+  "label": "Teresina - PI",
+  "state": "PI",
+  "country": "BR",
+  "timezone": "America/Fortaleza",
+  "center": { "latitude": -5.16, "longitude": -42.79 },
+  "isActive": true,
+  "coverageNote": null
+}
+```
+
+A preferência fica em `accounts_user_preference` (`selected_city`, `version`,
+`updated_at`). `PUT /v1/me/preferences` é idempotente: só incrementa `version`
+quando a cidade muda. A preferência também vem em `verify-code`, `refresh` e
+`GET /v1/me` dentro de `preferences`. Endpoints de catálogo e rastreamento devem
+herdar de `CityScopedAPIView` (`/v1/cities/{citySlug}/...`) para resolver a
+cidade ativa antes de executar.
 
 ### Testes e qualidade
 

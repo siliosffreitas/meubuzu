@@ -1,17 +1,26 @@
 from django.conf import settings
+from django.db import transaction
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.catalog.services import get_active_city
+
 from . import services
+from .models import UserPreference
 from .payloads import (
     entitlements_payload,
     preferences_payload,
     session_payload,
     user_payload,
 )
-from .serializers import RefreshSerializer, RequestCodeSerializer, VerifyCodeSerializer
+from .serializers import (
+    RefreshSerializer,
+    RequestCodeSerializer,
+    UpdatePreferencesSerializer,
+    VerifyCodeSerializer,
+)
 
 
 def client_ip(request) -> str | None:
@@ -94,6 +103,7 @@ class RefreshView(APIView):
                 "accessToken": access_token,
                 "refreshToken": refresh_token,
                 "user": user_payload(user),
+                "preferences": preferences_payload(user),
             }
         )
 
@@ -113,7 +123,32 @@ class MeView(APIView):
         return Response(
             {
                 **user_payload(request.user),
-                "preferences": preferences_payload(),
+                "preferences": preferences_payload(request.user),
                 "entitlements": entitlements_payload(),
             }
         )
+
+
+class PreferencesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(preferences_payload(request.user))
+
+    def put(self, request):
+        serializer = UpdatePreferencesSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        city = get_active_city(serializer.validated_data["selectedCitySlug"])
+
+        with transaction.atomic():
+            preference, _ = UserPreference.objects.get_or_create(user=request.user)
+            preference = UserPreference.objects.select_for_update().get(pk=preference.pk)
+            if preference.selected_city_id != city.id:
+                preference.selected_city = city
+                preference.version += 1
+                preference.save(
+                    update_fields=["selected_city", "version", "updated_at"]
+                )
+
+        return Response(preferences_payload(request.user, preference=preference))

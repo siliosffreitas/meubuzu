@@ -72,6 +72,21 @@ class ApiClient implements Service {
     return _decodeResponse(response);
   }
 
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Object? body,
+    String? accessToken,
+  }) async {
+    final response = await _run(
+      () => _httpClient.put(
+        _uri(path),
+        headers: _headers(accessToken, hasBody: body != null),
+        body: body == null ? null : jsonEncode(body),
+      ),
+    );
+    return _decodeResponse(response);
+  }
+
   Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
   Map<String, String> _headers(String? accessToken, {bool hasBody = false}) {

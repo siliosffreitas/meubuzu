@@ -21,6 +21,7 @@ class AuthCodeViewModel extends ViewmodelBase {
   String? get errorTitle => _errorTitle;
   String? get errorMessage => _errorMessage;
   bool get isBusy => _isSubmitting || _isResending;
+  bool get hasSelectedCity => _repository.selectedCity != null;
 
   void setCode(String value) {
     _code = value;

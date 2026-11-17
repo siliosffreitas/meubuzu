@@ -66,6 +66,7 @@ app/lib/
   di/                       # CustomInjector e registro de dependências
   domain/                   # contratos e, quando necessário, use cases
     contracts/              # Repository, Service, ViewmodelBase
+    models/                 # modelos de domínio (City)
     repositories/           # contratos (classes abstratas) dos repositórios
   ui/                       # camada de UI
     core/                   # apenas elementos visuais compartilhados
@@ -74,20 +75,24 @@ app/lib/
     routing/                # GoRouter (app_router.dart e app_routes.dart)
     features/
       auth/                 # presentation/ (e-mail e código)
+      city_selection/       # presentation/ (SelectCityPage e view model)
       home/                 # Home com abas Mapa, Favoritos e Conta
         presentation/
           home_page.dart
           widgets/
-            account/        # aba Conta
+            account/        # aba Conta (inclui troca de cidade)
             favorites/      # aba Favoritos
             map/            # aba Mapa (views, view models e widgets)
 app/test/                   # espelha a estrutura de lib/
 ```
 
 O app inicia no fluxo de autenticação (`/auth`), em `ui/features/auth`, e a
-confirmação do código navega para a Home. A guarda do GoRouter decide a rota
+confirmação do código navega para `/select-city` quando a conta ainda não tem
+cidade, ou para a Home quando já tem. A guarda do GoRouter decide a rota
 inicial: sem sessão válida, rotas internas vão para `/auth`; com sessão, as
-rotas de autenticação vão para `/`. Não remova a autenticação ao ajustar a Home.
+rotas de autenticação vão para `/` ou `/select-city`; rotas internas sem cidade
+vão para `/select-city`. A aba Conta abre `/select-city?change=1` para trocar a
+cidade. Não remova a autenticação nem a seleção de cidade ao ajustar a Home.
 
 ## Comandos
 
@@ -291,6 +296,11 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - **Cidade explícita:** toda requisição de catálogo usa `/{citySlug}`. A
   preferência fica no backend para sincronizar entre dispositivos. O seletor de
   cidade aparece mesmo com apenas Teresina ativa.
+- **Seleção de cidade no app:** a tela `/select-city` aparece uma vez após o
+  login, antes da Home, e a escolha é salva em `PUT /v1/me/preferences` e na
+  sessão local (`StoredAuthSession.selectedCity`). A aba Conta permite trocar a
+  cidade (`/select-city?change=1`). Monte caminhos de catálogo/rastreamento com
+  `ApiPaths.city(citySlug, path)`.
 - **Acesso por e-mail + código temporário** de uso único e curta validade (não é
   senha permanente).
 - **O backend é a fonte de verdade** para limites, favoritos, entitlements e
@@ -320,7 +330,12 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - **Dados demo:** `dataMode=demo` só existe em staging. Se um endpoint de
   produção devolver demo, é bug crítico.
 - **Alinhamento de cidade:** não crie rota de catálogo sem `{citySlug}`. A
-  preferência do usuário não substitui o path.
+  preferência do usuário não substitui o path. No app, use
+  `ApiPaths.city(citySlug, path)` e nunca concatene a cidade manualmente.
+- **Cidade no backend:** endpoints escopados por cidade devem herdar de
+  `CityScopedAPIView`; os erros estáveis são `city_not_found` (404) e
+  `city_inactive` (409). O seed de Teresina é uma migration
+  (`catalog/0002_seed_teresina`), não um fixture manual.
 - **Billing:** o app nunca concede acesso pago; ele lê `GET /v1/me/entitlements`.
   Trial e assinatura só mudam por webhook do RevenueCat.
 

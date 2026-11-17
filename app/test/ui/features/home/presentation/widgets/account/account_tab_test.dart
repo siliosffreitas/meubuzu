@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:meubuzu/domain/models/auth_user.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/account/account_tab.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/account/account_view_model.dart';
+import 'package:meubuzu/ui/routing/app_routes.dart';
 
+import '../../../../../../helpers/auth_test_helpers.dart';
 import '../../../../../../helpers/fake_auth_repository.dart';
 
 void main() {
@@ -58,6 +61,62 @@ void main() {
       expect(viewModel.accessLevel, 'catalog_only');
 
       viewModel.dispose();
+    });
+
+    testWidgets('mostra a cidade selecionada e abre a troca', (tester) async {
+      final repository = FakeAuthRepository(
+        user: const AuthUser(id: 'user-1', email: 'ana.lima@exemplo.com'),
+        city: testCity,
+      );
+      final viewModel = AccountViewModel(repository);
+
+      final router = GoRouter(
+        initialLocation: AppRoutes.home,
+        routes: [
+          GoRoute(
+            path: AppRoutes.home,
+            name: AppRoutes.homeName,
+            builder: (context, state) =>
+                Scaffold(body: AccountTab(viewModel: viewModel)),
+          ),
+          GoRoute(
+            path: AppRoutes.selectCity,
+            name: AppRoutes.selectCityName,
+            builder: (context, state) => Scaffold(
+              body: Text('Troca ${state.uri.queryParameters['change']}'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+      );
+
+      expect(find.text('Teresina - PI'), findsOneWidget);
+      expect(find.text('America/Fortaleza'), findsOneWidget);
+
+      await tester.tap(find.text('Trocar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Troca 1'), findsOneWidget);
+    });
+
+    testWidgets('sem cidade mostra o botão para escolher', (tester) async {
+      final repository = FakeAuthRepository(
+        user: const AuthUser(id: 'user-1', email: 'ana.lima@exemplo.com'),
+      );
+      final viewModel = AccountViewModel(repository);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: AccountTab(viewModel: viewModel)),
+        ),
+      );
+
+      expect(find.text('Nenhuma cidade selecionada'), findsOneWidget);
+      expect(find.text('Escolher'), findsOneWidget);
     });
   });
 }

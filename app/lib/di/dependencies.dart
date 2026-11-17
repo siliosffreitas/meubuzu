@@ -1,4 +1,5 @@
 import '../data/config/api_config.dart';
+import '../data/repositories/api_city_repository.dart';
 import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/details_bus_stop_repository.dart';
@@ -14,6 +15,7 @@ import '../data/services/route_service.dart';
 import '../data/services/session_storage.dart';
 import '../data/services/tracking_service.dart';
 import '../domain/repositories/auth_repository.dart';
+import '../domain/repositories/city_repository.dart';
 import '../domain/repositories/details_bus_stop_repository.dart';
 import '../domain/repositories/details_line_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
@@ -22,6 +24,7 @@ import '../domain/repositories/user_location_repository.dart';
 import '../ui/features/auth/presentation/auth_code/auth_code_view_model.dart';
 import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import '../ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
+import '../ui/features/city_selection/presentation/select_city_view_model.dart';
 import '../ui/features/home/presentation/widgets/account/account_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_cache.dart';
@@ -52,6 +55,12 @@ Future<void> setupDependencies() async {
     () => ApiAuthRepository(
       injector.getService<ApiClient>(),
       injector.getService<SessionStorage>(),
+    ),
+  );
+  injector.addRepository<CityRepository>(
+    () => ApiCityRepository(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
     ),
   );
   injector.addRepository<PlaceSearchRepository>(
@@ -92,6 +101,13 @@ Future<void> setupDependencies() async {
     (email) => AuthCodeViewModel(
       injector.getRepository<AuthRepository>(),
       email: email,
+    ),
+  );
+  injector.addViewModelParam<SelectCityViewModel, bool>(
+    (isChangeMode) => SelectCityViewModel(
+      injector.getRepository<CityRepository>(),
+      injector.getRepository<AuthRepository>(),
+      isChangeMode: isChangeMode,
     ),
   );
   injector.addViewModel<AccountViewModel>(

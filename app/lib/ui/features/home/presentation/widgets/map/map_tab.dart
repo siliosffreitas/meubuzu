@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -19,6 +21,7 @@ import '../../../../../../domain/models/tracked_line.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
+import '../../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../routing/app_routes.dart';
 import 'map_location_state.dart';
 import 'map_location_view_model.dart';
@@ -64,7 +67,7 @@ class MapTab extends StatefulWidget {
 
 class _MapTabState extends State<MapTab>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  static const _initialTarget = LatLng(-23.5505, -46.6333);
+  static const _fallbackTarget = LatLng(-5.16, -42.79);
   static const _initialZoom = 13.2;
   static const _userZoom = 16.0;
   static const _routePadding = 48.0;
@@ -72,6 +75,17 @@ class _MapTabState extends State<MapTab>
   late final UserLocationRepository _locationRepository;
   late final MapLocationViewModel _locationViewModel;
   late final MapTrackingViewModel _trackingViewModel;
+  AuthRepository? _authRepository;
+  String? _citySlug;
+
+  /// Centro inicial do mapa: a cidade selecionada ou Teresina como fallback.
+  LatLng get _initialTarget {
+    final city = _authRepository?.selectedCity;
+    if (city == null) {
+      return _fallbackTarget;
+    }
+    return LatLng(city.latitude, city.longitude);
+  }
 
   final Set<String> _fittedLineCodes = <String>{};
   Set<String> _trackedLineKeys = <String>{};
@@ -101,6 +115,9 @@ class _MapTabState extends State<MapTab>
       _locationRepository = injector.getRepository<UserLocationRepository>();
       _locationViewModel = injector.getViewModel<MapLocationViewModel>();
       _trackingViewModel = injector.getViewModel<MapTrackingViewModel>();
+      _authRepository = injector.getRepository<AuthRepository>();
+      _citySlug = _authRepository?.selectedCity?.slug;
+      _authRepository?.addListener(_handleCityChange);
     } else {
       _locationRepository =
           widget.locationRepository ??
@@ -146,6 +163,7 @@ class _MapTabState extends State<MapTab>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _authRepository?.removeListener(_handleCityChange);
     _busAnimator
       ..removeListener(_handleBusAnimation)
       ..dispose();
@@ -159,6 +177,56 @@ class _MapTabState extends State<MapTab>
       _locationRepository.dispose();
     }
     super.dispose();
+  }
+
+  void _handleCityChange() {
+    if (!mounted) {
+      return;
+    }
+
+    final nextSlug = _authRepository?.selectedCity?.slug;
+    if (nextSlug == _citySlug) {
+      return;
+    }
+
+    _citySlug = nextSlug;
+    _centeredOnUser = false;
+    _stopTrackingForCityChange();
+
+    final controller = _mapController;
+    if (controller == null) {
+      return;
+    }
+    controller.animateCamera(
+      CameraUpdate.newLatLngZoom(_initialTarget, _initialZoom),
+    );
+  }
+
+  /// Encerra o rastreamento e limpa a seleção ao trocar de cidade.
+  ///
+  /// As linhas e posições pertencem à cidade anterior; manter o rastreamento
+  /// mostraria ônibus de outra cidade no mapa.
+  void _stopTrackingForCityChange() {
+    final trackedLines = List<TrackedLine>.of(_trackingViewModel.trackedLines);
+    for (final tracked in trackedLines) {
+      final boardingCode = tracked.line.boardingCode?.trim();
+      final code = boardingCode != null && boardingCode.isNotEmpty
+          ? boardingCode
+          : tracked.line.id.trim();
+      if (code.isEmpty) {
+        continue;
+      }
+      unawaited(_trackingViewModel.stopTracking(code));
+    }
+
+    _fittedLineCodes.clear();
+    if (_selectedSuggestion == null && _selectedMarker == null) {
+      return;
+    }
+    setState(() {
+      _selectedSuggestion = null;
+      _selectedMarker = null;
+    });
   }
 
   @override
@@ -570,7 +638,7 @@ class _MapTabState extends State<MapTab>
       fit: StackFit.expand,
       children: [
         GoogleMap(
-          initialCameraPosition: const CameraPosition(
+          initialCameraPosition: CameraPosition(
             target: _initialTarget,
             zoom: _initialZoom,
           ),
