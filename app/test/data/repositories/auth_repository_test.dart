@@ -298,6 +298,23 @@ void main() {
       expect(storage.session, isNull);
     });
 
+    test('logout apaga a cidade selecionada do armazenamento local', () async {
+      storage.session = _storedSession().copyWith(selectedCity: _teresina);
+      final repository = buildRepository(
+        MockClient((_) async => http.Response('', 204)),
+      );
+      await repository.restoreSession();
+      expect(repository.hasSelectedCity, isTrue);
+      expect(storage.session?.selectedCity?.slug, 'teresina');
+
+      await repository.logout();
+
+      expect(repository.selectedCity, isNull);
+      expect(repository.hasSelectedCity, isFalse);
+      expect(storage.session, isNull);
+      expect(storage.clears, greaterThan(0));
+    });
+
     test('verify-code restaura a cidade salva no backend', () async {
       final repository = buildRepository(
         MockClient(

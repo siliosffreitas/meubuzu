@@ -63,6 +63,9 @@ Fluxo implementado:
    com `PUT /v1/me/preferences` e fica na sessão local.
 7. A aba Conta mostra o e-mail, o nível de acesso, a cidade atual e o botão para
    trocar a cidade (`/select-city?change=1`).
+8. Sair da conta apaga do armazenamento seguro os tokens e a cidade selecionada
+   (e o cache de busca em memória). A preferência continua no backend e volta no
+   próximo login da mesma conta.
 
 A guarda do GoRouter observa o `AuthRepository`: rotas internas sem sessão vão
 para `/auth`, rotas de autenticação com sessão vão para `/` ou `/select-city`

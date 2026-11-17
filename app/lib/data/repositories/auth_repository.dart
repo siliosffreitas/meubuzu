@@ -367,6 +367,10 @@ class ApiAuthRepository extends ChangeNotifier implements AuthRepository {
     await _persist(session);
   }
 
+  /// Limpa a sessão local por completo: tokens e cidade selecionada.
+  ///
+  /// A preferência de cidade fica no backend e volta no próximo login; o app
+  /// não deve manter nenhum resquício local depois do logout.
   Future<void> _clearSession() async {
     _session = null;
     _pendingCity = null;

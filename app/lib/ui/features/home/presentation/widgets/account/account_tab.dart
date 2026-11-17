@@ -5,6 +5,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/widgets/tab_header.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../routing/app_routes.dart';
+import '../map/map_search_cache.dart';
 import 'account_view_model.dart';
 
 /// Aba de conta com a identidade da sessão e a saída do aplicativo.
@@ -31,6 +32,18 @@ class _AccountTabState extends State<AccountTab> {
   void dispose() {
     _viewModel.dispose();
     super.dispose();
+  }
+
+  /// Sai da conta e descarta os dados locais da sessão.
+  ///
+  /// O repositório já apaga tokens e cidade do armazenamento seguro; aqui
+  /// limpamos também o cache de busca em memória para não vazar resultados da
+  /// cidade anterior.
+  Future<void> _logout() async {
+    await _viewModel.logout();
+    if (injector.isReady) {
+      injector.getService<MapSearchCache>().clear();
+    }
   }
 
   @override
@@ -67,9 +80,7 @@ class _AccountTabState extends State<AccountTab> {
                   ),
                   const Spacer(),
                   OutlinedButton.icon(
-                    onPressed: _viewModel.isLoggingOut
-                        ? null
-                        : _viewModel.logout,
+                    onPressed: _viewModel.isLoggingOut ? null : _logout,
                     icon: _viewModel.isLoggingOut
                         ? const SizedBox.square(
                             dimension: 18,

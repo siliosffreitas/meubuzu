@@ -33,9 +33,12 @@ void main() {
       expect(find.text('Teste de 7 dias'), findsOneWidget);
     });
 
-    testWidgets('sair encerra a sessão', (tester) async {
+    testWidgets('sair encerra a sessão e apaga a cidade selecionada', (
+      tester,
+    ) async {
       final repository = FakeAuthRepository(
         user: const AuthUser(id: 'user-1', email: 'ana.lima@exemplo.com'),
+        city: testCity,
       );
       final viewModel = AccountViewModel(repository);
 
@@ -46,12 +49,16 @@ void main() {
         ),
       );
 
+      expect(find.text('Teresina - PI'), findsOneWidget);
+
       await tester.tap(find.text('Sair da conta'));
       await tester.pumpAndSettle();
 
       expect(repository.logoutCalls, 1);
       expect(repository.isAuthenticated, isFalse);
+      expect(repository.selectedCity, isNull);
       expect(find.text('Conta sem sessão'), findsOneWidget);
+      expect(find.text('Nenhuma cidade selecionada'), findsOneWidget);
     });
 
     test('expõe o nível de acesso padrão sem sessão', () {
