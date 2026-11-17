@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime, timedelta
+from math import atan2, cos, degrees, radians, sin
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
@@ -117,6 +118,32 @@ def _get_source(source_kind: str) -> PositionSource:
     return CsvDemoPositionSource()
 
 
+def _heading_between(
+    from_latitude: float,
+    from_longitude: float,
+    to_latitude: float,
+    to_longitude: float,
+) -> float | None:
+    """Rumo de um ponto a outro em graus (0 = norte, 90 = leste).
+
+    O app apenas gira a seta com esse valor; nenhum cálculo de direção é feito
+    no cliente. Coordenadas iguais não definem direção.
+    """
+
+    if from_latitude == to_latitude and from_longitude == to_longitude:
+        return None
+
+    latitude1 = radians(from_latitude)
+    latitude2 = radians(to_latitude)
+    delta_longitude = radians(to_longitude - from_longitude)
+
+    y = sin(delta_longitude) * cos(latitude2)
+    x = cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(
+        delta_longitude
+    )
+    return (degrees(atan2(y, x)) + 360) % 360
+
+
 def _rebase_position(
     row: VehiclePositionDTO,
     *,
@@ -164,6 +191,9 @@ def _rebase_position(
         captured_at=captured_at,
         generated_at=generated_at,
         received_at=received_at,
+        heading=None,
+        previous_latitude=None,
+        previous_longitude=None,
         is_stale=is_stale,
     )
 
@@ -184,30 +214,54 @@ def _positions_for_line(
     stale_after_seconds: int,
 ) -> dict:
     line_code = normalize_line_code(line.code)
-    latest_by_vehicle: dict[str, dict] = {}
+    ordered_rows = sorted(
+        (row for row in rows if row.line_code == line_code),
+        key=lambda row: row.captured_at,
+    )
 
-    for row in rows:
-        if row.line_code != line_code:
-            continue
-        payload = _rebase_position(
-            row,
-            line_id=line_id,
-            boarding_code=boarding_code,
-            now_city=now_city,
-            city_tz=city_tz,
-            received_at=received_at,
-            window_seconds=window_seconds,
-            stale_after_seconds=stale_after_seconds,
-        )
-        if payload is None:
-            continue
+    # O histórico completo fica disponível mesmo para capturas fora da janela:
+    # a posição anterior serve para calcular o rumo da seta no primeiro recebimento.
+    history_by_vehicle: dict[str, list[VehiclePositionDTO]] = {}
+    for row in ordered_rows:
+        history_by_vehicle.setdefault(row.vehicle_code, []).append(row)
 
-        key = row.vehicle_code
-        current = latest_by_vehicle.get(key)
-        if current is None or payload["capturedAt"] > current["capturedAt"]:
-            latest_by_vehicle[key] = payload
+    # Apenas capturas dentro da janela podem virar a posição atual.
+    latest_by_vehicle: dict[str, tuple[int, dict]] = {}
+    for vehicle_code, history in history_by_vehicle.items():
+        for index, row in enumerate(history):
+            payload = _rebase_position(
+                row,
+                line_id=line_id,
+                boarding_code=boarding_code,
+                now_city=now_city,
+                city_tz=city_tz,
+                received_at=received_at,
+                window_seconds=window_seconds,
+                stale_after_seconds=stale_after_seconds,
+            )
+            if payload is None:
+                continue
 
-    positions = sorted(latest_by_vehicle.values(), key=lambda item: item["capturedAt"])
+            current = latest_by_vehicle.get(vehicle_code)
+            if current is None or payload["capturedAt"] > current[1]["capturedAt"]:
+                latest_by_vehicle[vehicle_code] = (index, payload)
+
+    positions = []
+    for vehicle_code, (index, payload) in latest_by_vehicle.items():
+        history = history_by_vehicle[vehicle_code]
+        previous = history[index - 1] if index > 0 else None
+        if previous is not None:
+            payload["previousLatitude"] = previous.latitude
+            payload["previousLongitude"] = previous.longitude
+            payload["heading"] = _heading_between(
+                previous.latitude,
+                previous.longitude,
+                payload["latitude"],
+                payload["longitude"],
+            )
+        positions.append(payload)
+
+    positions.sort(key=lambda item: item["capturedAt"])
     return line_positions_payload(
         line_id=line_id,
         boarding_code=boarding_code,

@@ -12,6 +12,8 @@ class BusPosition {
     this.receivedAt,
     this.speed,
     this.heading,
+    this.previousLatitude,
+    this.previousLongitude,
     this.isStale = false,
     this.dataMode,
     this.source,
@@ -34,7 +36,16 @@ class BusPosition {
   final DateTime? receivedAt;
 
   final double? speed;
+
+  /// Rumo calculado pelo backend, em graus (0 = norte, 90 = leste).
+  ///
+  /// O app apenas usa este valor para girar a seta; quando é `null`, não há
+  /// direção conhecida e a seta não é exibida.
   final double? heading;
+
+  /// Coordenada imediatamente anterior do mesmo veículo, quando houver.
+  final double? previousLatitude;
+  final double? previousLongitude;
 
   /// Indica se a captura é antiga o suficiente para ser sinalizada ao usuário.
   final bool isStale;

@@ -107,6 +107,8 @@ class ApiTrackingService implements TrackingService {
           receivedAt: DateTime.tryParse(_text(raw['receivedAt']) ?? ''),
           speed: (raw['speed'] as num?)?.toDouble(),
           heading: (raw['heading'] as num?)?.toDouble(),
+          previousLatitude: (raw['previousLatitude'] as num?)?.toDouble(),
+          previousLongitude: (raw['previousLongitude'] as num?)?.toDouble(),
           isStale: raw['isStale'] as bool? ?? blockIsStale,
           dataMode: _text(raw['dataMode']) ?? blockDataMode,
           source: _text(raw['source']) ?? blockSource,

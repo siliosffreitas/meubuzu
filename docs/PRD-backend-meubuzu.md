@@ -574,9 +574,11 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 - No batch, linhas não resolvidas são devolvidas em `unresolvedLines` sem descartar as demais. Códigos duplicados ou que apontam para a mesma linha são resolvidos uma única vez.
 - A cidade é sempre explícita no path; o dia da semana, o "agora" e a janela usam `catalog_city.timezone`.
 - `PositionSource` abstrai a origem: hoje `CsvDemoPositionSource` relê os CSVs de `backend/apps/tracking/data/locations/`, rebase a hora literal do arquivo para o dia atual e mantém capturas entre 0 e `TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s) antes de agora.
+- A janela de 5 minutos limita somente a escolha da posição atual. A posição anterior é a captura imediatamente anterior do mesmo veículo no mesmo arquivo selecionado, mesmo que esteja fora da janela; ela entra apenas como metadado da posição atual, nunca como outro item em `positions[]`. Se não houver captura anterior, os campos ficam `null`.
 - Exigir entitlements quando a fonte não estiver em modo demo liberado; sem acesso, `402 subscription_required`. Com `DEBUG=False`, `TRACKING_POSITIONS_SOURCE=csv_demo` e `TRACKING_DEMO_ACCESS_ENABLED=false`, a fonte demo retorna `500 demo_mode_forbidden`.
 - Retornar no máximo uma posição por veículo por linha, escolhendo a captura mais recente.
 - Incluir `capturedAt`, `generatedAt`, `receivedAt`, `source`, `dataMode` e `isStale`. `isStale` é calculado no backend quando a idade da captura passa de `TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s).
+- Incluir `previousLatitude` e `previousLongitude` da captura anterior e `heading` calculado pelo backend em graus (`0` = norte, `90` = leste). `heading` é `null` quando não há posição anterior ou quando anterior e atual são iguais. O app não calcula a direção: consome `heading` e não exibe seta quando ele é `null`.
 - Não inventar posições nem interpolar.
 - Cache curto (padrão: 10 s) por cidade + `sgLinha` solicitados + bucket de tempo, com cabeçalho `X-Tracking-Cache`.
 - Se não houver posição recente, retornar `positions: []` com `sourceStatus: "no_positions"` no bloco da linha.
@@ -587,6 +589,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 - Uma única requisição consulta todas as linhas acompanhadas e o app agrupa as posições pelo `boardingCode` (`sgLinha`) de cada item.
 - Posição exibida no mapa com horário de captura rebaseado para o dia atual.
 - Posição antiga marcada como `stale`; dados CSV marcados como `demo`.
+- A seta aparece já na primeira posição recebida quando o backend envia `heading`; sem posição anterior ou com coordenadas iguais, `heading` é `null` e a seta não aparece.
 - Nenhuma posição duplicada por veículo.
 - Sem acesso, a API responde `402`; CSV em produção responde `500 demo_mode_forbidden`.
 - p95 < 500 ms com cache.
@@ -1682,11 +1685,13 @@ GET /v1/cities/teresina/positions?codes=0301,0245
           "vehicleCode": "5093",
           "latitude": -5.070498,
           "longitude": -42.816973,
+          "previousLatitude": -5.071498,
+          "previousLongitude": -42.817973,
           "capturedAt": "2026-11-17T18:09:07Z",
           "generatedAt": "2026-11-17T18:08:52Z",
           "receivedAt": "2026-11-17T18:10:00Z",
           "speed": null,
-          "heading": null,
+          "heading": 44.9,
           "isStale": false
         }
       ]

@@ -68,6 +68,8 @@ Map<String, dynamic> position({
     'receivedAt': '2026-11-17T15:05:01Z',
     'speed': null,
     'heading': 90.5,
+    'previousLatitude': -5.11,
+    'previousLongitude': -42.81,
     'isStale': isStale,
   };
 }
@@ -116,9 +118,41 @@ void main() {
       expect(positions.single.generatedAt, DateTime.utc(2026, 11, 17, 14, 59));
       expect(positions.single.receivedAt, DateTime.utc(2026, 11, 17, 15, 5, 1));
       expect(positions.single.heading, 90.5);
+      expect(positions.single.previousLatitude, -5.11);
+      expect(positions.single.previousLongitude, -42.81);
       expect(positions.single.isStale, isFalse);
       expect(positions.single.dataMode, 'demo');
       expect(positions.single.source, 'csv_demo');
+    });
+
+    test('mantém nulos o heading e a posição anterior quando ausentes', () async {
+      final rawPosition = position(
+        boardingCode: '0301',
+        vehicleCode: '4171',
+        capturedAt: '2026-11-17T15:04:30Z',
+      )
+        ..remove('heading')
+        ..remove('previousLatitude')
+        ..remove('previousLongitude');
+
+      final service = buildService(
+        MockClient(
+          (request) async => jsonResponse({
+            'lines': [
+              {
+                'boardingCode': '0301',
+                'positions': [rawPosition],
+              },
+            ],
+          }),
+        ),
+      );
+
+      final positions = await service.findPositions([_line0301]);
+
+      expect(positions.single.heading, isNull);
+      expect(positions.single.previousLatitude, isNull);
+      expect(positions.single.previousLongitude, isNull);
     });
 
     test('preserva os zeros à esquerda do sgLinha e remove duplicados', () async {

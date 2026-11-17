@@ -30,11 +30,13 @@ BusPosition _position(
   double latitude = -5.1,
   double longitude = -42.8,
   DateTime? capturedAt,
+  double? heading,
 }) {
   return BusPosition(
     bus: Bus(code: busCode),
     latitude: latitude,
     longitude: longitude,
+    heading: heading,
     capturedAt: capturedAt ?? DateTime.utc(2023, 6, 4, 11, 58),
   );
 }
@@ -174,6 +176,23 @@ void main() {
       expect(arrow.zIndexInt, 2);
       expect(arrow.icon, same(arrowIcon));
       expect(arrow.infoWindow.title, isNull);
+    });
+
+    test('usa o heading do backend na primeira atualização', () {
+      final position = _position('4171', heading: 135);
+      final tracked = _tracked(_line, [position]);
+      final directions = TrackingBusDirections()..update([tracked]);
+
+      final markers = buildTrackingBusMarkers(
+        [tracked],
+        bearings: directions.bearings,
+        arrowIconFor: (_) => BitmapDescriptor.defaultMarker,
+      );
+
+      final arrow = markers.singleWhere(
+        (marker) => marker.markerId.value == 'bus-arrow-0301-4171',
+      );
+      expect(arrow.rotation, 135);
     });
 
     test('não cria a seta enquanto o ícone dela não está pronto', () {

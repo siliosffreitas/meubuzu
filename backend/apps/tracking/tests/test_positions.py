@@ -151,24 +151,104 @@ class PositionApiTests(TestCase):
         assert line_35["isStale"] is True
         assert [item["vehicleCode"] for item in line_35["positions"]] == ["5093", "4171"]
         assert line_35["positions"][0]["isStale"] is True
-        assert line_35["positions"][-1] == {
+
+        last = line_35["positions"][-1]
+        self.assertAlmostEqual(last["heading"], 44.89, delta=0.5)
+        assert {key: value for key, value in last.items() if key != "heading"} == {
             "lineId": str(self.line.id),
             "boardingCode": "0301",
             "vehicleCode": "4171",
             "latitude": -5.1,
             "longitude": -42.8,
+            "previousLatitude": -5.11,
+            "previousLongitude": -42.81,
             "capturedAt": "2026-11-17T15:04:30Z",
             "generatedAt": "2026-11-17T15:04:00Z",
             "receivedAt": "2026-11-17T15:05:00Z",
             "speed": None,
-            "heading": None,
             "isStale": False,
         }
+        assert line_35["positions"][0]["previousLatitude"] is None
+        assert line_35["positions"][0]["previousLongitude"] is None
+        assert line_35["positions"][0]["heading"] is None
 
         line_47 = body["lines"][1]
         assert line_47["boardingCode"] == "0245"
         assert line_47["positions"][0]["isStale"] is True
         assert line_47["positions"][0]["capturedAt"] == "2026-11-17T15:00:00Z"
+
+    @patch(
+        "apps.tracking.services.datetime",
+        _fixed_datetime(datetime(2026, 11, 17, 15, 5, tzinfo=UTC)),
+    )
+    def test_previous_position_is_sent_even_outside_the_window(self):
+        self.write_rows(
+            [
+                _row(
+                    "BUS",
+                    "35",
+                    "4171",
+                    "2023-06-06T12:04:00.000+0000",
+                    "-5.10",
+                    "-42.80",
+                    "2023-06-06T12:04:30.000+0000",
+                ),
+                _row(
+                    "BUS",
+                    "35",
+                    "4171",
+                    "2023-06-06T11:49:30.000+0000",
+                    "-5.11",
+                    "-42.81",
+                    "2023-06-06T11:50:00.000+0000",
+                ),
+            ]
+        )
+
+        response = self.get_positions("0301")
+
+        assert response.status_code == 200, response.content
+        position = response.json()["lines"][0]["positions"][0]
+        assert position["capturedAt"] == "2026-11-17T15:04:30Z"
+        assert position["previousLatitude"] == -5.11
+        assert position["previousLongitude"] == -42.81
+        assert position["heading"] is not None
+
+    @patch(
+        "apps.tracking.services.datetime",
+        _fixed_datetime(datetime(2026, 11, 17, 15, 5, tzinfo=UTC)),
+    )
+    def test_same_previous_coordinate_has_no_heading(self):
+        self.write_rows(
+            [
+                _row(
+                    "BUS",
+                    "35",
+                    "4171",
+                    "2023-06-06T12:04:00.000+0000",
+                    "-5.10",
+                    "-42.80",
+                    "2023-06-06T12:04:30.000+0000",
+                ),
+                _row(
+                    "BUS",
+                    "35",
+                    "4171",
+                    "2023-06-06T12:04:00.000+0000",
+                    "-5.10",
+                    "-42.80",
+                    "2023-06-06T12:04:00.000+0000",
+                ),
+            ]
+        )
+
+        response = self.get_positions("0301")
+
+        assert response.status_code == 200, response.content
+        position = response.json()["lines"][0]["positions"][0]
+        assert position["previousLatitude"] == -5.10
+        assert position["previousLongitude"] == -42.80
+        assert position["heading"] is None
 
     @patch(
         "apps.tracking.services.datetime",

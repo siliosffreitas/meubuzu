@@ -21,15 +21,18 @@ const _otherLine = Line(
   boardingCode: '0302',
 );
 
-BusPosition _position(
-  double latitude,
-  double longitude, {
+BusPosition _position({
   String busCode = '4171',
+  double heading = 90,
+  bool withHeading = true,
 }) {
   return BusPosition(
     bus: Bus(code: busCode),
-    latitude: latitude,
-    longitude: longitude,
+    latitude: -5.10,
+    longitude: -42.80,
+    previousLatitude: -5.11,
+    previousLongitude: -42.81,
+    heading: withHeading ? heading : null,
     capturedAt: DateTime.utc(2023, 6, 4, 12),
   );
 }
@@ -39,131 +42,73 @@ TrackedLine _tracked(List<BusPosition> positions, {Line line = _line}) {
 }
 
 void main() {
-  group('bearingBetween', () {
-    test('aponta para o norte', () {
-      expect(
-        bearingBetween(_position(0, 0), _position(0.01, 0)),
-        closeTo(0, 0.5),
-      );
-    });
+  group('trackedBusKey', () {
+    test('identifica o ônibus dentro da linha acompanhada', () {
+      final position = _position();
+      final tracked = _tracked([position]);
 
-    test('aponta para o leste', () {
-      expect(
-        bearingBetween(_position(0, 0), _position(0, 0.01)),
-        closeTo(90, 0.5),
-      );
-    });
-
-    test('aponta para o sul', () {
-      expect(
-        bearingBetween(_position(0, 0), _position(-0.01, 0)),
-        closeTo(180, 0.5),
-      );
-    });
-
-    test('aponta para o oeste', () {
-      expect(
-        bearingBetween(_position(0, 0), _position(0, -0.01)),
-        closeTo(270, 0.5),
-      );
-    });
-
-    test('aponta para o nordeste', () {
-      expect(
-        bearingBetween(_position(0, 0), _position(0.01, 0.01)),
-        closeTo(45, 1),
-      );
+      expect(trackedBusKey(tracked, position), '0301:4171');
     });
   });
 
   group('TrackingBusDirections', () {
-    test('não cria direção na primeira captura', () {
+    test('usa o heading do backend já na primeira atualização', () {
+      final directions = TrackingBusDirections();
+      final tracked = _tracked([_position(heading: 135)]);
+
+      directions.update([tracked]);
+
+      final position = tracked.busPositions.single;
+      expect(
+        directions.bearings[trackedBusKey(tracked, position)],
+        135,
+      );
+    });
+
+    test('não cria direção quando o backend não envia heading', () {
       final directions = TrackingBusDirections();
 
-      directions.update([
-        _tracked([_position(-5.10, -42.80)]),
-      ]);
+      directions.update([_tracked([_position(withHeading: false)])]);
 
       expect(directions.bearings, isEmpty);
     });
 
-    test('calcula a direção a partir da captura anterior', () {
-      final directions = TrackingBusDirections();
-      final current = _tracked([_position(-5.09, -42.80)]);
+    test('não depende de atualizações anteriores', () {
+      final tracked = _tracked([_position(heading: 45)]);
+      final first = TrackingBusDirections()..update([tracked]);
+      final second = TrackingBusDirections()..update([tracked]);
 
-      directions.update([
-        _tracked([_position(-5.10, -42.80)]),
-      ]);
-      directions.update([current]);
-
-      final position = current.busPositions.single;
-      expect(
-        directions.bearings[trackedBusKey(current, position)],
-        closeTo(0, 1),
-      );
+      expect(first.bearings, second.bearings);
     });
 
-    test('mantém a direção quando o ônibus não se desloca', () {
+    test('reconstrói as direções a cada atualização', () {
       final directions = TrackingBusDirections();
-      final current = _tracked([_position(-5.09, -42.80)]);
+      final tracked = _tracked([_position(heading: 45)]);
 
-      directions.update([
-        _tracked([_position(-5.10, -42.80)]),
-      ]);
-      directions.update([current]);
-      final bearing = directions
-          .bearings[trackedBusKey(current, current.busPositions.single)];
-      expect(bearing, isNotNull);
+      directions.update([tracked]);
+      expect(directions.bearings.values, [45]);
 
-      directions.update([current]);
+      directions.update([_tracked([_position(heading: 270)])]);
+      expect(directions.bearings.values, [270]);
 
-      expect(
-        directions.bearings[trackedBusKey(
-          current,
-          current.busPositions.single,
-        )],
-        bearing,
-      );
+      directions.update([_tracked([_position(withHeading: false)])]);
+      expect(directions.bearings, isEmpty);
     });
 
-    test('atualiza a direção a cada novo deslocamento', () {
+    test('mantém direções de ônibus e linhas independentes', () {
       final directions = TrackingBusDirections();
-      final current = _tracked([_position(-5.09, -42.81)]);
-
-      directions.update([
-        _tracked([_position(-5.09, -42.80)]),
-      ]);
-      directions.update([current]);
-
-      expect(
-        directions.bearings[trackedBusKey(
-          current,
-          current.busPositions.single,
-        )],
-        closeTo(270, 1),
+      final first = _tracked([_position(busCode: '4171', heading: 0)]);
+      final second = _tracked(
+        [_position(busCode: '5096', heading: 180)],
+        line: _otherLine,
       );
-    });
 
-    test('mantém as direções de ônibus e linhas independentes', () {
-      final directions = TrackingBusDirections();
-      final first = _tracked([_position(-5.09, -42.80, busCode: '4171')]);
-      final second = _tracked([
-        _position(-5.09, -42.80, busCode: '5096'),
-      ], line: _otherLine);
-
-      directions.update([
-        _tracked([_position(-5.10, -42.80, busCode: '4171')]),
-        _tracked([_position(-5.10, -42.81, busCode: '5096')], line: _otherLine),
-      ]);
       directions.update([first, second]);
 
-      expect(
-        directions.bearings[trackedBusKey(first, first.busPositions.single)],
-        closeTo(0, 1),
-      );
+      expect(directions.bearings[trackedBusKey(first, first.busPositions.single)], 0);
       expect(
         directions.bearings[trackedBusKey(second, second.busPositions.single)],
-        closeTo(45, 1),
+        180,
       );
       expect(directions.bearings, hasLength(2));
     });
@@ -171,17 +116,20 @@ void main() {
     test('descarta a direção quando o ônibus sai do rastreamento', () {
       final directions = TrackingBusDirections();
 
-      directions.update([
-        _tracked([_position(-5.10, -42.80)]),
-      ]);
-      directions.update([
-        _tracked([_position(-5.09, -42.80)]),
-      ]);
+      directions.update([_tracked([_position()])]);
       expect(directions.bearings, isNotEmpty);
 
       directions.update(const []);
 
       expect(directions.bearings, isEmpty);
+    });
+
+    test('normaliza heading fora do intervalo de uma volta', () {
+      final directions = TrackingBusDirections();
+
+      directions.update([_tracked([_position(heading: 405)])]);
+
+      expect(directions.bearings.values, [45]);
     });
 
     test('não expõe o mapa interno de direções', () {

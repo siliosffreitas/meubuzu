@@ -153,7 +153,10 @@ def _load_index(path: str, mtime_ns: int) -> dict[str, tuple[VehiclePositionDTO,
     if skipped:
         logger.warning("Posições ignoradas ao ler %s: %d linhas inválidas.", path, skipped)
 
-    return {code: tuple(rows) for code, rows in by_line.items()}
+    return {
+        code: tuple(sorted(rows, key=lambda row: row.captured_at))
+        for code, rows in by_line.items()
+    }
 
 
 class CsvDemoPositionSource:

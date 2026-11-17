@@ -300,12 +300,21 @@ O catálogo é **importado** da API da cidade, não editado manualmente como fon
 
 Nesta fase as posições são servidas por `PositionSource`, sem tabelas de tracking. A implementação `CsvDemoPositionSource` lê os CSVs históricos de
 `backend/apps/tracking/data/locations/`, escolhe o arquivo pelo dia da semana no
-fuso da cidade, desloca a hora lida para o dia atual e mantém apenas capturas
-dos últimos `TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s). Para cada linha,
-devolve a captura mais recente de cada veículo; `isStale` é calculado no backend
-com `TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s). O envelope é o mesmo que um
-futuro adaptador da API de Teresina deve devolver, com `source`, `dataMode`,
-`lines[]` e `unresolvedLines`.
+fuso da cidade, desloca a hora lida para o dia atual e usa a janela de
+`TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s) para escolher apenas a
+captura atual de cada veículo. Para cada linha, devolve a captura mais recente
+de cada veículo; `isStale` é calculado no backend com
+`TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s).
+
+A janela não se aplica à coordenada anterior: o backend localiza a captura
+imediatamente anterior do mesmo veículo no mesmo arquivo, mesmo que ela esteja
+fora dos 5 minutos, e a envia como `previousLatitude` / `previousLongitude`
+junto da posição atual. A partir dessas duas coordenadas, o backend calcula
+`heading` em graus (`0` = norte, `90` = leste). Sem captura anterior, ou quando
+as coordenadas são iguais, `heading` é `null` e o app não desenha a seta. O app
+não calcula direção localmente. O envelope é o mesmo que um futuro adaptador da
+API de Teresina deve devolver, com `source`, `dataMode`, `lines[]` e
+`unresolvedLines`.
 
 A rota batch é `GET /v1/cities/{citySlug}/positions?codes=0301,0245`, usando o
 `sgLinha` (código de embarque, com zeros à esquerda). O alias estrito é

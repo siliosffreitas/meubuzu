@@ -210,7 +210,9 @@ não escolhe CSV nem sabe se a origem é o replay de demonstração ou o futuro 
 volátil. O backend devolve um bloco por linha com `lineId` (UUID),
 `boardingCode`, `dataMode`, `isStale`, `source`, `sourceStatus` e `positions`;
 cada posição traz `boardingCode` para o repositório agrupar os marcadores por
-linha.
+linha, além da coordenada atual, de `previousLatitude` / `previousLongitude` e
+de `heading`. A janela de 5 minutos limita apenas a posição atual; a anterior
+pode ser mais antiga e existe para orientar a seta já no primeiro recebimento.
 O `TrackingService` também define `EmptyTrackingService`, usado apenas como
 fallback de widgets sem injetor.
 
@@ -222,11 +224,13 @@ pela matiz como fallback enquanto o ícone não está pronto. O painel exibe
 “Dados de demonstração” quando `dataMode` é `demo` e “Posições antigas” quando
 `isStale` é `true`, ambos calculados pelo backend.
 
-A direção do ônibus é calculada na tela a partir da captura anterior
-(`TrackingBusDirections`): a primeira posição não tem seta, e qualquer
-deslocamento passa a exibir uma seta na cor da linha. A seta é um marcador
-próprio, ancorado no centro do ônibus, que gira em volta do selo e aponta para
-o sentido do movimento em qualquer nível de zoom.
+A direção do ônibus é calculada pelo backend a partir da posição atual e da
+anterior; o app apenas consome `heading` em graus. `TrackingBusDirections`
+copia esse valor para cada ônibus já na primeira atualização, sem manter
+histórico local nem calcular o ângulo. Quando o backend não envia `heading`
+(sem posição anterior ou com coordenadas iguais), nenhuma seta é exibida. A
+seta é um marcador próprio, ancorado no centro do ônibus, que gira em volta do
+selo e aponta para o sentido do movimento em qualquer nível de zoom.
 
 Cada nova posição recebida é animada por `TrackingBusAnimator`: o marcador sai
 da posição antiga e chega à nova em 300 ms. A primeira posição de um ônibus

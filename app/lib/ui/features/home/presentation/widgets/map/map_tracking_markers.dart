@@ -15,9 +15,10 @@ import 'map_tracking_polylines.dart';
 /// existe, o marcador usa o ícone padrão do Google Maps colorido pela matiz da
 /// linha.
 ///
-/// [bearings] traz a direção de cada ônibus, por [trackedBusKey]. Quando ela é
-/// conhecida, um segundo marcador em forma de seta é criado sobre o ônibus,
-/// girando em volta dele para indicar o sentido do movimento.
+/// [bearings] traz o rumo calculado pelo backend para cada ônibus, por
+/// [trackedBusKey]. Quando ele é conhecido, um segundo marcador em forma de
+/// seta é criado sobre o ônibus, girando em volta dele para indicar o sentido
+/// do movimento.
 ///
 /// [positions] permite exibir uma posição interpolada pela animação; sem ela,
 /// o marcador usa a posição exata da captura.

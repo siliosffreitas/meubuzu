@@ -21,6 +21,9 @@ def position_payload(
     captured_at: datetime,
     generated_at: datetime | None,
     received_at: datetime,
+    heading: float | None,
+    previous_latitude: float | None,
+    previous_longitude: float | None,
     is_stale: bool,
 ) -> dict:
     return {
@@ -29,11 +32,13 @@ def position_payload(
         "vehicleCode": vehicle_code,
         "latitude": latitude,
         "longitude": longitude,
+        "previousLatitude": previous_latitude,
+        "previousLongitude": previous_longitude,
         "capturedAt": _iso(captured_at),
         "generatedAt": _iso(generated_at),
         "receivedAt": _iso(received_at),
         "speed": None,
-        "heading": None,
+        "heading": heading,
         "isStale": is_stale,
     }
 
