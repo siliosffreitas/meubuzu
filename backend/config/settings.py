@@ -129,6 +129,9 @@ else:
         }
     }
 
+# Catálogo de linhas/paradas é quase estático (import semanal/mensal).
+CATALOG_CACHE_TTL_SECONDS = _int("CATALOG_CACHE_TTL_SECONDS", 300)
+
 # --- E-mail -----------------------------------------------------------------
 
 EMAIL_BACKEND = os.getenv(

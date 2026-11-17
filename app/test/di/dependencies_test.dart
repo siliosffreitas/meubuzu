@@ -4,6 +4,7 @@ import 'package:meubuzu/data/repositories/asset_place_search_repository.dart';
 import 'package:meubuzu/data/repositories/auth_repository.dart';
 import 'package:meubuzu/data/repositories/details_line_repository.dart';
 import 'package:meubuzu/data/repositories/user_location_repository.dart';
+import 'package:meubuzu/data/services/api_bus_stop_service.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
 import 'package:meubuzu/data/services/line_stops_service.dart';
@@ -33,7 +34,7 @@ void main() {
       injector.getService<LocationService>(),
       isA<DeviceLocationService>(),
     );
-    expect(injector.getService<BusStopService>(), isA<AssetBusStopService>());
+    expect(injector.getService<BusStopService>(), isA<ApiBusStopService>());
     expect(
       injector.getService<LineSearchService>(),
       isA<AssetLineSearchService>(),

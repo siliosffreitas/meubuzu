@@ -1,8 +1,8 @@
-"""Formato público de uma cidade (camelCase, contrato do app)."""
+"""Formato público do catálogo (camelCase, contrato do app)."""
 
 from __future__ import annotations
 
-from .models import City
+from .models import City, Stop
 
 
 def city_payload(city: City | None) -> dict | None:
@@ -21,4 +21,20 @@ def city_payload(city: City | None) -> dict | None:
         },
         "isActive": city.is_active,
         "coverageNote": city.coverage_note or None,
+    }
+
+
+def stop_payload(stop: Stop) -> dict:
+    """Formato público de uma parada usado pelos endpoints do catálogo."""
+
+    return {
+        "id": str(stop.id),
+        "code": stop.code,
+        "name": stop.name,
+        "address": stop.address,
+        "latitude": float(stop.latitude),
+        "longitude": float(stop.longitude),
+        "isActive": stop.is_active,
+        "dataMode": stop.source.data_mode if stop.source_id else None,
+        "updatedAt": stop.updated_at.isoformat() if stop.updated_at else None,
     }

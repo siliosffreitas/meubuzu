@@ -6,6 +6,7 @@ import '../data/repositories/details_bus_stop_repository.dart';
 import '../data/repositories/details_line_repository.dart';
 import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
+import '../data/services/api_bus_stop_service.dart';
 import '../data/services/api_client.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/line_search_service.dart';
@@ -42,7 +43,6 @@ final injector = CustomInjector();
 /// resolver suas dependências pelo [injector].
 Future<void> setupDependencies() async {
   injector.addService<LocationService>(DeviceLocationService.new);
-  injector.addService<BusStopService>(AssetBusStopService.new);
   injector.addService<LineSearchService>(AssetLineSearchService.new);
   injector.addService<LineStopsService>(AssetLineStopsService.new);
   injector.addService<RouteService>(AssetRouteService.new);
@@ -57,6 +57,12 @@ Future<void> setupDependencies() async {
       injector.getService<SessionStorage>(),
     ),
   );
+  injector.addService<BusStopService>(
+    () => ApiBusStopService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
   injector.addRepository<CityRepository>(
     () => ApiCityRepository(
       injector.getService<ApiClient>(),
@@ -64,7 +70,10 @@ Future<void> setupDependencies() async {
     ),
   );
   injector.addRepository<PlaceSearchRepository>(
-    () => AssetPlaceSearchRepository(),
+    () => AssetPlaceSearchRepository(
+      lineSearchService: injector.getService<LineSearchService>(),
+      busStopService: injector.getService<BusStopService>(),
+    ),
   );
   injector.addRepository<DetailsLineRepository>(
     () => DetailsLineRepositoryImpl(

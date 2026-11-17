@@ -110,7 +110,7 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2
 
 No celular físico, inclua também o IP do Mac em `DJANGO_ALLOWED_HOSTS`.
 
-> O app ainda usa os catálogos locais de `app/assets`, então os testes do backend no emulador são feitos por `curl` ou pelo Admin até a integração da API. Quando o app passar a chamar a API via HTTP local, o Android exigirá liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
+> O app já consulta o catálogo de paradas pela API (`/v1/cities/{citySlug}/stops`) em vez do CSV local. Linhas, trajetos e posições continuam em assets por enquanto. Para testar no emulador, o Android exige liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
 
 O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS. O deploy público usa Gunicorn (já configurado no `Dockerfile`) e faz parte da etapa M6 do PRD.
 
@@ -125,6 +125,8 @@ O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS
 | `GET` | `/v1/me` | Conta, preferências e entitlements |
 | `GET` | `/v1/cities` | Lista as cidades ativas |
 | `GET` | `/v1/cities/{citySlug}` | Detalhe de uma cidade ativa |
+| `GET` | `/v1/cities/{citySlug}/stops` | Paradas da cidade (`bbox`, `q` ou `codes`) |
+| `GET` | `/v1/cities/{citySlug}/stops/{id}` | Detalhe de uma parada ativa |
 | `GET` | `/v1/me/preferences` | Preferências da conta (cidade selecionada) |
 | `PUT` | `/v1/me/preferences` | Define a cidade selecionada (`selectedCitySlug`) |
 | `GET` | `/healthz` | Liveness |
@@ -162,6 +164,56 @@ quando a cidade muda. A preferência também vem em `verify-code`, `refresh` e
 `GET /v1/me` dentro de `preferences`. Endpoints de catálogo e rastreamento devem
 herdar de `CityScopedAPIView` (`/v1/cities/{citySlug}/...`) para resolver a
 cidade ativa antes de executar.
+
+### Catálogo de paradas
+
+As paradas ficam em `catalog_stop`, vinculadas a `catalog_city` e a uma
+`catalog_source`. Código é único por cidade (`catalog_stop_city_code_uniq`) e a
+tabela tem índices para bbox (`city`, `is_active`, `latitude`, `longitude`) e
+busca textual (`city`, `search_text`, sem acentos). Teresina usa a semente da
+migration `0002`; o CSV legado entra via comando (somente staging/demo, D2):
+
+```sh
+cd backend
+.venv/bin/python manage.py import_stops --city teresina
+.venv/bin/python manage.py import_stops --city teresina --path ../app/assets/paradas.csv --dry-run
+```
+
+O comando é idempotente por `(cidade, código)` — reexecutá-lo atualiza as
+paradas existentes em vez de duplicá-las — e registra a fonte `csv-paradas` com
+`dataMode=demo`. Produção deve usar a API da cidade, não este CSV.
+
+`GET /v1/cities/{citySlug}/stops` aceita:
+
+- `bbox=minLon,minLat,maxLon,maxLat`: limites de até 2° por eixo e 1°² de área;
+- `q=...`: busca sem acentos em código, nome e endereço;
+- `codes=2362,1848`: até 200 códigos, devolvidos na ordem pedida.
+
+```json
+{
+  "stops": [
+    {
+      "id": "11111111-1111-1111-1111-111111111111",
+      "code": "2362",
+      "name": "T-SANTA FÉ",
+      "address": "Rua B - Loteamento Mário Covas, Teresina - PI",
+      "latitude": -5.165446,
+      "longitude": -42.791169,
+      "isActive": true,
+      "dataMode": "demo",
+      "updatedAt": "2026-11-17T14:00:00+00:00"
+    }
+  ],
+  "count": 1
+}
+```
+
+**Cache Redis:** o catálogo é servido do cache Django (`REDIS_URL`), com chave
+versionada por cidade e TTL `CATALOG_CACHE_TTL_SECONDS` (padrão 300 s). A
+resposta informa `X-Catalog-Cache: HIT | MISS`. A importação incrementa a versão
+da cidade e invalida todas as consultas antigas de uma vez; não é necessário
+varrer chaves. Sem Redis, o Django usa `LocMemCache` (apenas para desenvolvimento
+local).
 
 ### Testes e qualidade
 

@@ -147,14 +147,17 @@ permissão, nessa ordem, antes de exibir a posição do usuário no mapa.
 
 ### Paradas da área visível
 
-O catálogo local de paradas fica em `assets/paradas.csv` e é lido pelo
-`AssetBusStopService`. Sempre que a câmera do mapa para de mover
-(`onCameraIdle`), o `MapTab` lê o retângulo visível (`getVisibleRegion`) e pede
-ao `UserLocationRepository`, via `updateVisibleArea`, as paradas contidas nele.
-O service filtra o catálogo por latitude/longitude, o repositório normaliza os
-cantos, ignora áreas repetidas e descarta respostas antigas, e publica a lista
-no stream `visibleStops`. O `MapLocationViewModel` mantém essa lista
-independente da localização do usuário.
+As paradas vêm da API do backend, vinculadas à cidade selecionada. O
+`ApiBusStopService` monta `GET /v1/cities/{citySlug}/stops?bbox=...` com
+`ApiPaths.city`, e o backend serve a consulta do cache Redis. Sempre que a câmera
+do mapa para de mover (`onCameraIdle`), o `MapTab` lê o retângulo visível
+(`getVisibleRegion`) e pede ao `UserLocationRepository`, via
+`updateVisibleArea`, as paradas contidas nele. O service normaliza os cantos,
+o repositório ignora áreas repetidas e descarta respostas antigas, e publica a
+lista no stream `visibleStops`. O `MapLocationViewModel` mantém essa lista
+independente da localização do usuário e não descarta as paradas já exibidas se
+a consulta falhar. O `AssetBusStopService` (CSV) continua no código apenas como
+fallback de staging/demonstração.
 
 As paradas só aparecem a partir do zoom `minVisibleStopsZoom` (14,5); abaixo
 disso o mapa mostra uma região grande demais, os marcadores são limpos e uma
@@ -175,9 +178,10 @@ paradas e remover a linha do rastreamento.
 A busca do mapa abre a tela dedicada em `/search`
 (`MapSearchPage` → `MapSearchViewModel` → `AssetPlaceSearchRepository`). O
 repositório consulta o `LineSearchService` no catálogo `assets/lines.csv`
-(linhas por código ou nome) e o `BusStopService` no catálogo `assets/paradas.csv`
-(paradas por código, denominação ou endereço). Enquanto o backend não expõe a
-busca, os catálogos locais são a fonte de verdade.
+(linhas por código ou nome) e o `BusStopService`, que hoje chama
+`GET /v1/cities/{citySlug}/stops?q=...` ou `?codes=...` na cidade selecionada.
+As linhas ainda vêm do catálogo local até a importação do catálogo de linhas no
+backend.
 
 Os resultados são exibidos em seções separadas: **LINHAS • N** e
 **PARADAS • N**, com um resumo da quantidade no topo. As linhas são ordenadas

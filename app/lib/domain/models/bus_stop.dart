@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'user_coordinates.dart';
 
-/// Parada de ônibus carregada do catálogo local.
+/// Parada de ônibus do catálogo (local em staging, remoto em produção).
 class BusStop {
   const BusStop({
     required this.id,
@@ -19,6 +19,18 @@ class BusStop {
   final String address;
   final double latitude;
   final double longitude;
+
+  /// Lê uma parada no formato devolvido pela API do catálogo.
+  factory BusStop.fromJson(Map<String, dynamic> json) {
+    return BusStop(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+    );
+  }
 
   /// Distância em metros até [position], calculada pela fórmula de Haversine.
   double distanceInMetersTo(UserCoordinates position) {
