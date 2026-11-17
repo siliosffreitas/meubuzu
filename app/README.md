@@ -26,14 +26,27 @@ Detalhes de execução, containers e segundo plano estão em `backend/README.md`
 
 ### Autenticação e sessão
 
-O endereço do backend vem de `--dart-define=API_BASE_URL`. Sem a definição,
-builds de debug usam `http://10.0.2.2:8000` no Android e
-`http://127.0.0.1:8000` no iOS; builds de release falham se a URL não for
-informada.
+O endereço do backend fica no `app/.env` e é passado no build com
+`--dart-define-from-file=.env`:
 
 ```sh
-flutter run --dart-define=API_BASE_URL=http://192.168.0.10:8000
+cp .env.example .env
+# edite .env e ajuste API_BASE_URL (ou as variáveis por plataforma)
+flutter run --dart-define-from-file=.env
 ```
+
+Variáveis aceitas:
+
+- `API_BASE_URL`: URL usada em todas as plataformas. Tem precedência e é o
+  lugar indicado para o IP da máquina em um celular físico ou para
+  staging/produção.
+- `API_BASE_URL_ANDROID` e `API_BASE_URL_IOS`: usadas quando `API_BASE_URL`
+  está vazia. O exemplo já traz `10.0.2.2:8000` para o emulador Android e
+  `127.0.0.1:8000` para o simulador iOS.
+
+Sem nenhuma variável definida, builds de debug mantêm esses dois padrões;
+builds de release falham se a URL não for informada. Como os valores são
+embutidos no aplicativo, não coloque segredos de servidor no `.env`.
 
 Fluxo implementado:
 
@@ -78,14 +91,21 @@ cp .env.example .env
 # edite .env e preencha:
 MAPS_API_KEY_ANDROID=<chave-restrita-ao-android>
 MAPS_API_KEY_IOS=<chave-restrita-ao-ios>
+API_BASE_URL_ANDROID=http://10.0.2.2:8000
+API_BASE_URL_IOS=http://127.0.0.1:8000
 ```
 
+> O `.env` é lido pelo Flutter (`--dart-define-from-file`) e também como
+> xcconfig pelo iOS. Por isso, use apenas linhas `CHAVE=valor`, sem comentários
+> (`#` ou `//`), linhas multilinha ou aspas.
+
 O mesmo arquivo `.env` é consumido pelos builds nativos de Android (Gradle) e
-iOS (xcconfig). O Android usa `MAPS_API_KEY_ANDROID` e o iOS usa
-`MAPS_API_KEY_IOS`, então não é necessário configurar as chaves em
-`android/local.properties` nem em `ios/Flutter/Secrets.xcconfig`. Esses dois
-arquivos continuam funcionando como fallback opcional (com a variável
-`MAPS_API_KEY`).
+iOS (xcconfig) e também é passado ao Flutter com
+`--dart-define-from-file=.env` para configurar a URL do backend. O Android usa
+`MAPS_API_KEY_ANDROID` e o iOS usa `MAPS_API_KEY_IOS`, então não é necessário
+configurar as chaves em `android/local.properties` nem em
+`ios/Flutter/Secrets.xcconfig`. Esses dois arquivos continuam funcionando como
+fallback opcional (com a variável `MAPS_API_KEY`).
 
 Sem as chaves, o app abre normalmente, mas o mapa fica sem os blocos de ruas.
 

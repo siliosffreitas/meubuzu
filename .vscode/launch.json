@@ -10,6 +10,7 @@
             "name": "app (Android emulator)",
             "cwd": "app",
             "program": "lib/main.dart",
+            "toolArgs": ["--dart-define-from-file=.env"],
             "emulatorId": "Medium_Phone_API_37.0",
             "request": "launch",
             "type": "dart"
@@ -18,6 +19,7 @@
             "name": "app",
             "cwd": "app",
             "program": "lib/main.dart",
+            "toolArgs": ["--dart-define-from-file=.env"],
             "request": "launch",
             "type": "dart"
         },
@@ -25,6 +27,7 @@
             "name": "app (profile mode)",
             "cwd": "app",
             "program": "lib/main.dart",
+            "toolArgs": ["--dart-define-from-file=.env"],
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
@@ -33,6 +36,7 @@
             "name": "app (release mode)",
             "cwd": "app",
             "program": "lib/main.dart",
+            "toolArgs": ["--dart-define-from-file=.env"],
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

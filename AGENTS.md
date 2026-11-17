@@ -96,16 +96,16 @@ rotas de autenticação vão para `/`. Não remova a autenticação ao ajustar a
 ```sh
 cd app
 flutter pub get
-flutter run
+flutter run --dart-define-from-file=.env
 flutter analyze
 flutter test
 dart format lib test
 
 # Build Android
-flutter build apk --debug
+flutter build apk --debug --dart-define-from-file=.env
 
 # Validar iOS sem assinatura
-flutter build ios --no-codesign --simulator
+flutter build ios --no-codesign --simulator --dart-define-from-file=.env
 
 # Um teste específico
 flutter test test/ui/features/home/presentation/widgets/map/map_location_view_model_test.dart
@@ -148,17 +148,24 @@ Para testes no emulador Android, rode `.venv/bin/python manage.py runserver
 `http://10.0.2.2:8000`. Simulador iOS usa `127.0.0.1`. Detalhes de execução,
 segundo plano e liberação de HTTP local estão em `backend/README.md`.
 
-## Configuração das chaves do Google Maps
+## Configuração do `.env` (Maps e backend)
 
-As chaves ficam em `app/.env`, com uma variável por plataforma:
+As chaves do Google Maps e a URL do backend ficam em `app/.env`:
 
 ```sh
 MAPS_API_KEY_ANDROID=<chave-restrita-ao-android>
 MAPS_API_KEY_IOS=<chave-restrita-ao-ios>
+
+API_BASE_URL=
+API_BASE_URL_ANDROID=http://10.0.2.2:8000
+API_BASE_URL_IOS=http://127.0.0.1:8000
 ```
 
 - `app/.env.example` documenta o formato. Use `cp .env.example .env` para criar
   o arquivo local.
+- O arquivo é passado ao Flutter com `--dart-define-from-file=.env` em `run` e
+  `build`. `API_BASE_URL` tem precedência; `API_BASE_URL_ANDROID` e
+  `API_BASE_URL_IOS` são usadas quando ela está vazia.
 - O Android lê `MAPS_API_KEY_ANDROID` via Gradle
   (`android/app/build.gradle.kts`); o iOS lê `MAPS_API_KEY_IOS` via xcconfig
   (`ios/Flutter/Debug.xcconfig` e `Release.xcconfig`).
@@ -166,8 +173,12 @@ MAPS_API_KEY_IOS=<chave-restrita-ao-ios>
   opcionais com `MAPS_API_KEY`; não são o caminho principal.
 - O `.env` precisa ficar em `app/.env` (não na raiz do repositório), pois os
   caminhos relativos dos builds nativos dependem disso.
+- Use apenas linhas `CHAVE=valor` no `.env`: ele também é lido como xcconfig
+  pelo iOS, então comentários (`#`/`//`) e valores multilinha quebram o build.
 - Cada chave deve ser restrita à sua plataforma. Não reutilize a chave Android
   no iOS nem vice-versa.
+- Não coloque segredos de servidor no `.env`: os valores passados com
+  `--dart-define-from-file` ficam embutidos no aplicativo.
 
 ## Arquitetura e convenções do app
 
