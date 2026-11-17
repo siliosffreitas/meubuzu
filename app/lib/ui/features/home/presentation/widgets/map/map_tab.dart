@@ -132,8 +132,15 @@ class _MapTabState extends State<MapTab>
           MapTrackingViewModel(
             widget.trackingRepository ??
                 TrackingRepositoryImpl(
-                  AssetRouteService(),
-                  AssetLineSearchService(),
+                  // Em produção o injetor sempre está pronto e os services vêm
+                  // da API. O fallback de assets existe apenas para testes que
+                  // renderizam a aba sem inicializar as dependências.
+                  injector.isReady
+                      ? injector.getService<RouteService>()
+                      : AssetRouteService(),
+                  injector.isReady
+                      ? injector.getService<LineSearchService>()
+                      : AssetLineSearchService(),
                   trackingService: AssetTrackingService(),
                 ),
           );

@@ -6,11 +6,12 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.cache import cache
+from django.db import models
 
 from apps.common.exceptions import ApiError
 
-from .models import City, Stop
-from .payloads import stop_payload
+from .models import City, Line, Route, Stop
+from .payloads import line_payload, route_payload, stop_payload
 from .text import normalize_search_text
 
 
@@ -179,3 +180,173 @@ def cached_stops(
 
     cache.set(cache_key, payloads, CATALOG_CACHE_TTL_SECONDS)
     return payloads, False
+
+
+# --- Catálogo de linhas em cache -------------------------------------------
+
+
+def _lines_cache_key(city_slug: str, params: dict) -> str:
+    raw = json.dumps(
+        {"city": city_slug, "version": catalog_version(city_slug), "params": params},
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    return "catalog:lines:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def cached_lines(
+    city_slug: str,
+    *,
+    query: str | None = None,
+    codes: list[str] | None = None,
+    limit: int = 100,
+) -> tuple[list[dict], bool]:
+    """Consulta linhas ativas de uma cidade, servindo do cache Redis.
+
+    `query` usa o `search_text` normalizado e `codes` preserva a ordem recebida,
+    como esperado pelo `findByCodes` do app.
+    """
+
+    params: dict = {"limit": limit}
+    if query:
+        params["query"] = normalize_search_text(query)
+    if codes:
+        params["codes"] = codes
+
+    cache_key = _lines_cache_key(city_slug, params)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached, True
+
+    lines = Line.objects.filter(city__slug=city_slug, is_active=True).select_related(
+        "source"
+    )
+    if query:
+        # Cada token precisa aparecer no texto normalizado, o que aproxima a
+        # busca tolerante a espaços/hífens esperada pelo app sem pg_trgm.
+        for token in normalize_search_text(query).split():
+            lines = lines.filter(search_text__contains=token)
+    if codes:
+        lines = lines.filter(code__in=codes) | lines.filter(
+            boarding_code__in=codes
+        )
+        lines = lines.distinct()
+
+    if codes:
+        by_code: dict[str, Line] = {}
+        for line in lines:
+            by_code.setdefault(line.code, line)
+            if line.boarding_code:
+                by_code.setdefault(line.boarding_code, line)
+        ordered = [by_code[code] for code in codes if code in by_code]
+        selected = ordered[:limit]
+    else:
+        selected = list(lines[:limit])
+
+    payloads = [line_payload(line) for line in selected]
+    cache.set(cache_key, payloads, CATALOG_CACHE_TTL_SECONDS)
+    return payloads, False
+
+
+def resolve_line(city: City, identifier: str) -> Line:
+    """Resolve uma linha por UUID, `codigoLinha`, `sgLinha` ou alias.
+
+    Códigos ambíguos retornam `409 ambiguous_line_code`, conforme RF-006.
+    """
+
+    from uuid import UUID
+
+    normalized = (identifier or "").strip()
+    matches: list[Line] = []
+
+    try:
+        uuid_value = UUID(normalized)
+    except (ValueError, AttributeError):
+        uuid_value = None
+
+    if uuid_value is not None:
+        match = Line.objects.filter(
+            city=city, pk=uuid_value, is_active=True
+        ).select_related("source").first()
+        if match is not None:
+            return match
+
+    text = normalize_search_text(normalized)
+    if text:
+        matches = list(
+            Line.objects.filter(city=city, is_active=True)
+            .select_related("source")
+            .filter(
+                models.Q(code__iexact=normalized)
+                | models.Q(boarding_code__iexact=normalized)
+                | models.Q(aliases__alias__iexact=normalized)
+            )
+            .distinct()
+        )
+
+    if not matches:
+        raise ApiError(
+            "Linha não encontrada.",
+            code="line_not_found",
+            title="Linha não encontrada",
+            status_code=404,
+        )
+    if len(matches) > 1:
+        raise ApiError(
+            "Esse código identifica mais de uma linha.",
+            code="ambiguous_line_code",
+            title="Código de linha ambíguo",
+            status_code=409,
+        )
+    return matches[0]
+
+
+def resolve_stop(city: City, identifier: str) -> Stop:
+    """Resolve uma parada por UUID ou código, com erro estável."""
+
+    from uuid import UUID
+
+    normalized = (identifier or "").strip()
+    try:
+        uuid_value = UUID(normalized)
+    except (ValueError, AttributeError):
+        uuid_value = None
+
+    if uuid_value is not None:
+        stop = Stop.objects.filter(
+            city=city, pk=uuid_value, is_active=True
+        ).first()
+    else:
+        stop = Stop.objects.filter(
+            city=city, code__iexact=normalized, is_active=True
+        ).first()
+
+    if stop is None:
+        raise ApiError(
+            "Parada não encontrada.",
+            code="stop_not_found",
+            title="Parada não encontrada",
+            status_code=404,
+        )
+    return stop
+
+
+def line_stops(line: Line) -> list[dict]:
+    """Retorna as paradas da linha na ordem do itinerário."""
+
+    from .models import LineStop
+
+    relations = (
+        LineStop.objects.filter(line=line)
+        .select_related("stop")
+        .order_by("direction", "sequence")
+    )
+    return [stop_payload(relation.stop) for relation in relations]
+
+
+def route_for_line(line: Line) -> dict | None:
+    """Retorna o traçado (`direction=0`) da linha, ou `None` se inexistente."""
+
+    route = Route.objects.filter(line=line, direction=0).first()
+    return route_payload(route) if route else None
+

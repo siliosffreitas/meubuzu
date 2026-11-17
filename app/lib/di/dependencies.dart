@@ -8,6 +8,9 @@ import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
 import '../data/services/api_bus_stop_service.dart';
 import '../data/services/api_client.dart';
+import '../data/services/api_line_search_service.dart';
+import '../data/services/api_line_stops_service.dart';
+import '../data/services/api_route_service.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
@@ -42,21 +45,38 @@ final injector = CustomInjector();
 /// Deve ser chamado antes do `runApp`, em [main], para que as páginas possam
 /// resolver suas dependências pelo [injector].
 Future<void> setupDependencies() async {
-  injector.addService<LocationService>(DeviceLocationService.new);
-  injector.addService<LineSearchService>(AssetLineSearchService.new);
-  injector.addService<LineStopsService>(AssetLineStopsService.new);
-  injector.addService<RouteService>(AssetRouteService.new);
-  injector.addService<TrackingService>(AssetTrackingService.new);
-  injector.addService<MapSearchCache>(MapSearchCache.new);
+  // ApiClient e AuthRepository são registrados antes dos services de catálogo,
+  // que dependem da cidade selecionada e do token de acesso.
   injector.addService<ApiClient>(() => ApiClient(ApiConfig.baseUrl));
   injector.addService<SessionStorage>(SecureSessionStorage.new);
-
   injector.addRepository<AuthRepository>(
     () => ApiAuthRepository(
       injector.getService<ApiClient>(),
       injector.getService<SessionStorage>(),
     ),
   );
+
+  injector.addService<LocationService>(DeviceLocationService.new);
+  injector.addService<LineSearchService>(
+    () => ApiLineSearchService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
+  injector.addService<LineStopsService>(
+    () => ApiLineStopsService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
+  injector.addService<RouteService>(
+    () => ApiRouteService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
+  injector.addService<TrackingService>(AssetTrackingService.new);
+  injector.addService<MapSearchCache>(MapSearchCache.new);
   injector.addService<BusStopService>(
     () => ApiBusStopService(
       injector.getService<ApiClient>(),

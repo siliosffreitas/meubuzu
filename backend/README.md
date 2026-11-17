@@ -110,7 +110,7 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2
 
 No celular físico, inclua também o IP do Mac em `DJANGO_ALLOWED_HOSTS`.
 
-> O app já consulta o catálogo de paradas pela API (`/v1/cities/{citySlug}/stops`) em vez do CSV local. Linhas, trajetos e posições continuam em assets por enquanto. Para testar no emulador, o Android exige liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
+> O app consulta o catálogo de paradas, linhas, itinerários e traçados pela API (`/v1/cities/{citySlug}/...`) em vez dos CSVs locais. As posições dos ônibus (`rastreamento`) continuam em assets por enquanto. Para testar no emulador, o Android exige liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
 
 O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS. O deploy público usa Gunicorn (já configurado no `Dockerfile`) e faz parte da etapa M6 do PRD.
 
@@ -127,6 +127,11 @@ O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS
 | `GET` | `/v1/cities/{citySlug}` | Detalhe de uma cidade ativa |
 | `GET` | `/v1/cities/{citySlug}/stops` | Paradas da cidade (`bbox`, `q` ou `codes`) |
 | `GET` | `/v1/cities/{citySlug}/stops/{id}` | Detalhe de uma parada ativa |
+| `GET` | `/v1/cities/{citySlug}/lines` | Busca de linhas (`q` ou `codes`) |
+| `GET` | `/v1/cities/{citySlug}/lines/{id}` | Detalhe da linha |
+| `GET` | `/v1/cities/{citySlug}/lines/{id}/stops` | Paradas da linha na ordem do itinerário |
+| `GET` | `/v1/cities/{citySlug}/lines/{id}/route` | Traçado da linha (`route: null` se ausente) |
+| `GET` | `/v1/cities/{citySlug}/stops/{id}/lines` | Linhas que passam pela parada |
 | `GET` | `/v1/me/preferences` | Preferências da conta (cidade selecionada) |
 | `PUT` | `/v1/me/preferences` | Define a cidade selecionada (`selectedCitySlug`) |
 | `GET` | `/healthz` | Liveness |
@@ -207,6 +212,60 @@ paradas existentes em vez de duplicá-las — e registra a fonte `csv-paradas` c
   "count": 1
 }
 ```
+
+### Catálogo de linhas e itinerários
+
+Linhas, paradas por linha e traçados ficam respectivamente em `catalog_line`,
+`catalog_line_stop` e `catalog_route`, todos vinculados à cidade e ao catálogo
+de linhas. O CSV legado entra via comando (somente staging/demo, D2):
+
+```sh
+cd backend
+.venv/bin/python manage.py import_lines --city teresina --dry-run
+.venv/bin/python manage.py import_lines --city teresina
+```
+
+O comando lê `app/assets/lines.csv`, `app/assets/lines_paradas.json` e
+`app/assets/routes/<sgLinha>.csv`. É idempotente por `(cidade, código)`,
+registra a fonte `csv-linhas` com `dataMode=demo` e invalida o cache da cidade
+ao final. O JSON de paradas e os nomes dos arquivos de traçado são resolvidos
+tanto por `codigoLinha` quanto por `sgLinha`. Produção deve usar a API da
+cidade, não estes CSVs. Para popular o banco local de desenvolvimento, rode
+antes `import_stops` (as paradas precisam existir para o itinerário).
+
+**Busca de linhas** (`GET /v1/cities/{citySlug}/lines`): exige `q` ou `codes`;
+`codes` preserva a ordem recebida. Cada linha é devolvida como:
+
+```json
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "code": "3",
+  "boardingCode": "0001",
+  "name": "POTY VELHO B. ESPERANCA VIA ACARAPE",
+  "origin": "TERMINAL 1",
+  "destination": "TERMINAL 1",
+  "isActive": true,
+  "dataMode": "demo",
+  "updatedAt": "2026-11-17T14:00:00+00:00"
+}
+```
+
+Os endpoints de linha aceitam como `{id}` o UUID canônico, o `codigoLinha`, o
+`sgLinha` ou um alias local. Código ambíguo retorna `409 ambiguous_line_code`;
+linha inexistente retorna `404 line_not_found`. O traçado usa coordenadas
+`[latitude, longitude]` na ordem do itinerário:
+
+```json
+{
+  "lineId": "11111111-1111-1111-1111-111111111111",
+  "direction": 0,
+  "coordinates": [[-5.09867, -42.784517], [-5.10007, -42.78449]],
+  "updatedAt": "2026-11-17T14:00:00+00:00"
+}
+```
+
+`GET /v1/cities/{citySlug}/stops/{id}/lines` aceita UUID ou código da parada e
+devolve as linhas ativas que passam por ela no mesmo formato da busca.
 
 **Cache Redis:** o catálogo é servido do cache Django (`REDIS_URL`), com chave
 versionada por cidade e TTL `CATALOG_CACHE_TTL_SECONDS` (padrão 300 s). A

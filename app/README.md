@@ -6,9 +6,10 @@ O aplicativo é desenvolvido com **Flutter** e **Dart** para **Android e iOS**. 
 
 ## Backend local nos testes
 
-A autenticação já usa o backend Django. Catálogo, rastreamento e favoritos
-continuam com os catálogos locais de `app/assets` nesta etapa. Para testar o app
-contra o backend rodando na sua máquina:
+A autenticação e o catálogo (paradas, linhas, itinerários e traçados) já usam o
+backend Django. Rastreamento (posições) e favoritos continuam com os catálogos
+locais de `app/assets` nesta etapa. Para testar o app contra o backend rodando
+na sua máquina:
 
 ```sh
 cd backend
@@ -87,7 +88,8 @@ centralizado na cidade selecionada.
   revertida e `CityUnavailableException` é lançada.
 - `StoredAuthSession.selectedCity` persiste a cidade junto dos tokens.
 - `ApiPaths.city(citySlug, path)` monta os caminhos `/v1/cities/{citySlug}/...`
-  para o catálogo e o rastreamento, que ainda usam os assets locais.
+  para o catálogo. Linhas, paradas, itinerários e traçados vêm da API; apenas as
+  posições usadas no rastreamento ainda vêm dos assets locais.
 
 ## Acesso, cidade e planos
 
@@ -156,8 +158,9 @@ do mapa para de mover (`onCameraIdle`), o `MapTab` lê o retângulo visível
 o repositório ignora áreas repetidas e descarta respostas antigas, e publica a
 lista no stream `visibleStops`. O `MapLocationViewModel` mantém essa lista
 independente da localização do usuário e não descarta as paradas já exibidas se
-a consulta falhar. O `AssetBusStopService` (CSV) continua no código apenas como
-fallback de staging/demonstração.
+a consulta falhar. As implementações `Asset*` (CSV) permanecem no código apenas
+para testes e importação de dados em staging/demonstração; a injeção de
+dependências do app usa as implementações `Api*`.
 
 As paradas só aparecem a partir do zoom `minVisibleStopsZoom` (14,5); abaixo
 disso o mapa mostra uma região grande demais, os marcadores são limpos e uma
@@ -177,11 +180,14 @@ paradas e remover a linha do rastreamento.
 
 A busca do mapa abre a tela dedicada em `/search`
 (`MapSearchPage` → `MapSearchViewModel` → `AssetPlaceSearchRepository`). O
-repositório consulta o `LineSearchService` no catálogo `assets/lines.csv`
-(linhas por código ou nome) e o `BusStopService`, que hoje chama
-`GET /v1/cities/{citySlug}/stops?q=...` ou `?codes=...` na cidade selecionada.
-As linhas ainda vêm do catálogo local até a importação do catálogo de linhas no
-backend.
+repositório consulta o `LineSearchService`, hoje `ApiLineSearchService`, que chama
+`GET /v1/cities/{citySlug}/lines?q=...` ou `?codes=...`, e o `BusStopService`
+(`ApiBusStopService`), que chama `GET /v1/cities/{citySlug}/stops?q=...` ou
+`?codes=...`. Ambos usam a cidade selecionada e o token de acesso. Os detalhes da
+linha e as paradas do itinerário vêm de
+`GET /v1/cities/{citySlug}/lines/{id}/stops`, e o traçado de
+`GET /v1/cities/{citySlug}/lines/{id}/route`; o app não lê mais
+`assets/lines.csv`, `assets/lines_paradas.json` nem `assets/routes/` em produção.
 
 Os resultados são exibidos em seções separadas: **LINHAS • N** e
 **PARADAS • N**, com um resumo da quantidade no topo. As linhas são ordenadas

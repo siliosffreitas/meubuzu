@@ -149,3 +149,145 @@ class Stop(models.Model):
 
     def __str__(self) -> str:
         return f"{self.code} - {self.name}"
+
+
+class Line(models.Model):
+    """Linha de ônibus pertencente ao catálogo de uma cidade.
+
+    `code` é o `codigoLinha` e `boarding_code` é o `sgLinha` da fonte. O
+    `search_text` mantém ambos normalizados para busca textual sem pg_trgm.
+    """
+
+    class OriginType(models.TextChoices):
+        IMPORTED = "imported", "importado"
+        MANUAL = "manual", "manual"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="lines")
+    source = models.ForeignKey(
+        CatalogSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lines",
+    )
+    external_id = models.CharField("id de origem", max_length=64, blank=True, default="")
+    code = models.CharField("codigoLinha", max_length=20)
+    boarding_code = models.CharField("sgLinha", max_length=20, blank=True, default="")
+    name = models.CharField("nome", max_length=200)
+    origin = models.TextField("origem", blank=True, default="")
+    destination = models.TextField("destino", blank=True, default="")
+    search_text = models.CharField("busca", max_length=400, blank=True, default="")
+    origin_type = models.CharField(
+        "origem do registro",
+        max_length=16,
+        choices=OriginType.choices,
+        default=OriginType.IMPORTED,
+    )
+    is_active = models.BooleanField("ativa", default=True)
+    source_updated_at = models.DateTimeField("atualizada na origem", null=True, blank=True)
+    created_at = models.DateTimeField("criada em", auto_now_add=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+
+    class Meta:
+        db_table = "catalog_line"
+        verbose_name = "linha"
+        verbose_name_plural = "linhas"
+        ordering = ["code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["city", "code"], name="catalog_line_city_code_uniq"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["city", "is_active"], name="catalog_line_city_active_idx"),
+            models.Index(fields=["city", "boarding_code"], name="catalog_line_boarding_idx"),
+            models.Index(fields=["city", "search_text"], name="catalog_line_search_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.code} - {self.name}"
+
+
+class LineAlias(models.Model):
+    """Alias local de uma linha (nunca apagado por importações)."""
+
+    class Kind(models.TextChoices):
+        CODIGO = "codigo", "codigo"
+        SGLINHA = "sglinha", "sgLinha"
+        LEGACY = "legacy", "legado"
+        LOCAL = "local", "local"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name="aliases")
+    alias = models.CharField("alias", max_length=40)
+    kind = models.CharField("tipo", max_length=16, choices=Kind.choices, default=Kind.LOCAL)
+
+    class Meta:
+        db_table = "catalog_line_alias"
+        verbose_name = "alias de linha"
+        verbose_name_plural = "aliases de linha"
+        constraints = [
+            models.UniqueConstraint(fields=["line", "alias"], name="catalog_line_alias_uniq")
+        ]
+        indexes = [models.Index(fields=["alias"], name="catalog_line_alias_idx")]
+
+    def __str__(self) -> str:
+        return self.alias
+
+
+class LineStop(models.Model):
+    """Relaciona uma linha a uma parada, na ordem do itinerário."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name="line_stops")
+    stop = models.ForeignKey(Stop, on_delete=models.CASCADE, related_name="line_stops")
+    direction = models.PositiveSmallIntegerField("sentido", default=0)
+    sequence = models.PositiveIntegerField("ordem", default=0)
+    created_at = models.DateTimeField("criada em", auto_now_add=True)
+
+    class Meta:
+        db_table = "catalog_line_stop"
+        verbose_name = "parada da linha"
+        verbose_name_plural = "paradas das linhas"
+        ordering = ["direction", "sequence"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["line", "direction", "sequence"], name="catalog_line_stop_sequence_uniq"
+            ),
+            models.UniqueConstraint(
+                fields=["line", "stop", "direction"], name="catalog_line_stop_pair_uniq"
+            ),
+        ]
+        indexes = [models.Index(fields=["line", "direction"], name="catalog_line_stop_dir_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.line.code} -> {self.stop.code}"
+
+
+class Route(models.Model):
+    """Traçado geográfico (LineString) de uma linha.
+
+    O `path` guarda a sequência de coordenadas em ordem. Cada ponto é um par
+    `[latitude, longitude]`, o mesmo formato consumido pelo mapa no app.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name="routes")
+    direction = models.PositiveSmallIntegerField("sentido", default=0)
+    path = models.JSONField("traçado", default=list)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+
+    class Meta:
+        db_table = "catalog_route"
+        verbose_name = "traçado"
+        verbose_name_plural = "traçados"
+        ordering = ["line", "direction"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["line", "direction"], name="catalog_route_line_direction_uniq"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.line.code} ({self.direction})"

@@ -5,13 +5,12 @@ import '../models/place_suggestion.dart';
 import '../services/bus_stop_service.dart';
 import '../services/line_search_service.dart';
 
-/// Implementação baseada nos catálogos locais para busca de linhas e paradas.
+/// Implementação da busca de linhas e paradas a partir dos serviços de catálogo.
 class AssetPlaceSearchRepository implements PlaceSearchRepository {
-  AssetPlaceSearchRepository({
-    LineSearchService? lineSearchService,
-    BusStopService? busStopService,
-  }) : _lineSearchService = lineSearchService ?? AssetLineSearchService(),
-       _busStopService = busStopService ?? AssetBusStopService();
+  const AssetPlaceSearchRepository({
+    required this._lineSearchService,
+    required this._busStopService,
+  });
 
   final LineSearchService _lineSearchService;
   final BusStopService _busStopService;
