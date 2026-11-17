@@ -65,7 +65,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/lines_paradas.json
+    # - assets/lines_paradas.json
     - assets/routes/
     - assets/locations/
 
