@@ -301,6 +301,43 @@ def resolve_line(city: City, identifier: str) -> Line:
     return matches[0]
 
 
+def resolve_line_by_boarding_code(city: City, sg_linha: str) -> Line:
+    """Resolve uma linha exclusivamente pelo `sgLinha` (código de embarque).
+
+    Diferente de `resolve_line`, esta função não aceita UUID nem `codigoLinha`:
+    o contrato de rastreamento usa o código exibido ao usuário, preservando os
+    zeros à esquerda (por exemplo, `0301`).
+    """
+
+    normalized = (sg_linha or "").strip()
+    matches: list[Line] = []
+    if normalized:
+        matches = list(
+            Line.objects.filter(
+                city=city,
+                is_active=True,
+                boarding_code__iexact=normalized,
+            )
+            .select_related("source")[:2]
+        )
+
+    if not matches:
+        raise ApiError(
+            "Linha não encontrada para o sgLinha informado.",
+            code="line_not_found",
+            title="Linha não encontrada",
+            status_code=404,
+        )
+    if len(matches) > 1:
+        raise ApiError(
+            "Esse sgLinha identifica mais de uma linha.",
+            code="ambiguous_line_code",
+            title="Código de linha ambíguo",
+            status_code=409,
+        )
+    return matches[0]
+
+
 def resolve_stop(city: City, identifier: str) -> Stop:
     """Resolve uma parada por UUID ou código, com erro estável."""
 

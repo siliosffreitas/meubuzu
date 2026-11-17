@@ -73,9 +73,10 @@ class _FakeTrackingService implements TrackingService {
   }
 }
 
-BusPosition _position(String busCode) {
+BusPosition _position(String busCode, {String lineCode = '0301'}) {
   return BusPosition(
     bus: Bus(code: busCode),
+    lineCode: lineCode,
     latitude: -5.102443,
     longitude: -42.727275,
     capturedAt: DateTime.utc(2023, 6, 4, 11, 58),
@@ -284,8 +285,11 @@ void main() {
       await done;
     });
 
-    test('consulta as linhas já acompanhadas ao adicionar uma nova', () async {
-      final trackingService = _FakeTrackingService([_position('4171')]);
+    test('consulta todas as linhas de uma vez e separa as posições por linha', () async {
+      final trackingService = _FakeTrackingService([
+        _position('4171', lineCode: line.boardingCode!),
+        _position('5096', lineCode: otherLine.boardingCode!),
+      ]);
       final repository = TrackingRepositoryImpl(
         _FakeRouteService({'0301': route, '0302': null}),
         _FakeLineSearchService([line, otherLine]),
@@ -298,11 +302,17 @@ void main() {
 
       await repository.startTracking('0302');
 
-      final queriedLineIds = trackingService.queries
-          .expand((lines) => lines)
-          .map((queried) => queried.id)
-          .toSet();
-      expect(queriedLineIds, {line.id, otherLine.id});
+      expect(trackingService.queries, hasLength(1));
+      expect(trackingService.queries.single.map((queried) => queried.id), [
+        line.id,
+        otherLine.id,
+      ]);
+
+      final routes = await repository.trackingRoutes.firstWhere(
+        (routes) => routes.length == 2,
+      );
+      expect(routes.first.busPositions.single.bus.code, '4171');
+      expect(routes.last.busPositions.single.bus.code, '5096');
     });
 
     test('atualiza as posições a cada intervalo', () {
@@ -350,15 +360,15 @@ void main() {
 
         repository.startTracking('0302');
         async.flushMicrotasks();
-        // Consulta imediata com as duas linhas acompanhadas.
+        // Uma consulta imediata com as duas linhas acompanhadas.
         final afterAdd = trackingService.queries.length;
-        expect(afterAdd, 3);
+        expect(afterAdd, 2);
 
         async.elapse(const Duration(seconds: 29));
         expect(trackingService.queries, hasLength(afterAdd));
 
         async.elapse(const Duration(seconds: 1));
-        expect(trackingService.queries, hasLength(afterAdd + 2));
+        expect(trackingService.queries, hasLength(afterAdd + 1));
 
         repository.dispose();
       });

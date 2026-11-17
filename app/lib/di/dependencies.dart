@@ -8,6 +8,7 @@ import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
 import '../data/services/api_bus_stop_service.dart';
 import '../data/services/api_client.dart';
+import '../data/services/api_tracking_service.dart';
 import '../data/services/api_line_search_service.dart';
 import '../data/services/api_line_stops_service.dart';
 import '../data/services/api_route_service.dart';
@@ -75,7 +76,12 @@ Future<void> setupDependencies() async {
       injector.getRepository<AuthRepository>(),
     ),
   );
-  injector.addService<TrackingService>(AssetTrackingService.new);
+  injector.addService<TrackingService>(
+    () => ApiTrackingService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
   injector.addService<MapSearchCache>(MapSearchCache.new);
   injector.addService<BusStopService>(
     () => ApiBusStopService(

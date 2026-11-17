@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../domain/models/bus_position.dart';
 import '../../domain/models/line.dart';
 import '../../domain/models/tracked_line.dart';
 import '../../domain/repositories/tracking_repository.dart';
@@ -187,24 +188,33 @@ class TrackingRepositoryImpl implements TrackingRepository {
 
     try {
       final entries = _trackedLines.entries.toList(growable: false);
-      final results = await Future.wait([
-        for (final entry in entries) service.findPositions([entry.value.line]),
-      ]);
+      final lines = [for (final entry in entries) entry.value.line];
+      final positions = await service.findPositions(lines);
       if (_isDisposed) {
         return;
       }
 
-      for (var index = 0; index < entries.length; index++) {
-        final key = entries[index].key;
+      final byLineCode = <String, List<BusPosition>>{};
+      for (final position in positions) {
+        final code = normalizeLineCode(position.lineCode);
+        if (code.isEmpty) {
+          continue;
+        }
+        (byLineCode[code] ??= <BusPosition>[]).add(position);
+      }
+
+      for (final entry in entries) {
+        final key = entry.key;
         // A linha pode ter saído do acompanhamento durante a consulta.
         final current = _trackedLines[key];
         if (current == null) {
           continue;
         }
+        final code = normalizeLineCode(current.line.boardingCode ?? '');
         _trackedLines[key] = TrackedLine(
           line: current.line,
           route: current.route,
-          busPositions: results[index],
+          busPositions: byLineCode[code] ?? const <BusPosition>[],
         );
       }
     } catch (_) {

@@ -7,16 +7,41 @@ class BusPosition {
     required this.latitude,
     required this.longitude,
     required this.capturedAt,
+    this.lineCode = '',
     this.generatedAt,
+    this.receivedAt,
+    this.speed,
+    this.heading,
+    this.isStale = false,
+    this.dataMode,
+    this.source,
   });
 
   final Bus bus;
   final double latitude;
   final double longitude;
 
+  /// `sgLinha` da linha a que a posição pertence, com zeros à esquerda.
+  final String lineCode;
+
   /// Momento em que a posição foi capturada.
   final DateTime capturedAt;
 
   /// Momento em que a posição foi gerada pelo veículo, quando informado.
   final DateTime? generatedAt;
+
+  /// Momento em que o backend recebeu a posição.
+  final DateTime? receivedAt;
+
+  final double? speed;
+  final double? heading;
+
+  /// Indica se a captura é antiga o suficiente para ser sinalizada ao usuário.
+  final bool isStale;
+
+  /// `demo` ou `live`, usado apenas para avisos de interface.
+  final String? dataMode;
+
+  /// Identificador da fonte no backend; o app não toma decisões por ele.
+  final String? source;
 }

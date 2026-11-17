@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meubuzu/domain/models/bus.dart';
+import 'package:meubuzu/domain/models/bus_position.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
@@ -30,6 +32,22 @@ const _line305 = Line(
 
 TrackedLine _tracked(Line line) {
   return TrackedLine(line: line, route: null, busPositions: const []);
+}
+
+BusPosition _position({bool isStale = false, String? dataMode}) {
+  return BusPosition(
+    bus: Bus(code: '4171'),
+    lineCode: '101',
+    latitude: -5.1,
+    longitude: -42.8,
+    capturedAt: DateTime.utc(2026, 11, 17, 15),
+    isStale: isStale,
+    dataMode: dataMode,
+  );
+}
+
+TrackedLine _trackedWithPositions(Line line, List<BusPosition> positions) {
+  return TrackedLine(line: line, route: null, busPositions: positions);
 }
 
 Widget _wrap(Widget child) {
@@ -182,6 +200,49 @@ void main() {
       expect(find.text('6 min'), findsNothing);
       expect(find.byIcon(Icons.star_outline_rounded), findsNothing);
       expect(find.byIcon(Icons.star_rounded), findsNothing);
+    });
+
+    testWidgets('avisa quando há posições de demonstração', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [_trackedWithPositions(_line101, [_position(dataMode: 'demo')])],
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tracking-panel-notice')), findsOneWidget);
+      expect(find.text('Dados de demonstração'), findsOneWidget);
+      expect(find.text('Posições antigas'), findsNothing);
+    });
+
+    testWidgets('avisa quando há posições antigas e demonstração', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [
+              _trackedWithPositions(_line101, [
+                _position(dataMode: 'demo', isStale: true),
+              ]),
+            ],
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tracking-panel-notice')), findsOneWidget);
+      expect(find.text('Dados de demonstração · Posições antigas'), findsOneWidget);
+    });
+
+    testWidgets('não exibe aviso para posições reais recentes', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [_trackedWithPositions(_line101, [_position(dataMode: 'live')])],
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tracking-panel-notice')), findsNothing);
     });
   });
 

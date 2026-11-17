@@ -24,6 +24,7 @@ def readyz(_request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("v1/", include("apps.catalog.urls")),
+    path("v1/", include("apps.tracking.urls")),
     path("v1/auth/", include("apps.accounts.urls")),
     path("v1/me/preferences", PreferencesView.as_view()),
     path("v1/me/preferences/", PreferencesView.as_view()),

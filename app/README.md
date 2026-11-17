@@ -201,22 +201,26 @@ busca concluída fica em `MapSearchCache`: ao reabrir `/search`, o texto e os
 resultados anteriores são restaurados sem consultar o repositório novamente. O
 cache é limpo ao usar “Limpar busca” ou ao encerrar a sessão.
 
-### Posições dos ônibus (dados de exemplo)
+### Posições dos ônibus
 
-As posições usadas no rastreamento vêm de `assets/locations/`, um CSV por dia
-sem cabeçalho (`label, codigoLinha, ônibus, geradoEm, lat, long, capturadoEm`).
-O `AssetTrackingService` escolhe o arquivo pelo dia da semana da consulta
-(01/06/2023 foi uma quinta-feira) e devolve, para as linhas pedidas, apenas a
-captura mais recente de cada ônibus na janela de 5 minutos antes da hora
-consultada. A comparação é feita pela hora do relógio (não por UTC), para que o
-conjunto de 2023 funcione como demonstração em qualquer data. O índice de cada
-arquivo é lido uma única vez e reutilizado nas consultas seguintes.
+As posições vêm do backend, pela city selecionada. O `ApiTrackingService` chama
+`GET /v1/cities/{citySlug}/positions?codes=0301,0245` uma única vez por
+atualização, usando o `sgLinha` (`boardingCode`) das linhas acompanhadas; o app
+não escolhe CSV nem sabe se a origem é o replay de demonstração ou o futuro banco
+volátil. O backend devolve um bloco por linha com `lineId` (UUID),
+`boardingCode`, `dataMode`, `isStale`, `source`, `sourceStatus` e `positions`;
+cada posição traz `boardingCode` para o repositório agrupar os marcadores por
+linha.
+O `TrackingService` também define `EmptyTrackingService`, usado apenas como
+fallback de widgets sem injetor.
 
 Enquanto houver linhas acompanhadas, o `TrackingRepositoryImpl` consulta o
 serviço a cada 30 segundos (e imediatamente ao adicionar uma linha). O mapa
 desenha o traçado e um marcador por ônibus na mesma cor da linha; o ícone é
 gerado a partir da cor exata e fica em cache, com o marcador padrão colorido
-pela matiz como fallback enquanto o ícone não está pronto.
+pela matiz como fallback enquanto o ícone não está pronto. O painel exibe
+“Dados de demonstração” quando `dataMode` é `demo` e “Posições antigas” quando
+`isStale` é `true`, ambos calculados pelo backend.
 
 A direção do ônibus é calculada na tela a partir da captura anterior
 (`TrackingBusDirections`): a primeira posição não tem seta, e qualquer

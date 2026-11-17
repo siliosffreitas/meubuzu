@@ -70,6 +70,11 @@ class _TrackingPanelState extends State<TrackingPanel> {
     final listMaxHeight = (MediaQuery.sizeOf(context).height * 0.32)
         .clamp(_minListHeight, _maxListHeight)
         .toDouble();
+    final positions = [
+      for (final tracked in widget.trackedLines) ...tracked.busPositions,
+    ];
+    final hasDemo = positions.any((position) => position.dataMode == 'demo');
+    final hasStale = positions.any((position) => position.isStale);
 
     return Material(
       key: const Key('tracking-panel'),
@@ -92,6 +97,8 @@ class _TrackingPanelState extends State<TrackingPanel> {
             updatedAt: widget.updatedAt,
             onTap: _toggle,
           ),
+          if (hasDemo || hasStale)
+            _TrackingNotice(hasDemo: hasDemo, hasStale: hasStale),
           AnimatedSize(
             duration: _animationDuration,
             curve: Curves.easeInOut,
@@ -215,6 +222,35 @@ class _Header extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrackingNotice extends StatelessWidget {
+  const _TrackingNotice({required this.hasDemo, required this.hasStale});
+
+  final bool hasDemo;
+  final bool hasStale;
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = <String>[
+      if (hasDemo) 'Dados de demonstração',
+      if (hasStale) 'Posições antigas',
+    ];
+
+    return Container(
+      key: const Key('tracking-panel-notice'),
+      color: AppColors.attentionSurface,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Text(
+        labels.join(' · '),
+        style: const TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
         ),
       ),
     );

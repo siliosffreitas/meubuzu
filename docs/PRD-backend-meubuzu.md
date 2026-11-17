@@ -61,7 +61,7 @@ O lançamento é **Teresina-PI**, que possui API própria de rastreamento. O bac
   - `app/assets/paradas.csv`
   - `app/assets/lines_paradas.json`
   - `app/assets/routes/<sgLinha>.csv`
-  - `app/assets/locations/positions_YYYY_MM_DD.csv`
+  - `backend/apps/tracking/data/locations/positions_YYYY_MM_DD.csv` (movidos do app)
 - O fluxo de autenticação usa `FakeAuthRepository`; não existe autenticação real.
 - O backend em `backend/` tem apenas `/hello` e `/hello/ping`, configuração de PostgreSQL e dependências do Vaden.
 - As regras de negócio estão documentadas em `README.md` e `CLAUDE.md`, mas não são aplicadas no servidor.
@@ -565,26 +565,30 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 ### RF-009 — Posições atuais
 
-**Descrição:** retornar as posições mais recentes dos veículos de uma linha.
+**Descrição:** retornar as posições mais recentes dos veículos de uma ou mais linhas, sem que o app saiba qual é a fonte.
 
 **Regras:**
 
-- Exigir `accessLevel` `trial` ou `paid`; caso contrário `402 subscription_required`.
-- Retornar no máximo uma posição por veículo.
-- Considerar a captura mais recente dentro da janela configurada.
-- Incluir `capturedAt`, `generatedAt`, `receivedAt`, `source`, `dataMode` e `isStale`.
-- `isStale = true` quando a captura exceder 2 minutos.
+- Rota batch: `GET /v1/cities/{citySlug}/positions?codes=0301,0245`, com no máximo 200 `sgLinha` (código de embarque, com zeros à esquerda). `codigoLinha` e UUID não são aceitos neste parâmetro.
+- Alias estrito: `GET /v1/cities/{citySlug}/lines/{sgLinha}/positions`; linha inexistente retorna `404 line_not_found`.
+- No batch, linhas não resolvidas são devolvidas em `unresolvedLines` sem descartar as demais. Códigos duplicados ou que apontam para a mesma linha são resolvidos uma única vez.
+- A cidade é sempre explícita no path; o dia da semana, o "agora" e a janela usam `catalog_city.timezone`.
+- `PositionSource` abstrai a origem: hoje `CsvDemoPositionSource` relê os CSVs de `backend/apps/tracking/data/locations/`, rebase a hora literal do arquivo para o dia atual e mantém capturas entre 0 e `TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s) antes de agora.
+- Exigir entitlements quando a fonte não estiver em modo demo liberado; sem acesso, `402 subscription_required`. Com `DEBUG=False`, `TRACKING_POSITIONS_SOURCE=csv_demo` e `TRACKING_DEMO_ACCESS_ENABLED=false`, a fonte demo retorna `500 demo_mode_forbidden`.
+- Retornar no máximo uma posição por veículo por linha, escolhendo a captura mais recente.
+- Incluir `capturedAt`, `generatedAt`, `receivedAt`, `source`, `dataMode` e `isStale`. `isStale` é calculado no backend quando a idade da captura passa de `TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s).
 - Não inventar posições nem interpolar.
-- Cache curto (5–15 s) por linha.
-- Se não houver posição recente, retornar lista vazia com `sourceStatus`.
+- Cache curto (padrão: 10 s) por cidade + `sgLinha` solicitados + bucket de tempo, com cabeçalho `X-Tracking-Cache`.
+- Se não houver posição recente, retornar `positions: []` com `sourceStatus: "no_positions"` no bloco da linha.
 - Polling no MVP; sem WebSocket.
 
 **Critérios de aceite:**
 
-- Posição exibida no mapa com horário de captura.
-- Posição antiga marcada como `stale`.
+- Uma única requisição consulta todas as linhas acompanhadas e o app agrupa as posições pelo `boardingCode` (`sgLinha`) de cada item.
+- Posição exibida no mapa com horário de captura rebaseado para o dia atual.
+- Posição antiga marcada como `stale`; dados CSV marcados como `demo`.
 - Nenhuma posição duplicada por veículo.
-- `read_only` e `catalog_only` recebem `402`.
+- Sem acesso, a API responde `402`; CSV em produção responde `500 demo_mode_forbidden`.
 - p95 < 500 ms com cache.
 
 ---
@@ -1542,7 +1546,8 @@ Atualizada por upsert na mesma transação da ingestão.
 | GET | `/v1/cities/{citySlug}/lines/{id}` | Access | Detalhes da linha |
 | GET | `/v1/cities/{citySlug}/lines/{id}/stops` | Access | Paradas da linha |
 | GET | `/v1/cities/{citySlug}/lines/{id}/route` | Access | Traçado |
-| GET | `/v1/cities/{citySlug}/lines/{id}/positions` | Trial/Pago | Posições atuais |
+| GET | `/v1/cities/{citySlug}/positions?codes=...` | Trial/Pago | Posições de várias linhas (`sgLinha`) |
+| GET | `/v1/cities/{citySlug}/lines/{sgLinha}/positions` | Trial/Pago | Posições de uma linha |
 | GET | `/v1/cities/{citySlug}/stops` | Access | Busca/bbox de paradas |
 | GET | `/v1/cities/{citySlug}/stops/{id}` | Access | Detalhes da parada |
 | GET | `/v1/cities/{citySlug}/stops/{id}/lines` | Access | Linhas da parada |
@@ -1649,29 +1654,61 @@ Content-Type: application/json
 }
 ```
 
-**Posições**
+**Posições de várias linhas**
+
+```http
+GET /v1/cities/teresina/positions?codes=0301,0245
+```
 
 ```json
 {
   "city": "teresina",
-  "lineId": "...",
-  "source": "teresina_api",
-  "dataMode": "live",
-  "isStale": false,
-  "positions": [
+  "generatedAt": "2026-11-17T18:10:00Z",
+  "source": "csv_demo",
+  "dataMode": "demo",
+  "lines": [
     {
-      "vehicleCode": "5093",
-      "latitude": -5.070498,
-      "longitude": -42.816973,
-      "capturedAt": "2026-11-16T14:42:07Z",
-      "generatedAt": "2026-11-16T14:41:52Z",
-      "receivedAt": "2026-11-16T14:42:09Z",
-      "speed": null,
-      "heading": null
+      "lineId": "11111111-1111-1111-1111-111111111111",
+      "boardingCode": "0301",
+      "requestedId": "0301",
+      "source": "csv_demo",
+      "dataMode": "demo",
+      "isStale": false,
+      "sourceStatus": "ok",
+      "positions": [
+        {
+          "lineId": "11111111-1111-1111-1111-111111111111",
+          "boardingCode": "0301",
+          "vehicleCode": "5093",
+          "latitude": -5.070498,
+          "longitude": -42.816973,
+          "capturedAt": "2026-11-17T18:09:07Z",
+          "generatedAt": "2026-11-17T18:08:52Z",
+          "receivedAt": "2026-11-17T18:10:00Z",
+          "speed": null,
+          "heading": null,
+          "isStale": false
+        }
+      ]
+    },
+    {
+      "lineId": "22222222-2222-2222-2222-222222222222",
+      "boardingCode": "0245",
+      "requestedId": "0245",
+      "source": "csv_demo",
+      "dataMode": "demo",
+      "isStale": false,
+      "sourceStatus": "no_positions",
+      "positions": []
     }
-  ]
+  ],
+  "unresolvedLines": []
 }
 ```
+
+O envelope permanece o mesmo quando a fonte passar a ser `teresina_api` com
+`dataMode: "live"`. Na rota singular, um `sgLinha` desconhecido retorna
+`404 line_not_found` em vez de entrar em `unresolvedLines`.
 
 **Erro de cota**
 
@@ -2241,7 +2278,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | `paradas.csv` | `id`, `codigo`, `denominacao`, `endereco`, `lat`, `long` | `catalog_stop.external_id`, `.code`, `.name`, `.address`, `.location` |
 | `lines_paradas.json` | chave `sgLinha`, valores códigos de paradas | `catalog_line_stop` |
 | `routes/<sgLinha>.csv` | `latitude,longitude` | `catalog_route.path` |
-| `locations/*.csv` | label, `codigoLinha`, código do ônibus, `generatedAt`, lat, lon, `capturedAt` | `tracking_position` (demo) |
+| `locations/*.csv` (em `backend/apps/tracking/data/locations/`) | label, `codigoLinha`, código do ônibus, `generatedAt`, lat, lon, `capturedAt` | `CsvDemoPositionSource` → envelope `/v1/cities/{citySlug}/positions`, com `dataMode=demo`; futura tabela volátil de posições |
 
 ### 21.2 Glossário
 

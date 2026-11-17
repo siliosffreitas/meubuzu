@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "apps.accounts",
     "apps.catalog",
+    "apps.tracking",
 ]
 
 MIDDLEWARE = [
@@ -131,6 +132,20 @@ else:
 
 # Catálogo de linhas/paradas é quase estático (import semanal/mensal).
 CATALOG_CACHE_TTL_SECONDS = _int("CATALOG_CACHE_TTL_SECONDS", 300)
+
+# --- Rastreamento ------------------------------------------------------------
+
+# Por enquanto as posições vêm de CSVs de demonstração dentro do backend.
+# Em produção esta fonte é proibida: o crawler/API de Teresina substituirá o adaptador.
+TRACKING_POSITIONS_SOURCE = os.getenv("TRACKING_POSITIONS_SOURCE", "csv_demo")
+_tracking_csv_dir = os.getenv("TRACKING_CSV_DIR", "").strip()
+TRACKING_CSV_DIR = Path(
+    _tracking_csv_dir or BASE_DIR / "apps" / "tracking" / "data" / "locations"
+)
+TRACKING_DEMO_ACCESS_ENABLED = _bool("TRACKING_DEMO_ACCESS_ENABLED", DEBUG)
+TRACKING_POSITION_WINDOW_SECONDS = _int("TRACKING_POSITION_WINDOW_SECONDS", 300)
+TRACKING_STALE_AFTER_SECONDS = _int("TRACKING_STALE_AFTER_SECONDS", 120)
+TRACKING_CACHE_TTL_SECONDS = _int("TRACKING_CACHE_TTL_SECONDS", 10)
 
 # --- E-mail -----------------------------------------------------------------
 

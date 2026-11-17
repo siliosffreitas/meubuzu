@@ -110,7 +110,7 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,10.0.2.2
 
 No celular físico, inclua também o IP do Mac em `DJANGO_ALLOWED_HOSTS`.
 
-> O app consulta o catálogo de paradas, linhas, itinerários e traçados pela API (`/v1/cities/{citySlug}/...`) em vez dos CSVs locais. As posições dos ônibus (`rastreamento`) continuam em assets por enquanto. Para testar no emulador, o Android exige liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
+> O app consulta catálogo e posições pela API (`/v1/cities/{citySlug}/...`). As posições de demonstração são lidas pelos CSVs em `backend/apps/tracking/data/locations/`, escolhidos pelo dia da semana da cidade; o app não embute esses arquivos. Para testar no emulador, o Android exige liberar *cleartext* apenas no build de debug (por exemplo, `android:usesCleartextTraffic="true"` no `AndroidManifest.xml` de debug ou uma network security config restrita a `10.0.2.2`). Nunca libere isso no build de release.
 
 O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS. O deploy público usa Gunicorn (já configurado no `Dockerfile`) e faz parte da etapa M6 do PRD.
 
@@ -298,9 +298,27 @@ O catálogo é **importado** da API da cidade, não editado manualmente como fon
 
 ### Posições dos veículos
 
-As posições são armazenadas como eventos de rastreamento, identificados por veículo e horário de captura, com coordenadas, velocidade, direção e `dataMode`. A tabela `tracking_latest_position` guarda a última posição por veículo para consulta rápida.
+Nesta fase as posições são servidas por `PositionSource`, sem tabelas de tracking. A implementação `CsvDemoPositionSource` lê os CSVs históricos de
+`backend/apps/tracking/data/locations/`, escolhe o arquivo pelo dia da semana no
+fuso da cidade, desloca a hora lida para o dia atual e mantém apenas capturas
+dos últimos `TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s). Para cada linha,
+devolve a captura mais recente de cada veículo; `isStale` é calculado no backend
+com `TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s). O envelope é o mesmo que um
+futuro adaptador da API de Teresina deve devolver, com `source`, `dataMode`,
+`lines[]` e `unresolvedLines`.
 
-A retenção de posições é de **30 dias**. Não há uso de TimescaleDB no lançamento: particionamento por tempo e índices BRIN/GiST atendem o MVP.
+A rota batch é `GET /v1/cities/{citySlug}/positions?codes=0301,0245`, usando o
+`sgLinha` (código de embarque, com zeros à esquerda). O alias estrito é
+`GET /v1/cities/{citySlug}/lines/{sgLinha}/positions` e devolve
+`404 line_not_found` quando a linha não existe; na rota batch, linhas não
+resolvidas aparecem em `unresolvedLines`. `codigoLinha` e UUID não são aceitos
+como parâmetro de rastreamento. O cache curto usa a chave
+`TRACKING_CACHE_TTL_SECONDS` (padrão: 10 s) e o cabeçalho `X-Tracking-Cache`.
+
+Quando o crawler volátil entrar, o armazenamento previsto continua sendo eventos
+por veículo e horário de captura, com coordenadas, velocidade, direção e
+`dataMode`, além de `tracking_latest_position` para consulta rápida, retenção de
+30 dias e índices BRIN/GiST — sem TimescaleDB no lançamento.
 
 O Redis é usado como cache, rate limit, lock distribuído e broker do Celery, nunca como fonte permanente.
 
@@ -332,7 +350,13 @@ O app envia heartbeat a cada 30 s; sem sinal por cerca de 120 s, o backend encer
 
 ### Dados de demonstração
 
-Enquanto o acesso à API de Teresina não for liberado, os CSVs de `app/assets` alimentam apenas **staging**, com `dataMode=demo` e banner de demonstração no app. Produção recusa iniciar com dados de demonstração e exige a API da cidade.
+Enquanto o acesso à API de Teresina não for liberado, os CSVs em
+`backend/apps/tracking/data/locations/` alimentam apenas **staging**, com
+`dataMode=demo` e banner de demonstração no app. O acesso é liberado por
+`TRACKING_DEMO_ACCESS_ENABLED` (padrão: `DEBUG`); com `DEBUG=False` e
+`TRACKING_POSITIONS_SOURCE=csv_demo`, o endpoint responde `500 demo_mode_forbidden`.
+Não use a fonte CSV em produção. Quando houver entitlements reais, a checagem em
+`require_tracking_access` substitui o bypass de demonstração sem mudar o envelope.
 
 ### Gate de lançamento
 

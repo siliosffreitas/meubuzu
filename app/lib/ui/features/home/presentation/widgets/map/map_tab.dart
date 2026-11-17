@@ -141,7 +141,7 @@ class _MapTabState extends State<MapTab>
                   injector.isReady
                       ? injector.getService<LineSearchService>()
                       : AssetLineSearchService(),
-                  trackingService: AssetTrackingService(),
+                  trackingService: const EmptyTrackingService(),
                 ),
           );
     }

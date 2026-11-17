@@ -8,11 +8,13 @@ import 'package:meubuzu/data/services/api_bus_stop_service.dart';
 import 'package:meubuzu/data/services/api_line_search_service.dart';
 import 'package:meubuzu/data/services/api_line_stops_service.dart';
 import 'package:meubuzu/data/services/api_route_service.dart';
+import 'package:meubuzu/data/services/api_tracking_service.dart';
 import 'package:meubuzu/data/services/bus_stop_service.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
 import 'package:meubuzu/data/services/line_stops_service.dart';
 import 'package:meubuzu/data/services/location_service.dart';
 import 'package:meubuzu/data/services/route_service.dart';
+import 'package:meubuzu/data/services/tracking_service.dart';
 import 'package:meubuzu/di/dependencies.dart';
 import 'package:meubuzu/domain/repositories/auth_repository.dart';
 import 'package:meubuzu/domain/repositories/city_repository.dart';
@@ -48,6 +50,7 @@ void main() {
       isA<ApiLineStopsService>(),
     );
     expect(injector.getService<RouteService>(), isA<ApiRouteService>());
+    expect(injector.getService<TrackingService>(), isA<ApiTrackingService>());
     final searchCache = injector.getService<MapSearchCache>();
     expect(searchCache, isA<MapSearchCache>());
     expect(injector.getService<MapSearchCache>(), same(searchCache));
