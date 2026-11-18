@@ -13,6 +13,12 @@ import 'map_search_cache.dart';
 /// Além dos resultados da busca, mantém quais linhas já estão sendo
 /// acompanhadas no mapa, consultando o [TrackingRepository].
 class MapSearchViewModel extends ViewmodelBase {
+  /// Inatividade necessária antes de consultar o backend.
+  ///
+  /// Cada nova tecla cancela a busca pendente, de modo que só uma pausa maior
+  /// que este intervalo dispara a requisição.
+  static const Duration searchDebounce = Duration(seconds: 1);
+
   factory MapSearchViewModel(
     PlaceSearchRepository repository, {
     TrackingRepository? trackingRepository,
@@ -88,7 +94,7 @@ class MapSearchViewModel extends ViewmodelBase {
     notifyListeners();
 
     final requestId = ++_searchId;
-    _debounce = Timer(const Duration(milliseconds: 320), () async {
+    _debounce = Timer(searchDebounce, () async {
       List<PlaceSuggestion> results;
       try {
         results = await _repository.search(value);

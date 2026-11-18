@@ -13,6 +13,10 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_cac
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_page.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
 
+/// Avança o relógio pouco além do debounce para disparar a busca no backend.
+Duration get _debounceWait =>
+    MapSearchViewModel.searchDebounce + const Duration(milliseconds: 50);
+
 class _FakeSearchRepository implements PlaceSearchRepository {
   _FakeSearchRepository(this.results);
 
@@ -149,7 +153,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '875');
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(_debounceWait);
       await tester.pumpAndSettle();
 
       expect(repository.queries, ['875']);
@@ -182,7 +186,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '875');
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(_debounceWait);
       await tester.pumpAndSettle();
 
       expect(find.text('Acompanhando no mapa'), findsOneWidget);
@@ -228,7 +232,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), '875');
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(_debounceWait);
       await tester.pumpAndSettle();
 
       expect(repository.queries, ['875']);
@@ -255,7 +259,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'Aeroporto');
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(_debounceWait);
       await tester.pumpAndSettle();
 
       expect(find.text('Não encontramos\n“Aeroporto”'), findsOneWidget);

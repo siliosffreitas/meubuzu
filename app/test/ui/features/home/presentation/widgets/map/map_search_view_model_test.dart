@@ -71,6 +71,10 @@ const _line = PlaceSuggestion(
   longitude: -46.676,
 );
 
+/// Avança o relógio pouco além do debounce para disparar a busca no backend.
+Duration get _debounceWait =>
+    MapSearchViewModel.searchDebounce + const Duration(milliseconds: 50);
+
 void main() {
   group('MapSearchViewModel', () {
     test('começa vazio e sem resultados', () {
@@ -141,7 +145,13 @@ void main() {
       expect(viewModel.showsResults, isTrue);
       expect(repository.queries, isEmpty);
 
-      await tester.pump(const Duration(milliseconds: 400));
+      // Antes dos 3 segundos de inatividade, nada é enviado ao backend.
+      await tester.pump(
+        MapSearchViewModel.searchDebounce - const Duration(milliseconds: 50),
+      );
+      expect(repository.queries, isEmpty);
+
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(repository.queries, ['875']);
       expect(viewModel.isLoading, isFalse);
@@ -158,7 +168,7 @@ void main() {
       viewModel.setQuery('8');
       await tester.pump(const Duration(milliseconds: 100));
       viewModel.setQuery('875');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(_debounceWait);
 
       expect(repository.queries, ['875']);
       expect(viewModel.results, [_line]);
@@ -171,7 +181,7 @@ void main() {
       viewModel
         ..setFocused(true)
         ..setQuery('875');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(_debounceWait);
 
       viewModel.clear();
 
@@ -213,7 +223,7 @@ void main() {
       addTearDown(viewModel.dispose);
 
       viewModel.setQuery('875');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(_debounceWait);
 
       expect(cache.query, '875');
       expect(cache.results, [_line]);
@@ -228,7 +238,7 @@ void main() {
       viewModel.setQuery('8');
       await tester.pump(const Duration(milliseconds: 100));
       viewModel.setQuery('875');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(_debounceWait);
 
       expect(repository.queries, ['875']);
       expect(cache.query, '875');
@@ -244,7 +254,7 @@ void main() {
       addTearDown(viewModel.dispose);
 
       viewModel.setQuery('875');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(_debounceWait);
       expect(cache.query, '875');
 
       viewModel.clear();

@@ -259,8 +259,8 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
   e `test/data/repositories/user_location_repository_test.dart`.
 - Para telas de autenticação, use o helper `test/helpers/auth_test_helpers.dart`
   (`appWith`, `RecordingAuthRepository`, `tapVisible`).
-- O view model de busca do mapa usa debounce de 320 ms; em testes, avance o
-  tempo com `tester.pump(Duration(...))`.
+- O view model de busca do mapa usa debounce de 1 s (`MapSearchViewModel.searchDebounce`);
+  em testes, avance o tempo com `tester.pump(MapSearchViewModel.searchDebounce + ...)`.
 - Inclua testes de estados de carregamento, erro, vazio e sucesso ao criar
   novos fluxos.
 - Rode a suíte completa antes de concluir:
