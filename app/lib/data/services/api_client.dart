@@ -87,6 +87,13 @@ class ApiClient implements Service {
     return _decodeResponse(response);
   }
 
+  Future<Map<String, dynamic>> delete(String path, {String? accessToken}) async {
+    final response = await _run(
+      () => _httpClient.delete(_uri(path), headers: _headers(accessToken)),
+    );
+    return _decodeResponse(response);
+  }
+
   Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
   Map<String, String> _headers(String? accessToken, {bool hasBody = false}) {

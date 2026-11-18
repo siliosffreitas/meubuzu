@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../../core/extensions/line_map_color.dart';
 import '../../../../../../core/theme/app_colors.dart';
+import '../../../../../../core/widgets/favorite_star_button.dart';
 import '../../../../../../../data/models/place_suggestion.dart';
 
 /// Lista de resultados da busca de linhas e paradas.
@@ -18,6 +19,8 @@ class SearchResultsPanel extends StatelessWidget {
     this.maxHeight = 352,
     this.activeSuggestionId,
     this.trackedLineCodes = const {},
+    this.favoriteLineIds = const {},
+    this.onFavoriteTap,
     this.statusLabel,
     this.onEditSearch,
   });
@@ -41,6 +44,12 @@ class SearchResultsPanel extends StatelessWidget {
   /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa. Também recebem o
   /// selo "Acompanhando no mapa".
   final Set<String> trackedLineCodes;
+
+  /// IDs das linhas favoritas da conta.
+  final Set<String> favoriteLineIds;
+
+  /// Ação da estrela. Quando nula, a estrela não é exibida.
+  final ValueChanged<String>? onFavoriteTap;
 
   /// Texto opcional exibido no selo do cabeçalho, como a cota diária de
   /// rastreamentos.
@@ -103,6 +112,10 @@ class SearchResultsPanel extends StatelessWidget {
             isActive:
                 suggestion.id == activeSuggestionId ||
                 trackedLineCodes.contains(suggestion.code.trim()),
+            isFavorite: favoriteLineIds.contains(suggestion.id),
+            onFavorite: onFavoriteTap == null
+                ? null
+                : () => onFavoriteTap!(suggestion.id),
             onTap: () => onSelected(suggestion),
           ),
         ),
@@ -315,73 +328,87 @@ class _LineSuggestionTile extends StatelessWidget {
   const _LineSuggestionTile({
     required this.suggestion,
     required this.isActive,
+    required this.isFavorite,
     required this.onTap,
+    this.onFavorite,
   });
 
   final PlaceSuggestion suggestion;
   final bool isActive;
+  final bool isFavorite;
   final VoidCallback onTap;
+
+  /// Quando informado, exibe a estrela ao lado do item.
+  final VoidCallback? onFavorite;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 13, 4, 13),
-        child: Row(
-          children: [
-            _LineCodeBadge(code: suggestion.code, name: suggestion.title),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 13, 4, 13),
+              child: Row(
                 children: [
-                  Text(
-                    suggestion.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                  _LineCodeBadge(code: suggestion.code, name: suggestion.title),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          suggestion.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (suggestion.subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            suggestion.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        if (isActive) ...[
+                          const SizedBox(height: 5),
+                          const Text(
+                            'Acompanhando no mapa',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryPressed,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (suggestion.subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      suggestion.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                  if (isActive) ...[
-                    const SizedBox(height: 5),
-                    const Text(
-                      'Acompanhando no mapa',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primaryPressed,
-                      ),
-                    ),
-                  ],
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: AppColors.textSecondary,
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 22,
-              color: AppColors.textSecondary,
-            ),
-          ],
+          ),
         ),
-      ),
+        if (onFavorite != null)
+          FavoriteStarButton(isFavorite: isFavorite, onTap: onFavorite!),
+      ],
     );
   }
 }

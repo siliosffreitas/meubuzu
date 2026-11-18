@@ -4,15 +4,18 @@ import '../data/repositories/asset_place_search_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/details_bus_stop_repository.dart';
 import '../data/repositories/details_line_repository.dart';
+import '../data/repositories/favorites_repository.dart';
 import '../data/repositories/tracking_repository.dart';
 import '../data/repositories/user_location_repository.dart';
 import '../data/services/api_bus_stop_service.dart';
 import '../data/services/api_client.dart';
+import '../data/services/api_favorites_service.dart';
 import '../data/services/api_tracking_service.dart';
 import '../data/services/api_line_search_service.dart';
 import '../data/services/api_line_stops_service.dart';
 import '../data/services/api_route_service.dart';
 import '../data/services/bus_stop_service.dart';
+import '../data/services/favorites_service.dart';
 import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
@@ -23,6 +26,7 @@ import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/city_repository.dart';
 import '../domain/repositories/details_bus_stop_repository.dart';
 import '../domain/repositories/details_line_repository.dart';
+import '../domain/repositories/favorites_repository.dart';
 import '../domain/repositories/place_search_repository.dart';
 import '../domain/repositories/tracking_repository.dart';
 import '../domain/repositories/user_location_repository.dart';
@@ -31,6 +35,7 @@ import '../ui/features/auth/presentation/auth_email/auth_email_view_model.dart';
 import '../ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
 import '../ui/features/city_selection/presentation/select_city_view_model.dart';
 import '../ui/features/home/presentation/widgets/account/account_view_model.dart';
+import '../ui/features/home/presentation/widgets/favorites/favorites_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_location_view_model.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import '../ui/features/home/presentation/widgets/map/map_search_view_model.dart';
@@ -128,6 +133,18 @@ Future<void> setupDependencies() async {
       trackingService: injector.getService<TrackingService>(),
     ),
   );
+  injector.addService<FavoritesService>(
+    () => ApiFavoritesService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
+  injector.addRepository<FavoritesRepository>(
+    () => FavoritesRepositoryImpl(
+      injector.getService<FavoritesService>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
 
   injector.addViewModel<AuthEmailViewModel>(
     () => AuthEmailViewModel(injector.getRepository<AuthRepository>()),
@@ -148,10 +165,14 @@ Future<void> setupDependencies() async {
   injector.addViewModel<AccountViewModel>(
     () => AccountViewModel(injector.getRepository<AuthRepository>()),
   );
+  injector.addViewModel<FavoritesViewModel>(
+    () => FavoritesViewModel(injector.getRepository<FavoritesRepository>()),
+  );
   injector.addViewModel<MapSearchViewModel>(
     () => MapSearchViewModel(
       injector.getRepository<PlaceSearchRepository>(),
       trackingRepository: injector.getRepository<TrackingRepository>(),
+      favoritesRepository: injector.getRepository<FavoritesRepository>(),
       cache: injector.getService<MapSearchCache>(),
     ),
   );
@@ -175,6 +196,7 @@ Future<void> setupDependencies() async {
       busStopCode: busStopCode,
       locationRepository: injector.getRepository<UserLocationRepository>(),
       trackingRepository: injector.getRepository<TrackingRepository>(),
+      favoritesRepository: injector.getRepository<FavoritesRepository>(),
     ),
   );
 

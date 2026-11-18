@@ -171,5 +171,52 @@ void main() {
 
       expect(edits, 1);
     });
+
+    testWidgets('estrela alterna o favorito sem selecionar a linha', (
+      tester,
+    ) async {
+      final favored = <String>[];
+      PlaceSuggestion? selected;
+
+      await tester.pumpWidget(
+        _app(
+          SearchResultsPanel(
+            query: '301',
+            isLoading: false,
+            results: const [_line, _stop],
+            favoriteLineIds: const {'46'},
+            onFavoriteTap: favored.add,
+            onSelected: (suggestion) => selected = suggestion,
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.star_outline_rounded), findsNothing);
+
+      await tester.tap(find.byIcon(Icons.star_rounded));
+      await tester.pump();
+
+      expect(favored, ['46']);
+      expect(selected, isNull, reason: 'a estrela não deve abrir a linha');
+    });
+
+    testWidgets('não mostra estrela quando não há ação de favoritar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _app(
+          SearchResultsPanel(
+            query: '301',
+            isLoading: false,
+            results: const [_line],
+            onSelected: (_) {},
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.star_outline_rounded), findsNothing);
+      expect(find.byIcon(Icons.star_rounded), findsNothing);
+    });
   });
 }

@@ -7,10 +7,13 @@ import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/domain/repositories/details_bus_stop_repository.dart';
+import 'package:meubuzu/domain/repositories/favorites_repository.dart';
 import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/domain/repositories/user_location_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_stop_page.dart';
+
+import '../../../../helpers/fake_favorites_repository.dart';
 
 const _busStop = BusStop(
   id: '1',
@@ -162,6 +165,7 @@ Widget _app(
   String busStopCode = '174',
   UserLocationRepository? locationRepository,
   TrackingRepository? trackingRepository,
+  FavoritesRepository? favoritesRepository,
 }) {
   return MaterialApp(
     theme: AppTheme.light(),
@@ -170,6 +174,7 @@ Widget _app(
       repository: repository,
       locationRepository: locationRepository,
       trackingRepository: trackingRepository,
+      favoritesRepository: favoritesRepository,
       mapPreviewBuilder: (_) =>
           const SizedBox(key: Key('map-preview'), height: 190),
     ),
@@ -308,6 +313,30 @@ void main() {
 
       expect(repository.loadedCodes, ['174', '174']);
       expect(find.text('Não foi possível carregar a parada'), findsOneWidget);
+    });
+
+    testWidgets('estrela favorita a linha sem abrir os detalhes', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsBusStopRepository(
+        busStop: _busStop,
+        busStopLines: const [_line, _otherLine],
+      );
+      final favorites = FakeFavoritesRepository();
+      addTearDown(repository.dispose);
+      addTearDown(favorites.dispose);
+
+      await tester.pumpWidget(_app(repository, favoritesRepository: favorites));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.star_outline_rounded), findsNWidgets(2));
+
+      await tester.tap(find.byIcon(Icons.star_outline_rounded).first);
+      await tester.pumpAndSettle();
+
+      expect(favorites.added, ['46']);
+      expect(find.text('Detalhes da parada'), findsOneWidget);
+      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
     });
   });
 }

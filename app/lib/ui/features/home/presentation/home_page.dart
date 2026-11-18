@@ -38,7 +38,10 @@ class _HomePageState extends State<HomePage> {
           index: _selectedIndex,
           children: [
             const MapTab(),
-            FavoritesTab(onExplore: () => _selectTab(0)),
+            FavoritesTab(
+              isSelected: _selectedIndex == 1,
+              onExplore: () => _selectTab(0),
+            ),
             const AccountTab(),
           ],
         ),

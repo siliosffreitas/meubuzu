@@ -3,6 +3,8 @@ import 'dart:async';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../domain/models/line.dart';
 import '../../../../../../domain/models/tracked_line.dart';
+import '../../../../../../domain/models/favorite.dart';
+import '../../../../../../domain/repositories/favorites_repository.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/contracts/contracts.dart';
@@ -22,14 +24,21 @@ class MapSearchViewModel extends ViewmodelBase {
   factory MapSearchViewModel(
     PlaceSearchRepository repository, {
     TrackingRepository? trackingRepository,
+    FavoritesRepository? favoritesRepository,
     MapSearchCache? cache,
   }) {
-    return MapSearchViewModel._(repository, trackingRepository, cache);
+    return MapSearchViewModel._(
+      repository,
+      trackingRepository,
+      favoritesRepository,
+      cache,
+    );
   }
 
   MapSearchViewModel._(
     this._repository,
     this._trackingRepository,
+    this._favoritesRepository,
     this._cache,
   ) {
     _query = _cache?.query ?? '';
@@ -38,12 +47,21 @@ class MapSearchViewModel extends ViewmodelBase {
       _handleTrackedLines,
       onError: _handleTrackingError,
     );
+    _favoritesSubscription = _favoritesRepository?.favorites.listen(
+      _handleFavorites,
+      onError: _handleFavoritesError,
+    );
+    // A busca pode abrir antes da aba Favoritos: carrega a lista da conta para
+    // que as estrelas já reflitam os favoritos salvos no backend.
+    unawaited(_favoritesRepository?.refresh().catchError((Object _) {}));
   }
 
   final PlaceSearchRepository _repository;
   final TrackingRepository? _trackingRepository;
+  final FavoritesRepository? _favoritesRepository;
   final MapSearchCache? _cache;
   StreamSubscription<List<TrackedLine>>? _trackingSubscription;
+  StreamSubscription<List<Favorite>>? _favoritesSubscription;
 
   Timer? _debounce;
   int _searchId = 0;
@@ -53,6 +71,7 @@ class MapSearchViewModel extends ViewmodelBase {
   bool _isLoading = false;
   List<PlaceSuggestion> _results = const [];
   Set<String> _trackedLineCodes = const {};
+  Set<String> _favoriteLineIds = const {};
 
   String get query => _query;
   bool get isFocused => _isFocused;
@@ -65,6 +84,17 @@ class MapSearchViewModel extends ViewmodelBase {
 
   /// Indica se a linha [code] (`sgLinha`) já está sendo acompanhada.
   bool isLineTracked(String code) => _trackedLineCodes.contains(code.trim());
+
+  /// A estrela aparece apenas quando há um repositório de favoritos disponível.
+  bool get hasFavorites => _favoritesRepository != null;
+
+  /// IDs (`lineId`) das linhas favoritas da conta.
+  Set<String> get favoriteLineIds => _favoriteLineIds;
+
+  /// Alterna o favorito da linha [lineId].
+  Future<void> toggleFavorite(String lineId) async {
+    await _favoritesRepository?.toggle(lineId);
+  }
 
   /// A lista de sugestões aparece apenas enquanto o campo está em uso.
   bool get showsResults => _isFocused && hasQuery;
@@ -139,10 +169,21 @@ class MapSearchViewModel extends ViewmodelBase {
     notifyListeners();
   }
 
+  void _handleFavorites(List<Favorite> favorites) {
+    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    notifyListeners();
+  }
+
+  void _handleFavoritesError(Object error, StackTrace stackTrace) {
+    _favoriteLineIds = const {};
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
     _trackingSubscription?.cancel();
+    _favoritesSubscription?.cancel();
     super.dispose();
   }
 }

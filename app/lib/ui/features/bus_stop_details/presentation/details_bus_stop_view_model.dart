@@ -2,10 +2,12 @@ import 'dart:async';
 
 import '../../../../domain/contracts/contracts.dart';
 import '../../../../domain/models/bus_stop.dart';
+import '../../../../domain/models/favorite.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/models/tracked_line.dart';
 import '../../../../domain/models/user_coordinates.dart';
 import '../../../../domain/repositories/details_bus_stop_repository.dart';
+import '../../../../domain/repositories/favorites_repository.dart';
 import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../../domain/repositories/user_location_repository.dart';
 import 'details_bus_stop_state.dart';
@@ -24,11 +26,17 @@ class DetailsBusStopViewModel extends ViewmodelBase {
     required this.busStopCode,
     UserLocationRepository? locationRepository,
     TrackingRepository? trackingRepository,
-  }) {
+    FavoritesRepository? favoritesRepository,
+  }) : _favoritesRepository = favoritesRepository {
     _trackingSubscription = trackingRepository?.trackingRoutes.listen(
       _handleTrackedLines,
       onError: _handleTrackingError,
     );
+    _favoritesSubscription = favoritesRepository?.favorites.listen(
+      _handleFavorites,
+      onError: _handleFavoritesError,
+    );
+    unawaited(favoritesRepository?.refresh().catchError((Object _) {}));
     _busStopSubscription = _repository.currentBusStop.listen(
       _handleBusStop,
       onError: _handleError,
@@ -44,18 +52,21 @@ class DetailsBusStopViewModel extends ViewmodelBase {
   }
 
   final DetailsBusStopRepository _repository;
+  final FavoritesRepository? _favoritesRepository;
   final String busStopCode;
 
   late final StreamSubscription<BusStop?> _busStopSubscription;
   late final StreamSubscription<List<Line>> _linesSubscription;
   StreamSubscription<UserCoordinates>? _locationSubscription;
   StreamSubscription<List<TrackedLine>>? _trackingSubscription;
+  StreamSubscription<List<Favorite>>? _favoritesSubscription;
 
   DetailsBusStopState _state = const DetailsBusStopIdle();
   BusStop? _busStop;
   List<Line>? _lines;
   UserCoordinates? _position;
   Set<String> _trackedLineCodes = const {};
+  Set<String> _favoriteLineIds = const {};
   bool _isDisposed = false;
 
   /// Estado atual da tela.
@@ -63,6 +74,17 @@ class DetailsBusStopViewModel extends ViewmodelBase {
 
   /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
   Set<String> get trackedLineCodes => _trackedLineCodes;
+
+  /// IDs das linhas favoritas, para exibir a estrela preenchida.
+  Set<String> get favoriteLineIds => _favoriteLineIds;
+
+  /// A estrela aparece apenas quando há um repositório de favoritos disponível.
+  bool get hasFavorites => _favoritesRepository != null;
+
+  /// Alterna o favorito da linha [lineId].
+  Future<void> toggleFavorite(String lineId) async {
+    await _favoritesRepository?.toggle(lineId);
+  }
 
   /// Distância em metros até a parada, quando a localização está disponível.
   double? get distanceInMeters {
@@ -142,6 +164,20 @@ class DetailsBusStopViewModel extends ViewmodelBase {
     }
   }
 
+  void _handleFavorites(List<Favorite> favorites) {
+    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  void _handleFavoritesError(Object error, StackTrace stackTrace) {
+    _favoriteLineIds = const {};
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
   /// Código usado na busca (`sgLinha`), com fallback para o código interno.
   String _searchCode(Line line) {
     final boardingCode = line.boardingCode?.trim();
@@ -165,6 +201,7 @@ class DetailsBusStopViewModel extends ViewmodelBase {
     _linesSubscription.cancel();
     _locationSubscription?.cancel();
     _trackingSubscription?.cancel();
+    _favoritesSubscription?.cancel();
     super.dispose();
   }
 }

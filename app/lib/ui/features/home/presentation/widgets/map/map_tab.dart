@@ -18,6 +18,7 @@ import '../../../../../../data/services/tracking_service.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/models/bus_stop.dart';
 import '../../../../../../domain/models/tracked_line.dart';
+import '../../../../../../domain/repositories/favorites_repository.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import '../../../../../../domain/repositories/user_location_repository.dart';
@@ -45,6 +46,7 @@ class MapTab extends StatefulWidget {
     this.searchRepository,
     this.locationRepository,
     this.trackingRepository,
+    this.favoritesRepository,
     this.trackingViewModel,
   });
 
@@ -57,6 +59,9 @@ class MapTab extends StatefulWidget {
 
   /// Permite injetar um repositório de rastreamento fake em testes.
   final TrackingRepository? trackingRepository;
+
+  /// Permite injetar um repositório de favoritos fake em testes.
+  final FavoritesRepository? favoritesRepository;
 
   /// Permite injetar um view model de rastreamento pronto em testes.
   final MapTrackingViewModel? trackingViewModel;
@@ -263,6 +268,7 @@ class _MapTabState extends State<MapTab>
       extra: MapSearchPageArguments(
         repository: widget.searchRepository,
         trackingRepository: widget.trackingRepository,
+        favoritesRepository: widget.favoritesRepository,
         activeSuggestionId: activeSuggestion?.type == PlaceSuggestionType.line
             ? activeSuggestion!.id
             : null,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../di/dependencies.dart';
+import '../../../../../../domain/repositories/favorites_repository.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
 import 'map_search_view_model.dart';
@@ -18,6 +19,7 @@ class MapSearchPage extends StatefulWidget {
     super.key,
     this.repository,
     this.trackingRepository,
+    this.favoritesRepository,
     this.viewModel,
     this.activeSuggestionId,
   });
@@ -27,6 +29,9 @@ class MapSearchPage extends StatefulWidget {
 
   /// Permite injetar um repositório de rastreamento fake em testes.
   final TrackingRepository? trackingRepository;
+
+  /// Permite injetar um repositório de favoritos fake em testes.
+  final FavoritesRepository? favoritesRepository;
 
   /// Permite injetar um view model pronto em testes.
   final MapSearchViewModel? viewModel;
@@ -52,6 +57,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
             ? MapSearchViewModel(
                 widget.repository!,
                 trackingRepository: widget.trackingRepository,
+                favoritesRepository: widget.favoritesRepository,
               )
             : injector.getViewModel<MapSearchViewModel>());
 
@@ -136,6 +142,10 @@ class _MapSearchPageState extends State<MapSearchPage> {
                       maxHeight: double.infinity,
                       activeSuggestionId: widget.activeSuggestionId,
                       trackedLineCodes: _viewModel.trackedLineCodes,
+                      favoriteLineIds: _viewModel.favoriteLineIds,
+                      onFavoriteTap: _viewModel.hasFavorites
+                          ? _viewModel.toggleFavorite
+                          : null,
                       onSelected: _selectSuggestion,
                       onEditSearch: _editSearch,
                     ),

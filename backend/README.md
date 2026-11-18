@@ -347,7 +347,13 @@ O MeuBuzu não armazena números de cartão nem CVV. Apenas identificadores emit
 
 ### Linhas favoritas
 
-Favoritos ficam associados à conta no PostgreSQL, para aparecerem em qualquer dispositivo. Antes do trial são bloqueados; no trial, o limite é **1 linha favorita**, validado no backend, não apenas no app. Após o contrato, o limite deixa de existir; após o trial sem assinatura, os favoritos ficam somente leitura.
+Favoritos ficam associados à conta no PostgreSQL (`favorites_favorite`), para aparecerem em qualquer dispositivo. Nesta entrega, qualquer usuário autenticado pode adicionar e remover linhas favoritas; os gates de trial/assinatura e o limite de 1 favorito do plano de teste descritos no PRD ainda não são aplicados, pois os entitlements reais ainda não existem.
+
+Endpoints (token de acesso obrigatório):
+
+- `GET /v1/favorites` — lista os favoritos da conta; cada item traz `lineId`, `line` e `city`.
+- `POST /v1/favorites` — corpo `{ "lineId": "<uuid|código>", "citySlug": "<slug>" }`; é idempotente e valida cidade/linha como o catálogo.
+- `DELETE /v1/favorites/{lineId}` — remove o favorito; aceita UUID, `codigoLinha` ou `sgLinha`.
 
 Favoritar, desfavoritar e abrir uma linha favorita não contam como rastreamento nem alteram a cota.
 

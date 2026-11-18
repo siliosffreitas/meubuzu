@@ -55,6 +55,7 @@ class AppRouter {
               return MapSearchPage(
                 repository: extra.repository,
                 trackingRepository: extra.trackingRepository,
+                favoritesRepository: extra.favoritesRepository,
                 activeSuggestionId: extra.activeSuggestionId,
               );
             }

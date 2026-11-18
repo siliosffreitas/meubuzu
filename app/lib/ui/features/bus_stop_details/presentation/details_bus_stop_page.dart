@@ -5,6 +5,7 @@ import '../../../../di/dependencies.dart';
 import '../../../../domain/models/bus_stop.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/repositories/details_bus_stop_repository.dart';
+import '../../../../domain/repositories/favorites_repository.dart';
 import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../../domain/repositories/user_location_repository.dart';
 import '../../../core/theme/app_colors.dart';
@@ -28,6 +29,7 @@ class DetailsBusStopPage extends StatefulWidget {
     this.repository,
     this.locationRepository,
     this.trackingRepository,
+    this.favoritesRepository,
     this.viewModel,
     this.mapPreviewBuilder,
   });
@@ -43,6 +45,9 @@ class DetailsBusStopPage extends StatefulWidget {
 
   /// Permite injetar o rastreamento em testes.
   final TrackingRepository? trackingRepository;
+
+  /// Permite injetar os favoritos em testes.
+  final FavoritesRepository? favoritesRepository;
 
   /// Permite injetar um view model pronto em testes.
   final DetailsBusStopViewModel? viewModel;
@@ -67,7 +72,8 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
   DetailsBusStopViewModel _createViewModel() {
     if (widget.repository == null &&
         widget.locationRepository == null &&
-        widget.trackingRepository == null) {
+        widget.trackingRepository == null &&
+        widget.favoritesRepository == null) {
       return injector.getViewModelParam<DetailsBusStopViewModel, String>(
         widget.busStopCode,
       );
@@ -77,6 +83,7 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
       busStopCode: widget.busStopCode,
       locationRepository: widget.locationRepository,
       trackingRepository: widget.trackingRepository,
+      favoritesRepository: widget.favoritesRepository,
     );
   }
 
@@ -133,6 +140,8 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
           busStop,
         ),
         trackingLines: _viewModel.trackedLineCodes,
+        favoriteLineIds: _viewModel.favoriteLineIds,
+        onFavoriteTap: _viewModel.hasFavorites ? _viewModel.toggleFavorite : null,
       ),
       DetailsBusStopNotFound() => _NotFoundView(
         busStopCode: widget.busStopCode,
@@ -181,6 +190,8 @@ class _BusStopContent extends StatelessWidget {
     required this.distanceInMeters,
     required this.mapPreview,
     required this.trackingLines,
+    required this.favoriteLineIds,
+    required this.onFavoriteTap,
   });
 
   final BusStop busStop;
@@ -188,6 +199,8 @@ class _BusStopContent extends StatelessWidget {
   final double? distanceInMeters;
   final Widget mapPreview;
   final Set<String> trackingLines;
+  final Set<String> favoriteLineIds;
+  final ValueChanged<String>? onFavoriteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -211,6 +224,10 @@ class _BusStopContent extends StatelessWidget {
             BusStopLineTileWithNavigation(
               line: lines[index],
               trackingLines: trackingLines,
+              isFavorite: favoriteLineIds.contains(lines[index].id),
+              onFavoriteTap: onFavoriteTap == null
+                  ? null
+                  : () => onFavoriteTap!(lines[index].id),
             ),
             const SizedBox(height: 8),
           ],
