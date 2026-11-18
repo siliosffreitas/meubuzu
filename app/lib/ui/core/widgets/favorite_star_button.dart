@@ -7,12 +7,15 @@ class FavoriteStarButton extends StatelessWidget {
   const FavoriteStarButton({
     super.key,
     required this.isFavorite,
-    required this.onTap,
+    this.onTap,
     this.tooltip,
   });
 
   final bool isFavorite;
-  final VoidCallback onTap;
+
+  /// Quando nulo, o botão aparece desabilitado.
+  final VoidCallback? onTap;
+
   final String? tooltip;
 
   @override

@@ -4,9 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/repositories/details_line_repository.dart';
+import 'package:meubuzu/domain/repositories/favorites_repository.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_state.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_view_model.dart';
 
+import '../../../../helpers/fake_favorites_repository.dart';
 import '../../../../helpers/fake_tracking_repository.dart';
 
 const _line = Line(
@@ -91,11 +93,15 @@ void main() {
       trackingRepository.dispose();
     });
 
-    DetailsLineViewModel createViewModel({String lineCode = '0301'}) {
+    DetailsLineViewModel createViewModel({
+      String lineCode = '0301',
+      FavoritesRepository? favoritesRepository,
+    }) {
       return DetailsLineViewModel(
         repository,
         lineCode: lineCode,
         trackingRepository: trackingRepository,
+        favoritesRepository: favoritesRepository,
       );
     }
 
@@ -262,6 +268,61 @@ void main() {
       await viewModel.stopTracking();
 
       expect(trackingRepository.stoppedCodes, ['0301']);
+    });
+
+    test('sem repositório de favoritos a estrela fica desabilitada', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final viewModel = createViewModel();
+      addTearDown(viewModel.dispose);
+
+      expect(viewModel.hasFavorites, isFalse);
+      expect(viewModel.isFavorite, isFalse);
+
+      await viewModel.load();
+      await pumpEventQueue();
+
+      expect(viewModel.hasFavorites, isFalse);
+      expect(viewModel.isFavorite, isFalse);
+    });
+
+    test('reflete o favorito e alterna pelo id da linha carregada', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final favorites = FakeFavoritesRepository();
+      addTearDown(favorites.dispose);
+      await favorites.add(_line.id);
+
+      final viewModel = createViewModel(favoritesRepository: favorites);
+      addTearDown(viewModel.dispose);
+      final addedBeforeToggle = List<String>.from(favorites.added);
+
+      expect(viewModel.hasFavorites, isTrue);
+      expect(
+        viewModel.isFavorite,
+        isFalse,
+        reason: 'a linha ainda não carregou',
+      );
+
+      await viewModel.toggleFavorite();
+      expect(
+        favorites.added,
+        addedBeforeToggle,
+        reason: 'não favorita sem linha carregada',
+      );
+
+      await viewModel.load();
+      await pumpEventQueue();
+
+      expect(viewModel.isFavorite, isTrue);
+
+      await viewModel.toggleFavorite();
+      await pumpEventQueue();
+
+      expect(favorites.removed, ['46']);
+      expect(viewModel.isFavorite, isFalse);
     });
   });
 }

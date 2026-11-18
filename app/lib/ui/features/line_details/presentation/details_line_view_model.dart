@@ -2,9 +2,11 @@ import 'dart:async';
 
 import '../../../../domain/contracts/contracts.dart';
 import '../../../../domain/models/bus_stop.dart';
+import '../../../../domain/models/favorite.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/models/tracked_line.dart';
 import '../../../../domain/repositories/details_line_repository.dart';
+import '../../../../domain/repositories/favorites_repository.dart';
 import '../../../../domain/repositories/tracking_repository.dart';
 import 'details_line_state.dart';
 
@@ -19,7 +21,8 @@ class DetailsLineViewModel extends ViewmodelBase {
     this._repository, {
     required this.lineCode,
     required this.trackingRepository,
-  }) {
+    FavoritesRepository? favoritesRepository,
+  }) : _favoritesRepository = favoritesRepository {
     _lineSubscription = _repository.currentLine.listen(
       _handleLine,
       onError: _handleError,
@@ -32,20 +35,30 @@ class DetailsLineViewModel extends ViewmodelBase {
       _handleTrackedLines,
       onError: _handleTrackingError,
     );
+    _favoritesSubscription = favoritesRepository?.favorites.listen(
+      _handleFavorites,
+      onError: _handleFavoritesError,
+    );
+    // A estrela precisa refletir os favoritos salvos mesmo quando a aba
+    // Favoritos ainda não foi aberta nesta sessão.
+    unawaited(favoritesRepository?.refresh().catchError((Object _) {}));
   }
 
   final DetailsLineRepository _repository;
+  final FavoritesRepository? _favoritesRepository;
   final TrackingRepository trackingRepository;
   final String lineCode;
 
   late final StreamSubscription<Line?> _lineSubscription;
   late final StreamSubscription<List<BusStop>> _stopsSubscription;
   late final StreamSubscription<List<TrackedLine>> _trackingSubscription;
+  StreamSubscription<List<Favorite>>? _favoritesSubscription;
 
   DetailsLineState _state = const DetailsLineIdle();
   Line? _line;
   List<BusStop>? _stops;
   List<TrackedLine> _trackedLines = const [];
+  Set<String> _favoriteLineIds = const {};
   bool _isTracking = false;
   bool _isDisposed = false;
 
@@ -54,6 +67,24 @@ class DetailsLineViewModel extends ViewmodelBase {
 
   /// Indica se a linha já está sendo acompanhada no mapa.
   bool get isTracking => _isTracking;
+
+  /// A estrela fica desabilitada quando não há repositório de favoritos.
+  bool get hasFavorites => _favoritesRepository != null;
+
+  /// Indica se a linha carregada está favorita.
+  bool get isFavorite {
+    final id = _line?.id.trim();
+    return id != null && id.isNotEmpty && _favoriteLineIds.contains(id);
+  }
+
+  /// Alterna o favorito da linha carregada, quando possível.
+  Future<void> toggleFavorite() async {
+    final id = _line?.id.trim();
+    if (id == null || id.isEmpty) {
+      return;
+    }
+    await _favoritesRepository?.toggle(id);
+  }
 
   /// Inicia o carregamento da linha e das paradas.
   Future<void> load() async {
@@ -124,6 +155,20 @@ class DetailsLineViewModel extends ViewmodelBase {
   /// Mantém o último status conhecido quando a atualização do mapa falha.
   void _handleTrackingError(Object error, StackTrace stackTrace) {}
 
+  void _handleFavorites(List<Favorite> favorites) {
+    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  void _handleFavoritesError(Object error, StackTrace stackTrace) {
+    _favoriteLineIds = const {};
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
   /// Verifica se [tracked] corresponde à linha desta tela.
   ///
   /// O código da rota pode ser o `sgLinha` exibido ou o código interno, então a
@@ -171,6 +216,7 @@ class DetailsLineViewModel extends ViewmodelBase {
     _lineSubscription.cancel();
     _stopsSubscription.cancel();
     _trackingSubscription.cancel();
+    _favoritesSubscription?.cancel();
     super.dispose();
   }
 }

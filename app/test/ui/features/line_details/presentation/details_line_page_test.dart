@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:meubuzu/domain/models/bus_stop.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/repositories/details_line_repository.dart';
+import 'package:meubuzu/domain/repositories/favorites_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/details_line_page.dart';
 
+import '../../../../helpers/fake_favorites_repository.dart';
 import '../../../../helpers/fake_tracking_repository.dart';
 
 const _line = Line(
@@ -100,6 +102,7 @@ Widget _app(
   DetailsLineRepository repository, {
   String lineCode = '0301',
   FakeTrackingRepository? trackingRepository,
+  FavoritesRepository? favoritesRepository,
 }) {
   final tracking = trackingRepository ?? FakeTrackingRepository();
   if (trackingRepository == null) {
@@ -111,6 +114,7 @@ Widget _app(
       lineCode: lineCode,
       repository: repository,
       trackingRepository: tracking,
+      favoritesRepository: favoritesRepository,
     ),
   );
 }
@@ -421,6 +425,93 @@ void main() {
       expect(find.text('MOCAMBINHO DUQUE DE CAXIAS'), findsOneWidget);
       expect(find.textContaining('T-SANTA FÉ'), findsOneWidget);
       expect(repository.loadedCodes, ['0301', '0301']);
+    });
+
+    testWidgets('estrela fica visível e desabilitada até a linha carregar', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop],
+        gate: gate,
+      );
+      final favorites = FakeFavoritesRepository();
+      addTearDown(repository.dispose);
+      addTearDown(favorites.dispose);
+
+      await tester.pumpWidget(_app(repository, favoritesRepository: favorites));
+
+      expect(find.byIcon(Icons.star_outline_rounded), findsOneWidget);
+      var button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.star_outline_rounded),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.onPressed, isNull);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.star_outline_rounded),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('estrela preenchida remove o favorito ao ser tocada', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop],
+      );
+      final favorites = FakeFavoritesRepository();
+      addTearDown(repository.dispose);
+      addTearDown(favorites.dispose);
+      await favorites.add(_line.id);
+
+      await tester.pumpWidget(_app(repository, favoritesRepository: favorites));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.star_rounded));
+      await tester.pumpAndSettle();
+
+      expect(favorites.removed, ['46']);
+      expect(find.byIcon(Icons.star_outline_rounded), findsOneWidget);
+    });
+
+    testWidgets('estrela permanece desabilitada sem repositório de favoritos', (
+      tester,
+    ) async {
+      final repository = _FakeDetailsLineRepository(
+        line: _line,
+        stops: const [_firstStop],
+      );
+      addTearDown(repository.dispose);
+
+      await tester.pumpWidget(_app(repository));
+      await tester.pumpAndSettle();
+
+      final button = tester.widget<IconButton>(
+        find
+            .ancestor(
+              of: find.byIcon(Icons.star_outline_rounded),
+              matching: find.byType(IconButton),
+            )
+            .first,
+      );
+      expect(button.onPressed, isNull);
     });
   });
 }

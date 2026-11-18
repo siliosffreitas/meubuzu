@@ -188,6 +188,7 @@ Future<void> setupDependencies() async {
       injector.getRepository<DetailsLineRepository>(),
       lineCode: lineCode,
       trackingRepository: injector.getRepository<TrackingRepository>(),
+      favoritesRepository: injector.getRepository<FavoritesRepository>(),
     ),
   );
   injector.addViewModelParam<DetailsBusStopViewModel, String>(

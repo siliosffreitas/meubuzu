@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/details_top_bar.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/favorite_star_button.dart';
 import '../../../../di/dependencies.dart';
 import '../../../../domain/models/bus_stop.dart';
 import '../../../../domain/models/line.dart';
 import '../../../../domain/repositories/details_line_repository.dart';
+import '../../../../domain/repositories/favorites_repository.dart';
 import '../../../../domain/repositories/tracking_repository.dart';
 import '../../../routing/app_routes.dart';
 import 'details_line_state.dart';
@@ -25,6 +27,7 @@ class DetailsLinePage extends StatefulWidget {
     required this.lineCode,
     this.repository,
     this.trackingRepository,
+    this.favoritesRepository,
     this.viewModel,
   });
 
@@ -36,6 +39,9 @@ class DetailsLinePage extends StatefulWidget {
 
   /// Permite injetar o repositório de rastreamento em testes.
   final TrackingRepository? trackingRepository;
+
+  /// Permite injetar o repositório de favoritos em testes.
+  final FavoritesRepository? favoritesRepository;
 
   /// Permite injetar um view model pronto em testes.
   final DetailsLineViewModel? viewModel;
@@ -56,7 +62,9 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
   }
 
   DetailsLineViewModel _createViewModel() {
-    if (widget.repository == null && widget.trackingRepository == null) {
+    if (widget.repository == null &&
+        widget.trackingRepository == null &&
+        widget.favoritesRepository == null) {
       return injector.getViewModelParam<DetailsLineViewModel, String>(
         widget.lineCode,
       );
@@ -66,6 +74,7 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
       trackingRepository:
           widget.trackingRepository ??
           injector.getRepository<TrackingRepository>(),
+      favoritesRepository: widget.favoritesRepository,
       lineCode: widget.lineCode,
     );
   }
@@ -126,7 +135,24 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
       body: SafeArea(
         child: Column(
           children: [
-            DetailsTopBar(title: 'Detalhes da linha', onBack: _back),
+            AnimatedBuilder(
+              animation: _viewModel,
+              builder: (context, _) {
+                final canToggle =
+                    _viewModel.hasFavorites && _viewModel.state.line != null;
+                return DetailsTopBar(
+                  title: 'Detalhes da linha',
+                  onBack: _back,
+                  action: FavoriteStarButton(
+                    isFavorite: _viewModel.isFavorite,
+                    onTap: canToggle ? _viewModel.toggleFavorite : null,
+                    tooltip: canToggle
+                        ? null
+                        : 'Favorito disponível após o carregamento da linha',
+                  ),
+                );
+              },
+            ),
             Expanded(
               child: AnimatedBuilder(
                 animation: _viewModel,

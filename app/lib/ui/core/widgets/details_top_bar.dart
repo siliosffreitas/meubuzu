@@ -4,10 +4,18 @@ import '../theme/app_colors.dart';
 
 /// Barra superior das telas de detalhes, com o botão de voltar e o título.
 class DetailsTopBar extends StatelessWidget {
-  const DetailsTopBar({super.key, required this.title, required this.onBack});
+  const DetailsTopBar({
+    super.key,
+    required this.title,
+    required this.onBack,
+    this.action,
+  });
 
   final String title;
   final VoidCallback onBack;
+
+  /// Ação opcional exibida no fim da barra, como a estrela de favorito.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +47,7 @@ class DetailsTopBar extends StatelessWidget {
               ),
             ),
           ),
+          if (action != null) ...[const SizedBox(width: 4), action!],
         ],
       ),
     );
