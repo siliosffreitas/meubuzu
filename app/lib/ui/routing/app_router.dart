@@ -44,7 +44,15 @@ class AppRouter {
         GoRoute(
           path: AppRoutes.home,
           name: AppRoutes.homeName,
-          builder: (context, state) => const HomePage(),
+          builder: (context, state) {
+            final tabRequest = state.extra is int ? state.extra! as int : null;
+            return HomePage(
+              key: tabRequest == null
+                  ? null
+                  : ValueKey<String>('home-tab-request-$tabRequest'),
+              initialTabIndex: tabRequest ?? AppRoutes.homeTabMap,
+            );
+          },
         ),
         GoRoute(
           path: AppRoutes.mapSearch,

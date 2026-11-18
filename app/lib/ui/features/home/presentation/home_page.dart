@@ -2,20 +2,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../routing/app_routes.dart';
 import 'widgets/account/account_tab.dart';
 import 'widgets/favorites/favorites_tab.dart';
 import 'widgets/map/map_tab.dart';
 
 /// Tela principal com as abas Mapa, Favoritos e Conta.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.initialTabIndex = AppRoutes.homeTabMap});
+
+  /// Aba exibida ao abrir a Home.
+  final int initialTabIndex;
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = _normalizeTabIndex(widget.initialTabIndex);
+
+  static int _normalizeTabIndex(int index) {
+    if (index < AppRoutes.homeTabMap || index > AppRoutes.homeTabAccount) {
+      return AppRoutes.homeTabMap;
+    }
+    return index;
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTabIndex != oldWidget.initialTabIndex) {
+      _selectedIndex = _normalizeTabIndex(widget.initialTabIndex);
+    }
+  }
 
   void _selectTab(int index) {
     if (index == _selectedIndex) {

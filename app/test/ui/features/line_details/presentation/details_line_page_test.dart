@@ -163,20 +163,24 @@ void main() {
 
       final trackingRepository = FakeTrackingRepository();
       addTearDown(trackingRepository.dispose);
+      Object? homeExtra;
       final router = GoRouter(
         initialLocation: '/',
         routes: [
           GoRoute(
             path: '/',
             name: 'home',
-            builder: (context, state) => Scaffold(
-              body: Center(
-                child: ElevatedButton(
-                  onPressed: () => context.pushNamed('details'),
-                  child: const Text('Abrir detalhes'),
+            builder: (context, state) {
+              homeExtra = state.extra;
+              return Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    onPressed: () => context.pushNamed('details'),
+                    child: const Text('Abrir detalhes'),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           GoRoute(
             path: '/details',
@@ -206,6 +210,7 @@ void main() {
       expect(trackingRepository.startedCodes, ['0301']);
       expect(find.text('Abrir detalhes'), findsOneWidget);
       expect(find.text('Começar a acompanhar'), findsNothing);
+      expect(homeExtra, 0);
     });
 
     testWidgets('mostra o status de acompanhada e remove do mapa', (

@@ -4,6 +4,11 @@ abstract final class AppRoutes {
   static const home = '/';
   static const homeName = 'home';
 
+  /// Índices das abas da Home.
+  static const homeTabMap = 0;
+  static const homeTabFavorites = 1;
+  static const homeTabAccount = 2;
+
   /// Busca dedicada de linhas e paradas. Retorna a sugestão escolhida por
   /// `pop(result)`.
   static const mapSearch = '/search';

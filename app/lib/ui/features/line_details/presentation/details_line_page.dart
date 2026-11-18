@@ -112,7 +112,7 @@ class _DetailsLinePageState extends State<DetailsLinePage> {
     if (!mounted) {
       return;
     }
-    context.goNamed(AppRoutes.homeName);
+    context.goNamed(AppRoutes.homeName, extra: AppRoutes.homeTabMap);
   }
 
   /// Remove a linha do mapa e volta para a tela que abriu os detalhes.
