@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../../core/extensions/line_direction_label.dart';
 import '../../../../../../core/extensions/line_map_color.dart';
 import '../../../../../../core/theme/app_colors.dart';
 import '../../../../../../../domain/models/line.dart';
@@ -397,16 +398,9 @@ class _LineBadge extends StatelessWidget {
   }
 }
 
-/// Texto secundário da linha no painel: origem e código interno.
-String trackingLineSubtitle(Line line) {
-  final origin = line.origin.trim();
-  final id = line.id.trim();
-  final parts = <String>[if (origin.isNotEmpty) origin, if (id.isNotEmpty) id];
-  if (parts.isNotEmpty) {
-    return parts.join(' · ');
-  }
-  return line.destination.trim();
-}
+/// Texto secundário da linha no painel, no mesmo formato do subtítulo dos
+/// detalhes da linha.
+String trackingLineSubtitle(Line line) => line.directionLabel;
 
 String _formatTime(DateTime value) {
   String twoDigits(int number) => number.toString().padLeft(2, '0');

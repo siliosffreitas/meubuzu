@@ -118,11 +118,10 @@ void main() {
       expect(find.text('Atualizado 08:42:15'), findsOneWidget);
 
       expect(find.text('Jardim das Flores'), findsOneWidget);
-      expect(find.text('Praça do Ipê · A-104'), findsOneWidget);
+      expect(find.text('Circular • Praça do Ipê'), findsNWidgets(2));
       expect(find.text('Vila do Sol'), findsOneWidget);
-      expect(find.text('Praça do Ipê · A-203'), findsOneWidget);
       expect(find.text('Circular Parque'), findsOneWidget);
-      expect(find.text('Terminal Central · A-305'), findsOneWidget);
+      expect(find.text('Circular • Terminal Central'), findsOneWidget);
     });
 
     testWidgets('usa o singular quando há apenas uma linha', (tester) async {
@@ -358,11 +357,11 @@ void main() {
   });
 
   group('trackingLineSubtitle', () {
-    test('combina origem e código interno', () {
-      expect(trackingLineSubtitle(_line101), 'Praça do Ipê · A-104');
+    test('indica linha circular quando origem e destino são iguais', () {
+      expect(trackingLineSubtitle(_line101), 'Circular • Praça do Ipê');
     });
 
-    test('usa apenas a origem quando não há código interno', () {
+    test('indica o sentido quando origem e destino são diferentes', () {
       const line = Line(
         id: '',
         name: 'Linha',
@@ -371,10 +370,10 @@ void main() {
         boardingCode: '0101',
       );
 
-      expect(trackingLineSubtitle(line), 'Centro');
+      expect(trackingLineSubtitle(line), 'Sentido Bairro');
     });
 
-    test('usa o destino quando origem e código estão vazios', () {
+    test('indica o sentido quando a origem está vazia', () {
       const line = Line(
         id: '',
         name: 'Linha',
@@ -383,7 +382,19 @@ void main() {
         boardingCode: '0101',
       );
 
-      expect(trackingLineSubtitle(line), 'Bairro');
+      expect(trackingLineSubtitle(line), 'Sentido Bairro');
+    });
+
+    test('usa a origem quando o destino está vazio', () {
+      const line = Line(
+        id: '',
+        name: 'Linha',
+        origin: 'Centro',
+        destination: '',
+        boardingCode: '0101',
+      );
+
+      expect(trackingLineSubtitle(line), 'Centro');
     });
   });
 }

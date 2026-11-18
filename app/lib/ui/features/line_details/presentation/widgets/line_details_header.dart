@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/extensions/line_direction_label.dart';
 import '../../../../core/extensions/line_map_color.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../../domain/models/line.dart';
@@ -22,21 +23,9 @@ class LineDetailsHeader extends StatelessWidget {
     return code == null || code.isEmpty ? line.id : code;
   }
 
-  String get _direction {
-    final origin = line.origin.trim();
-    final destination = line.destination.trim();
-    if (destination.isEmpty) {
-      return origin;
-    }
-    if (origin.isNotEmpty && origin == destination) {
-      return 'Circular • $origin';
-    }
-    return 'Sentido $destination';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final direction = _direction;
+    final direction = line.directionLabel;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
