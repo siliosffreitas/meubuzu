@@ -132,6 +132,50 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         favorites = self.client.get("/v1/favorites").json()["favorites"]
         assert {item["city"]["slug"] for item in favorites} == {"teresina", "outra"}
 
+    def test_list_orders_by_sglinha_within_city(self):
+        line10 = make_line(self.city, "0010", boarding_code="10")
+        line2 = make_line(self.city, "0002", boarding_code="2")
+        line301 = make_line(self.city, "0301", boarding_code="0301")
+        line_blank = make_line(self.city, "0099", boarding_code="")
+
+        for line in (line10, line_blank, line301, line2):
+            self._add(line)
+
+        response = self.client.get("/v1/favorites")
+
+        assert response.status_code == 200, response.content
+        assert [item["line"]["id"] for item in response.json()["favorites"]] == [
+            str(line2.id),
+            str(line10.id),
+            str(line301.id),
+            str(line_blank.id),
+        ]
+
+    def test_list_orders_by_city_then_sglinha(self):
+        other_city = City.objects.create(
+            slug="outra",
+            name="Outra",
+            state="PI",
+            timezone="America/Fortaleza",
+            latitude=Decimal("-5.0"),
+            longitude=Decimal("-42.0"),
+        )
+        teresina_2 = make_line(self.city, "0002", boarding_code="2")
+        outra_1 = make_line(other_city, "9001", boarding_code="1")
+        outra_9 = make_line(other_city, "9009", boarding_code="9")
+
+        for line in (teresina_2, outra_9, outra_1):
+            self._add(line, line.city)
+
+        response = self.client.get("/v1/favorites")
+
+        assert response.status_code == 200, response.content
+        assert [item["line"]["id"] for item in response.json()["favorites"]] == [
+            str(outra_1.id),
+            str(outra_9.id),
+            str(teresina_2.id),
+        ]
+
     def test_city_and_line_errors(self):
         missing_city = self.client.post(
             "/v1/favorites",

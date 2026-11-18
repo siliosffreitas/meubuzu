@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models.functions import Cast
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -45,7 +46,34 @@ class FavoritesView(APIView):
         favorites = (
             Favorite.objects.filter(user=request.user)
             .select_related(*_FAVORITE_SELECT)
-            .order_by("line__city__name", "line__name", "line__code")
+            .annotate(
+                boarding_blank=Case(
+                    When(
+                        Q(line__boarding_code__isnull=True) | Q(line__boarding_code=""),
+                        then=Value(1),
+                    ),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ),
+                boarding_num=Case(
+                    When(
+                        line__boarding_code__regex=r"^\d+$",
+                        then=Cast("line__boarding_code", IntegerField()),
+                    ),
+                    default=Value(None),
+                    output_field=IntegerField(),
+                ),
+            )
+            .order_by(
+                "line__city__name",
+                "line__city__slug",
+                "boarding_blank",
+                "boarding_num",
+                "line__boarding_code",
+                "line__code",
+                "line__name",
+                "id",
+            )
         )
         return Response({"favorites": [favorite_payload(favorite) for favorite in favorites]})
 

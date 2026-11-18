@@ -43,7 +43,7 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   @override
   Future<void> refresh() async {
     final favorites = await _service.fetch();
-    _emit(favorites);
+    _emit(_sorted(favorites));
   }
 
   @override
@@ -59,10 +59,66 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
     }
 
     final favorite = await _service.add(normalized, slug.trim());
-    _emit([
-      ..._favorites.where((item) => item.lineId != favorite.lineId),
-      favorite,
-    ]);
+    _emit(
+      _sorted([
+        ..._favorites.where((item) => item.lineId != favorite.lineId),
+        favorite,
+      ]),
+    );
+  }
+
+  static List<Favorite> _sorted(List<Favorite> favorites) {
+    final list = List<Favorite>.from(favorites);
+    list.sort(_compareFavorites);
+    return list;
+  }
+
+  static int _compareFavorites(Favorite a, Favorite b) {
+    final city = a.city.name.compareTo(b.city.name);
+    if (city != 0) {
+      return city;
+    }
+    final citySlug = a.city.slug.compareTo(b.city.slug);
+    if (citySlug != 0) {
+      return citySlug;
+    }
+
+    final aCode = a.line.boardingCode?.trim() ?? '';
+    final bCode = b.line.boardingCode?.trim() ?? '';
+    final aBlank = aCode.isEmpty ? 1 : 0;
+    final bBlank = bCode.isEmpty ? 1 : 0;
+    if (aBlank != bBlank) {
+      return aBlank.compareTo(bBlank);
+    }
+
+    final aNum = int.tryParse(aCode);
+    final bNum = int.tryParse(bCode);
+    if (aNum != null && bNum != null && aNum != bNum) {
+      return aNum.compareTo(bNum);
+    }
+    if (aNum != null && bNum == null) {
+      return -1;
+    }
+    if (aNum == null && bNum != null) {
+      return 1;
+    }
+
+    final boarding = aCode.compareTo(bCode);
+    if (boarding != 0) {
+      return boarding;
+    }
+
+    final lineId = a.line.id.compareTo(b.line.id);
+    if (lineId != 0) {
+      return lineId;
+    }
+
+    final lineName = a.line.name.compareTo(b.line.name);
+    if (lineName != 0) {
+      return lineName;
+    }
+
+    return a.id.compareTo(b.id);
   }
 
   @override

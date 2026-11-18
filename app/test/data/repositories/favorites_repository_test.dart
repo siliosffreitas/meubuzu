@@ -6,7 +6,13 @@ import 'package:meubuzu/domain/models/favorite.dart';
 
 import '../../helpers/fake_auth_repository.dart';
 
-Favorite _favorite(String lineId) => Favorite.fromJson({
+Favorite _favorite(
+  String lineId, {
+  String? boardingCode,
+  String citySlug = 'teresina',
+  String cityName = 'Teresina',
+  String cityLabel = 'Teresina - PI',
+}) => Favorite.fromJson({
   'id': 'favorite-$lineId',
   'lineId': lineId,
   'line': {
@@ -14,12 +20,12 @@ Favorite _favorite(String lineId) => Favorite.fromJson({
     'name': 'LINHA $lineId',
     'origin': 'Origem',
     'destination': 'Destino',
-    'boardingCode': lineId,
+    'boardingCode': boardingCode ?? lineId,
   },
   'city': {
-    'slug': 'teresina',
-    'name': 'Teresina',
-    'label': 'Teresina - PI',
+    'slug': citySlug,
+    'name': cityName,
+    'label': cityLabel,
     'timezone': 'America/Fortaleza',
   },
 });
@@ -29,6 +35,7 @@ class _FakeFavoritesService implements FavoritesService {
   final added = <Map<String, String>>[];
   final removed = <String>[];
   bool shouldFail = false;
+  final Map<String, Favorite> addResults = {};
 
   @override
   Future<List<Favorite>> fetch() async {
@@ -41,7 +48,7 @@ class _FakeFavoritesService implements FavoritesService {
   @override
   Future<Favorite> add(String lineId, String citySlug) async {
     added.add({'lineId': lineId, 'citySlug': citySlug});
-    final favorite = _favorite(lineId);
+    final favorite = addResults[lineId] ?? _favorite(lineId);
     favorites = [...favorites, favorite];
     return favorite;
   }
@@ -125,5 +132,38 @@ void main() {
   test('refresh propaga falha do backend', () async {
     service.shouldFail = true;
     expect(repository.refresh(), throwsA(isA<StateError>()));
+  });
+
+  test('refresh ordena favoritos por cidade e sgLinha', () async {
+    service.favorites = [
+      _favorite('id-10', boardingCode: '10'),
+      _favorite('id-2', boardingCode: '2'),
+      _favorite('id-301', boardingCode: '0301'),
+    ];
+
+    await repository.refresh();
+
+    expect(repository.snapshot.map((item) => item.lineId), [
+      'id-2',
+      'id-10',
+      'id-301',
+    ]);
+  });
+
+  test('add insere favorito na posição correta por sgLinha', () async {
+    service.favorites = [
+      _favorite('id-10', boardingCode: '10'),
+      _favorite('id-2', boardingCode: '2'),
+    ];
+    await repository.refresh();
+    service.addResults['id-5'] = _favorite('id-5', boardingCode: '5');
+
+    await repository.add('id-5');
+
+    expect(repository.snapshot.map((item) => item.lineId), [
+      'id-2',
+      'id-5',
+      'id-10',
+    ]);
   });
 }

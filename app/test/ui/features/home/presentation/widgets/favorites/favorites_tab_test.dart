@@ -93,4 +93,24 @@ void main() {
     expect(find.text('Não foi possível carregar'), findsOneWidget);
     expect(find.text('Tentar novamente'), findsOneWidget);
   });
+
+  testWidgets('exibe linhas ordenadas por sgLinha', (tester) async {
+    final repository = FakeFavoritesRepository([
+      _favorite('2', 'teresina', 'Teresina - PI'),
+      _favorite('10', 'teresina', 'Teresina - PI'),
+      _favorite('0301', 'teresina', 'Teresina - PI'),
+    ]);
+    addTearDown(repository.dispose);
+
+    await tester.pumpWidget(_app(repository));
+    await tester.pumpAndSettle();
+
+    final texts = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((widget) => widget.data)
+        .whereType<String>()
+        .toList();
+    expect(texts.indexOf('LINHA 2'), lessThan(texts.indexOf('LINHA 10')));
+    expect(texts.indexOf('LINHA 10'), lessThan(texts.indexOf('LINHA 0301')));
+  });
 }

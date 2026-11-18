@@ -351,7 +351,7 @@ Favoritos ficam associados à conta no PostgreSQL (`favorites_favorite`), para a
 
 Endpoints (token de acesso obrigatório):
 
-- `GET /v1/favorites` — lista os favoritos da conta; cada item traz `lineId`, `line` e `city`.
+- `GET /v1/favorites` — lista os favoritos da conta ordenados por cidade e, dentro da cidade, pelo código da linha (`sgLinha`/`boardingCode`, em ordem numérica quando aplicável; `sgLinha` vazio vai ao final do grupo); cada item traz `lineId`, `line` e `city`.
 - `POST /v1/favorites` — corpo `{ "lineId": "<uuid|código>", "citySlug": "<slug>" }`; é idempotente e valida cidade/linha como o catálogo.
 - `DELETE /v1/favorites/{lineId}` — remove o favorito; aceita UUID, `codigoLinha` ou `sgLinha`.
 
