@@ -395,12 +395,6 @@ class _LineSuggestionTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 22,
-                    color: AppColors.textSecondary,
-                  ),
                 ],
               ),
             ),
@@ -408,6 +402,18 @@ class _LineSuggestionTile extends StatelessWidget {
         ),
         if (onFavorite != null)
           FavoriteStarButton(isFavorite: isFavorite, onTap: onFavorite!),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
       ],
     );
   }
