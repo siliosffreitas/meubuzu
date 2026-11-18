@@ -59,6 +59,37 @@ Widget _wrap(Widget child) {
   );
 }
 
+/// Host que remove a linha da lista quando o painel sinaliza a remoção.
+class _RemovablePanel extends StatefulWidget {
+  const _RemovablePanel(this.lines, {this.onRemove});
+
+  final List<TrackedLine> lines;
+  final ValueChanged<TrackedLine>? onRemove;
+
+  @override
+  State<_RemovablePanel> createState() => _RemovablePanelState();
+}
+
+class _RemovablePanelState extends State<_RemovablePanel> {
+  late List<TrackedLine> _lines = widget.lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return TrackingPanel(
+      trackedLines: _lines,
+      onRemoveLine: (tracked) {
+        widget.onRemove?.call(tracked);
+        setState(() {
+          _lines = [
+            for (final line in _lines)
+              if (!identical(line, tracked)) line,
+          ];
+        });
+      },
+    );
+  }
+}
+
 void main() {
   group('TrackingPanel', () {
     testWidgets('não renderiza nada sem linhas acompanhadas', (tester) async {
@@ -133,6 +164,86 @@ void main() {
       await tester.pump();
 
       expect(tapped.map((tracked) => tracked.line.name), ['Vila do Sol']);
+    });
+
+    testWidgets('remove a linha ao arrastar para o lado', (tester) async {
+      final removed = <TrackedLine>[];
+      final tapped = <TrackedLine>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [_tracked(_line101), _tracked(_line203)],
+            onLineTap: tapped.add,
+            onRemoveLine: removed.add,
+          ),
+        ),
+      );
+
+      await tester.fling(
+        find.byKey(const Key('tracking-line-tile-203')),
+        const Offset(-500, 0),
+        1200,
+      );
+      await tester.pumpAndSettle();
+
+      expect(removed.map((tracked) => tracked.line.name), ['Vila do Sol']);
+      expect(tapped, isEmpty);
+    });
+
+    testWidgets('a linha removida desaparece da lista', (tester) async {
+      final removed = <TrackedLine>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          _RemovablePanel(
+            [_tracked(_line101), _tracked(_line203)],
+            onRemove: removed.add,
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('tracking-line-tile-101')), findsOneWidget);
+      expect(find.byKey(const Key('tracking-line-tile-203')), findsOneWidget);
+
+      await tester.fling(
+        find.byKey(const Key('tracking-line-tile-101')),
+        const Offset(-500, 0),
+        1200,
+      );
+      await tester.pumpAndSettle();
+
+      expect(removed.map((tracked) => tracked.line.name), [
+        'Jardim das Flores',
+      ]);
+      expect(find.byKey(const Key('tracking-line-tile-101')), findsNothing);
+      expect(find.byKey(const Key('tracking-line-tile-203')), findsOneWidget);
+      expect(find.text('1 LINHA NO MAPA'), findsOneWidget);
+    });
+
+    testWidgets('arraste vertical na linha não remove o rastreamento', (
+      tester,
+    ) async {
+      final removed = <TrackedLine>[];
+
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [_tracked(_line101)],
+            onRemoveLine: removed.add,
+          ),
+        ),
+      );
+
+      await tester.fling(
+        find.byKey(const Key('tracking-line-tile-101')),
+        const Offset(0, 120),
+        600,
+      );
+      await tester.pumpAndSettle();
+
+      expect(removed, isEmpty);
+      expect(find.byKey(const Key('tracking-line-tile-101')), findsOneWidget);
     });
 
     testWidgets('não falha ao tocar sem callback configurado', (tester) async {

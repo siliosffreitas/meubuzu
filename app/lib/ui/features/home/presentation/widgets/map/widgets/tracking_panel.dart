@@ -18,6 +18,7 @@ class TrackingPanel extends StatefulWidget {
     this.updatedAt,
     this.initiallyCollapsed = false,
     this.onLineTap,
+    this.onRemoveLine,
   });
 
   /// Linhas retornadas pelo view model de rastreamento.
@@ -31,6 +32,9 @@ class TrackingPanel extends StatefulWidget {
 
   /// Chamado ao tocar em uma linha, normalmente para abrir seus detalhes.
   final ValueChanged<TrackedLine>? onLineTap;
+
+  /// Chamado ao arrastar uma linha para o lado, para encerrar o rastreamento.
+  final ValueChanged<TrackedLine>? onRemoveLine;
 
   @override
   State<TrackingPanel> createState() => _TrackingPanelState();
@@ -123,10 +127,26 @@ class _TrackingPanelState extends State<TrackingPanel> {
                             endIndent: 20,
                             color: AppColors.border,
                           ),
-                          itemBuilder: (context, index) => _TrackedLineTile(
-                            tracked: widget.trackedLines[index],
-                            onTap: widget.onLineTap,
-                          ),
+                          itemBuilder: (context, index) {
+                            final tracked = widget.trackedLines[index];
+                            return Dismissible(
+                              key: Key(
+                                'tracking-dismiss-${trackedLineKey(tracked)}',
+                              ),
+                              direction: DismissDirection.endToStart,
+                              background: const _DismissBackground(),
+                              onDismissed: (_) =>
+                                  widget.onRemoveLine?.call(tracked),
+                              child: Semantics(
+                                label: 'Arraste para a esquerda para remover '
+                                    'do rastreamento',
+                                child: _TrackedLineTile(
+                                  tracked: tracked,
+                                  onTap: widget.onLineTap,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -252,6 +272,26 @@ class _TrackingNotice extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
+      ),
+    );
+  }
+}
+
+/// Fundo exibido enquanto a linha é arrastada para fora da lista.
+class _DismissBackground extends StatelessWidget {
+  const _DismissBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('tracking-dismiss-background'),
+      color: AppColors.danger,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 20),
+      child: const Icon(
+        Icons.delete_rounded,
+        size: 22,
+        color: Colors.white,
       ),
     );
   }

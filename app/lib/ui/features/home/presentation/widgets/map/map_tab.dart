@@ -497,10 +497,7 @@ class _MapTabState extends State<MapTab>
   /// interno da linha. Ao remover a linha pela tela de detalhes, o painel é
   /// atualizado pelo próprio stream de rastreamento.
   Future<void> _openTrackedLineDetails(TrackedLine tracked) async {
-    final boardingCode = tracked.line.boardingCode?.trim();
-    final code = boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : tracked.line.id.trim();
+    final code = _trackingCode(tracked);
     if (code.isEmpty) {
       return;
     }
@@ -512,6 +509,26 @@ class _MapTabState extends State<MapTab>
     if (!mounted || removed != false) {
       return;
     }
+    if (_selectedSuggestion?.code == code) {
+      setState(() => _selectedSuggestion = null);
+    }
+  }
+
+  /// Código de rastreamento (`sgLinha`) da linha, com fallback para o interno.
+  String _trackingCode(TrackedLine tracked) {
+    final boardingCode = tracked.line.boardingCode?.trim();
+    return boardingCode != null && boardingCode.isNotEmpty
+        ? boardingCode
+        : tracked.line.id.trim();
+  }
+
+  /// Encerra o rastreamento da linha removida pelo gesto no painel.
+  void _removeTrackedLine(TrackedLine tracked) {
+    final code = _trackingCode(tracked);
+    if (code.isEmpty) {
+      return;
+    }
+    unawaited(_trackingViewModel.stopTracking(code));
     if (_selectedSuggestion?.code == code) {
       setState(() => _selectedSuggestion = null);
     }
@@ -742,6 +759,7 @@ class _MapTabState extends State<MapTab>
                   trackedLines: trackedLines,
                   updatedAt: _trackingViewModel.updatedAt,
                   onLineTap: _openTrackedLineDetails,
+                  onRemoveLine: _removeTrackedLine,
                 ),
             ],
           ),
