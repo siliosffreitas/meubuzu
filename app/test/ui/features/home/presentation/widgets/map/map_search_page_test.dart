@@ -55,7 +55,6 @@ TrackedLine _trackedLine(String code) {
   return TrackedLine(
     line: Line(
       // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
-      id: 'codigo-interno-$code',
       name: 'Perdizes ↔ Terminal Lapa',
       origin: 'Perdizes',
       destination: 'Terminal Lapa',
@@ -67,7 +66,6 @@ TrackedLine _trackedLine(String code) {
 }
 
 const _line = PlaceSuggestion(
-  id: '875A-10',
   code: '875A-10',
   type: PlaceSuggestionType.line,
   title: 'Perdizes ↔ Terminal Lapa',
@@ -163,7 +161,7 @@ void main() {
       await tester.tap(find.text('875A-10'));
       await tester.pumpAndSettle();
 
-      expect(selected?.id, _line.id);
+      expect(selected?.code, _line.code);
       expect(find.text('Abrir busca'), findsOneWidget);
     });
 
@@ -241,7 +239,7 @@ void main() {
       await tester.tap(find.text('875A-10'));
       await tester.pumpAndSettle();
 
-      expect(selected?.id, _line.id);
+      expect(selected?.code, _line.code);
       expect(repository.queries, ['875']);
 
       await tester.tap(find.text('Abrir busca'));

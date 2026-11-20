@@ -7,7 +7,6 @@ import 'package:meubuzu/ui/core/theme/app_colors.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/nearby_stop_markers.dart';
 
 const _busStop = BusStop(
-  id: '1',
   code: '2362',
   name: 'T-SANTA FÉ',
   address: 'Rua B, Teresina - PI',
@@ -16,7 +15,6 @@ const _busStop = BusStop(
 );
 
 const _otherBusStop = BusStop(
-  id: '2',
   code: '2363',
   name: 'SHOPPING',
   address: 'Av. C, Teresina - PI',
@@ -34,7 +32,7 @@ void main() {
 
       expect(markers, hasLength(1));
       final marker = markers.single;
-      expect(marker.markerId.value, 'stop-1');
+      expect(marker.markerId.value, 'stop-${_busStop.code}');
       expect(marker.position.latitude, _busStop.latitude);
       expect(marker.position.longitude, _busStop.longitude);
       expect(marker.infoWindow.title, _busStop.name);
@@ -62,10 +60,10 @@ void main() {
       final markers = buildNearbyStopMarkers(const [
         _busStop,
         _otherBusStop,
-      ], iconFor: (stop) => stop.id == _busStop.id ? icon : null);
+      ], iconFor: (stop) => stop.code == _busStop.code ? icon : null);
 
       expect(markers, hasLength(1));
-      expect(markers.single.markerId.value, 'stop-1');
+      expect(markers.single.markerId.value, 'stop-${_busStop.code}');
       expect(markers.single.icon, same(icon));
     });
 

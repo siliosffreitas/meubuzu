@@ -9,7 +9,7 @@ from apps.catalog.text import normalize_search_text
 from apps.favorites.models import Favorite
 
 
-def make_line(city: City, code: str, boarding_code: str = "") -> Line:
+def make_line(city: City, code: str, boarding_code: str) -> Line:
     return Line.objects.create(
         city=city,
         code=code,
@@ -29,17 +29,18 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         self.authenticate(access_token)
         self.user = user
         self.city = City.objects.get(slug="teresina")
-        self.line = make_line(self.city, "0001", boarding_code="1")
+        self.line = make_line(self.city, "0001", "1")
 
-    def _add(self, line: Line | None = None, city: City | None = None):
-        return self.client.post(
-            "/v1/favorites",
-            {
-                "lineId": str((line or self.line).id),
-                "citySlug": (city or self.city).slug,
-            },
-            format="json",
-        )
+    def _add(self, line: Line | None = None, city: City | None = None, **overrides):
+        payload = {
+            "boardingCode": (line or self.line).boarding_code,
+            "citySlug": (city or self.city).slug,
+        }
+        payload.update(overrides)
+        return self.client.post("/v1/favorites", payload, format="json")
+
+    def _delete(self, city_slug: str, boarding_code: str):
+        return self.client.delete(f"/v1/favorites/{city_slug}/{boarding_code}")
 
     def test_list_starts_empty(self):
         response = self.client.get("/v1/favorites")
@@ -47,21 +48,25 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         assert response.status_code == 200, response.content
         assert response.json() == {"favorites": []}
 
-    def test_add_then_list_returns_line_and_city(self):
+    def test_add_then_list_returns_line_and_city_without_ids(self):
         created = self._add()
 
         assert created.status_code == 201, created.content
         payload = created.json()
-        assert payload["lineId"] == str(self.line.id)
+        assert payload["boardingCode"] == "1"
+        assert payload["line"]["boardingCode"] == "1"
         assert payload["line"]["name"] == "LINHA 0001"
         assert payload["city"]["slug"] == "teresina"
         assert payload["city"]["timezone"] == "America/Fortaleza"
+        assert "id" not in payload
+        assert "lineId" not in payload
+        assert "id" not in payload["line"]
 
         response = self.client.get("/v1/favorites")
         assert response.status_code == 200, response.content
         favorites = response.json()["favorites"]
-        assert [item["id"] for item in favorites] == [payload["id"]]
-        assert favorites[0]["line"]["boardingCode"] == "1"
+        assert [item["boardingCode"] for item in favorites] == ["1"]
+        assert all("id" not in item and "lineId" not in item for item in favorites)
 
     def test_add_is_idempotent(self):
         first = self._add()
@@ -69,38 +74,56 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
 
         assert first.status_code == 201, first.content
         assert second.status_code == 200, second.content
-        assert first.json()["id"] == second.json()["id"]
+        assert first.json()["boardingCode"] == second.json()["boardingCode"] == "1"
         assert Favorite.objects.filter(user=self.user).count() == 1
 
-    def test_add_accepts_boarding_code(self):
-        response = self.client.post(
-            "/v1/favorites",
-            {"lineId": "1", "citySlug": self.city.slug},
-            format="json",
-        )
+    def test_add_does_not_accept_uuid_or_internal_code(self):
+        by_uuid = self._add(boardingCode=str(self.line.id))
+        by_internal_code = self._add(boardingCode="0001")
 
-        assert response.status_code == 201, response.content
-        assert response.json()["lineId"] == str(self.line.id)
+        self.assert_problem(by_uuid, status_code=404, code="line_not_found")
+        self.assert_problem(by_internal_code, status_code=404, code="line_not_found")
 
-    def test_delete_by_line_id(self):
+    def test_delete_by_city_and_boarding_code(self):
         self._add()
 
-        response = self.client.delete(f"/v1/favorites/{self.line.id}")
+        response = self._delete("teresina", "1")
 
         assert response.status_code == 204, response.content
         assert self.client.get("/v1/favorites").json() == {"favorites": []}
 
-    def test_delete_by_line_code(self):
+    def test_delete_requires_city_slug(self):
         self._add()
 
-        response = self.client.delete("/v1/favorites/0001")
+        response = self.client.delete("/v1/favorites/1")
 
-        assert response.status_code == 204, response.content
+        assert response.status_code == 404, response.content
 
     def test_delete_unknown_favorite_returns_stable_error(self):
-        response = self.client.delete("/v1/favorites/9999")
+        response = self._delete("teresina", "9999")
 
         self.assert_problem(response, status_code=404, code="favorite_not_found")
+
+    def test_delete_does_not_confuse_same_code_in_another_city(self):
+        other_city = City.objects.create(
+            slug="outra",
+            name="Outra",
+            state="PI",
+            timezone="America/Fortaleza",
+            latitude=Decimal("-5.0"),
+            longitude=Decimal("-42.0"),
+        )
+        other_line = make_line(other_city, "9001", "1")
+        self._add()
+        self._add(other_line, other_city)
+
+        response = self._delete("outra", "1")
+
+        assert response.status_code == 204, response.content
+        assert [
+            (item["city"]["slug"], item["boardingCode"])
+            for item in self.client.get("/v1/favorites").json()["favorites"]
+        ] == [("teresina", "1")]
 
     def test_favorites_are_private_to_user(self):
         self._add()
@@ -109,7 +132,7 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         self.authenticate(other_token)
 
         assert self.client.get("/v1/favorites").json() == {"favorites": []}
-        response = self.client.delete(f"/v1/favorites/{self.line.id}")
+        response = self._delete("teresina", "1")
         self.assert_problem(response, status_code=404, code="favorite_not_found")
 
         self.authenticate(start_session(self.user)[0])
@@ -124,7 +147,7 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
             latitude=Decimal("-5.0"),
             longitude=Decimal("-42.0"),
         )
-        other_line = make_line(other_city, "9001", boarding_code="9")
+        other_line = make_line(other_city, "9001", "9")
         self._add()
         response = self._add(other_line, other_city)
 
@@ -133,22 +156,22 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         assert {item["city"]["slug"] for item in favorites} == {"teresina", "outra"}
 
     def test_list_orders_by_sglinha_within_city(self):
-        line10 = make_line(self.city, "0010", boarding_code="10")
-        line2 = make_line(self.city, "0002", boarding_code="2")
-        line301 = make_line(self.city, "0301", boarding_code="0301")
-        line_blank = make_line(self.city, "0099", boarding_code="")
+        line10 = make_line(self.city, "0010", "10")
+        line2 = make_line(self.city, "0002", "2")
+        line301 = make_line(self.city, "0301", "0301")
+        line_text = make_line(self.city, "0099", "ABC")
 
-        for line in (line10, line_blank, line301, line2):
+        for line in (line10, line_text, line301, line2):
             self._add(line)
 
         response = self.client.get("/v1/favorites")
 
         assert response.status_code == 200, response.content
-        assert [item["line"]["id"] for item in response.json()["favorites"]] == [
-            str(line2.id),
-            str(line10.id),
-            str(line301.id),
-            str(line_blank.id),
+        assert [item["boardingCode"] for item in response.json()["favorites"]] == [
+            "2",
+            "10",
+            "0301",
+            "ABC",
         ]
 
     def test_list_orders_by_city_then_sglinha(self):
@@ -160,9 +183,9 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
             latitude=Decimal("-5.0"),
             longitude=Decimal("-42.0"),
         )
-        teresina_2 = make_line(self.city, "0002", boarding_code="2")
-        outra_1 = make_line(other_city, "9001", boarding_code="1")
-        outra_9 = make_line(other_city, "9009", boarding_code="9")
+        teresina_2 = make_line(self.city, "0002", "2")
+        outra_1 = make_line(other_city, "9001", "1")
+        outra_9 = make_line(other_city, "9009", "9")
 
         for line in (teresina_2, outra_9, outra_1):
             self._add(line, line.city)
@@ -170,18 +193,17 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         response = self.client.get("/v1/favorites")
 
         assert response.status_code == 200, response.content
-        assert [item["line"]["id"] for item in response.json()["favorites"]] == [
-            str(outra_1.id),
-            str(outra_9.id),
-            str(teresina_2.id),
+        assert [
+            (item["city"]["slug"], item["boardingCode"])
+            for item in response.json()["favorites"]
+        ] == [
+            ("outra", "1"),
+            ("outra", "9"),
+            ("teresina", "2"),
         ]
 
     def test_city_and_line_errors(self):
-        missing_city = self.client.post(
-            "/v1/favorites",
-            {"lineId": str(self.line.id), "citySlug": "inexistente"},
-            format="json",
-        )
+        missing_city = self._add(citySlug="inexistente")
         self.assert_problem(missing_city, status_code=404, code="city_not_found")
 
         inactive_city = City.objects.create(
@@ -193,18 +215,10 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
             longitude=Decimal("-42.0"),
             is_active=False,
         )
-        inactive = self.client.post(
-            "/v1/favorites",
-            {"lineId": str(self.line.id), "citySlug": inactive_city.slug},
-            format="json",
-        )
+        inactive = self._add(citySlug=inactive_city.slug)
         self.assert_problem(inactive, status_code=409, code="city_inactive")
 
-        unknown_line = self.client.post(
-            "/v1/favorites",
-            {"lineId": "linha-inexistente", "citySlug": self.city.slug},
-            format="json",
-        )
+        unknown_line = self._add(boardingCode="linha-inexistente")
         self.assert_problem(unknown_line, status_code=404, code="line_not_found")
 
     def test_requires_access_token(self):
@@ -213,7 +227,7 @@ class FavoritesApiTests(AuthTestCase, SessionMixin):
         for response in (
             self.client.get("/v1/favorites"),
             self._add(),
-            self.client.delete(f"/v1/favorites/{self.line.id}"),
+            self._delete("teresina", "1"),
         ):
             assert response.status_code == 401, response.content
 

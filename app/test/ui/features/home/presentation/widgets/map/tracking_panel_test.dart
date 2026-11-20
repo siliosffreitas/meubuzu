@@ -9,21 +9,18 @@ import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/widgets/tracking_panel.dart';
 
 const _line101 = Line(
-  id: 'A-104',
   name: 'Jardim das Flores',
   origin: 'Praça do Ipê',
   destination: 'Praça do Ipê',
   boardingCode: '101',
 );
 const _line203 = Line(
-  id: 'A-203',
   name: 'Vila do Sol',
   origin: 'Praça do Ipê',
   destination: 'Praça do Ipê',
   boardingCode: '203',
 );
 const _line305 = Line(
-  id: 'A-305',
   name: 'Circular Parque',
   origin: 'Terminal Central',
   destination: 'Terminal Central',
@@ -363,7 +360,6 @@ void main() {
 
     test('indica o sentido quando origem e destino são diferentes', () {
       const line = Line(
-        id: '',
         name: 'Linha',
         origin: 'Centro',
         destination: 'Bairro',
@@ -375,7 +371,6 @@ void main() {
 
     test('indica o sentido quando a origem está vazia', () {
       const line = Line(
-        id: '',
         name: 'Linha',
         origin: '',
         destination: 'Bairro',
@@ -387,7 +382,6 @@ void main() {
 
     test('usa a origem quando o destino está vazio', () {
       const line = Line(
-        id: '',
         name: 'Linha',
         origin: 'Centro',
         destination: '',

@@ -107,9 +107,9 @@ class Command(BaseCommand):
                 },
             )
 
-        lines = self._read_lines(lines_path)
-        line_stops = self._read_line_stops(line_stops_path)
         stats = {"lines": 0, "line_stops": 0, "routes": 0, "skipped": 0}
+        lines = self._read_lines(lines_path, stats)
+        line_stops = self._read_line_stops(line_stops_path)
 
         with transaction.atomic():
             by_code: dict[str, Line] = {}
@@ -142,14 +142,20 @@ class Command(BaseCommand):
                     stats["lines"] += 1
                     continue
 
+                # O `sgLinha` é a identidade pública: se outra linha ativa já
+                # usa este código, ela é desativada antes da importação.
+                Line.objects.filter(
+                    city=city,
+                    boarding_code=row["boarding_code"],
+                ).exclude(code=code).update(is_active=False)
+
                 line, _ = Line.objects.update_or_create(
                     city=city,
                     code=code,
                     defaults=values,
                 )
                 by_code[code] = line
-                if row["boarding_code"]:
-                    by_boarding_code[row["boarding_code"]] = line
+                by_boarding_code[row["boarding_code"]] = line
                 stats["lines"] += 1
 
             if not dry_run:
@@ -160,9 +166,7 @@ class Command(BaseCommand):
 
             if dry_run:
                 known = {row["code"] for row in lines}
-                known.update(
-                    row["boarding_code"] for row in lines if row["boarding_code"]
-                )
+                known.update(row["boarding_code"] for row in lines)
                 stats["line_stops"] = sum(
                     len(stop_codes)
                     for identifier, stop_codes in line_stops.items()
@@ -187,7 +191,7 @@ class Command(BaseCommand):
             )
         )
 
-    def _read_lines(self, path: Path) -> list[dict[str, str]]:
+    def _read_lines(self, path: Path, stats: dict[str, int]) -> list[dict[str, str]]:
         with path.open(newline="", encoding="utf-8-sig") as csv_file:
             reader = csv.DictReader(csv_file)
             missing = REQUIRED_COLUMNS.difference(reader.fieldnames or [])
@@ -197,16 +201,34 @@ class Command(BaseCommand):
                 )
 
             rows = []
+            seen_boarding_codes: set[str] = set()
             for line_number, row in enumerate(reader, start=2):
                 code = (row.get("codigoLinha") or "").strip()
                 name = (row.get("nomeLinha") or "").strip()
                 if not code or not name:
                     self.stderr.write(f"Linha {line_number}: código ou nome vazio; ignorada.")
+                    stats["skipped"] += 1
                     continue
+
+                boarding_code = (row.get("sgLinha") or "").strip()
+                if not boarding_code:
+                    self.stderr.write(
+                        f"Linha {line_number}: sgLinha vazio; ignorada."
+                    )
+                    stats["skipped"] += 1
+                    continue
+                if boarding_code in seen_boarding_codes:
+                    self.stderr.write(
+                        f"Linha {line_number}: sgLinha '{boarding_code}' duplicado; ignorada."
+                    )
+                    stats["skipped"] += 1
+                    continue
+                seen_boarding_codes.add(boarding_code)
+
                 rows.append(
                     {
                         "code": code,
-                        "boarding_code": (row.get("sgLinha") or "").strip(),
+                        "boarding_code": boarding_code,
                         "name": name,
                         "origin": (row.get("getOrigemIda") or "").strip(),
                         "destination": (row.get("destinoIda") or "").strip(),

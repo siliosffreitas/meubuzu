@@ -6,7 +6,6 @@ import 'package:meubuzu/ui/features/bus_stop_details/presentation/widgets/bus_st
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/nearby_stop_markers.dart';
 
 const _busStop = BusStop(
-  id: '1',
   code: '174',
   name: 'PRAÇA DO IPÊ',
   address: 'Rua do Mercado, 180 · em frente à praça',
@@ -33,7 +32,7 @@ void main() {
     expect(map.markers, hasLength(1));
 
     final marker = map.markers.single;
-    expect(marker.markerId.value, 'stop-${_busStop.id}');
+    expect(marker.markerId.value, 'stop-${_busStop.code}');
     expect(marker.position, LatLng(_busStop.latitude, _busStop.longitude));
     expect(marker.infoWindow.title, _busStop.name);
     expect(marker.infoWindow.snippet, _busStop.address);

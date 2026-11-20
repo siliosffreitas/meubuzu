@@ -7,12 +7,8 @@ import '../../../../core/widgets/favorite_star_button.dart';
 import '../../../../../domain/models/line.dart';
 import '../../../../routing/app_routes.dart';
 
-/// Código usado para reconhecer a linha acompanhada (`sgLinha`), com fallback
-/// para o código interno quando o `sgLinha` não está disponível.
-String _trackingCode(Line line) {
-  final code = line.boardingCode?.trim();
-  return code == null || code.isEmpty ? line.id.trim() : code;
-}
+/// Código usado para reconhecer a linha acompanhada (`sgLinha`).
+String _trackingCode(Line line) => line.publicCode;
 
 /// Card de uma linha que passa pela parada, com o código, o nome e o trajeto.
 class BusStopLineTile extends StatelessWidget {
@@ -27,10 +23,7 @@ class BusStopLineTile extends StatelessWidget {
   /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
   final Set<String> trackingLines;
 
-  String get _displayCode {
-    final code = line.boardingCode?.trim();
-    return code == null || code.isEmpty ? line.id.trim() : code;
-  }
+  String get _displayCode => line.publicCode;
 
   String get _route {
     final origin = line.origin.trim();
@@ -157,10 +150,7 @@ class BusStopLineTileWithNavigation extends StatelessWidget {
   /// Ação da estrela. Quando nula, a estrela não é exibida.
   final VoidCallback? onFavoriteTap;
 
-  String get _displayCode {
-    final code = line.boardingCode?.trim();
-    return code == null || code.isEmpty ? line.id.trim() : code;
-  }
+  String get _displayCode => line.publicCode;
 
   String get _route {
     final origin = line.origin.trim();
@@ -202,7 +192,7 @@ class BusStopLineTileWithNavigation extends StatelessWidget {
               child: InkWell(
                 onTap: () => context.pushNamed<bool>(
                   AppRoutes.detailsLineName,
-                  pathParameters: {'code': line.boardingCode ?? ''},
+                  pathParameters: {'code': line.publicCode},
                 ),
                 borderRadius: BorderRadius.circular(12),
                 child: Row(

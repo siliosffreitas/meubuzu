@@ -12,7 +12,6 @@ import '../../../../helpers/fake_favorites_repository.dart';
 import '../../../../helpers/fake_tracking_repository.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -20,7 +19,6 @@ const _line = Line(
 );
 
 const _firstStop = BusStop(
-  id: '1',
   code: '174',
   name: 'PARADA 174',
   address: 'Rua A',
@@ -29,7 +27,6 @@ const _firstStop = BusStop(
 );
 
 const _secondStop = BusStop(
-  id: '2',
   code: '175',
   name: 'PARADA 175',
   address: 'Rua B',
@@ -221,15 +218,14 @@ void main() {
       expect(notifications, 1);
     });
 
-    test('reconhece a linha acompanhada pelo código interno', () async {
+    test('reconhece a linha acompanhada pelo sgLinha da rota', () async {
       const otherLine = Line(
-        id: '46',
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
         origin: 'MOCAMBINHO',
         destination: 'MOCAMBINHO',
         boardingCode: '9999',
       );
-      final viewModel = createViewModel(lineCode: '46');
+      final viewModel = createViewModel(lineCode: '9999');
       addTearDown(viewModel.dispose);
 
       trackingRepository.emit([trackedLineFor(otherLine)]);
@@ -287,13 +283,13 @@ void main() {
       expect(viewModel.isFavorite, isFalse);
     });
 
-    test('reflete o favorito e alterna pelo id da linha carregada', () async {
+    test('reflete o favorito e alterna pelo sgLinha da linha carregada', () async {
       repository
         ..line = _line
         ..stops = const [_firstStop];
       final favorites = FakeFavoritesRepository();
       addTearDown(favorites.dispose);
-      await favorites.add(_line.id);
+      await favorites.add(_line.boardingCode);
 
       final viewModel = createViewModel(favoritesRepository: favorites);
       addTearDown(viewModel.dispose);
@@ -321,7 +317,7 @@ void main() {
       await viewModel.toggleFavorite();
       await pumpEventQueue();
 
-      expect(favorites.removed, ['46']);
+      expect(favorites.removed, [_line.boardingCode]);
       expect(viewModel.isFavorite, isFalse);
     });
   });

@@ -8,7 +8,7 @@ class MapSearchPageArguments {
     this.repository,
     this.trackingRepository,
     this.favoritesRepository,
-    this.activeSuggestionId,
+    this.activeSuggestionCode,
   });
 
   /// Repositório injetado em testes. Quando nulo, a página usa o injetor.
@@ -21,5 +21,5 @@ class MapSearchPageArguments {
   final FavoritesRepository? favoritesRepository;
 
   /// Linha atualmente exibida no mapa, marcada como "Acompanhando no mapa".
-  final String? activeSuggestionId;
+  final String? activeSuggestionCode;
 }

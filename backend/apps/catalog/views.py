@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -103,21 +102,8 @@ class StopDetailView(CityScopedAPIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, city_slug: str, stop_id: str):
-        try:
-            stop = Stop.objects.select_related("source").get(
-                city=self.city,
-                pk=stop_id,
-                is_active=True,
-            )
-        except (Stop.DoesNotExist, ValidationError, ValueError) as exc:
-            raise ApiError(
-                "Parada não encontrada.",
-                code="stop_not_found",
-                title="Parada não encontrada",
-                status_code=404,
-            ) from exc
-
+    def get(self, request, city_slug: str, stop_code: str):
+        stop = resolve_stop(self.city, stop_code)
         return Response(stop_payload(stop))
 
 
@@ -174,12 +160,12 @@ class LineListView(CityScopedAPIView):
 
 
 class LineDetailView(CityScopedAPIView):
-    """Detalhes de uma linha (UUID, `codigoLinha`, `sgLinha` ou alias)."""
+    """Detalhes de uma linha, identificada pelo `boardingCode` (`sgLinha`)."""
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, city_slug: str, line_id: str):
-        line = resolve_line(self.city, line_id)
+    def get(self, request, city_slug: str, boarding_code: str):
+        line = resolve_line(self.city, boarding_code)
         return Response(line_payload(line))
 
 
@@ -188,8 +174,8 @@ class LineStopsView(CityScopedAPIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, city_slug: str, line_id: str):
-        line = resolve_line(self.city, line_id)
+    def get(self, request, city_slug: str, boarding_code: str):
+        line = resolve_line(self.city, boarding_code)
         stops = line_stops(line)
         return Response({"stops": stops, "count": len(stops)})
 
@@ -199,8 +185,8 @@ class LineRouteView(CityScopedAPIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, city_slug: str, line_id: str):
-        line = resolve_line(self.city, line_id)
+    def get(self, request, city_slug: str, boarding_code: str):
+        line = resolve_line(self.city, boarding_code)
         route = route_for_line(line)
         return Response(route if route is not None else {"route": None})
 
@@ -210,8 +196,8 @@ class StopLinesView(CityScopedAPIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, city_slug: str, stop_id: str):
-        stop = resolve_stop(self.city, stop_id)
+    def get(self, request, city_slug: str, stop_code: str):
+        stop = resolve_stop(self.city, stop_code)
         lines = line_payloads_for_stop(stop)
         return Response({"lines": lines, "count": len(lines)})
 
@@ -224,5 +210,9 @@ def line_payloads_for_stop(stop: Stop) -> list[dict]:
         .values_list("line", flat=True)
         .distinct()
     )
-    queryset = Line.objects.filter(pk__in=line_ids).select_related("source").order_by("code")
+    queryset = (
+        Line.objects.filter(pk__in=line_ids)
+        .select_related("source")
+        .order_by("boarding_code")
+    )
     return [line_payload(line) for line in queryset]

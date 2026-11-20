@@ -9,11 +9,11 @@ const _southwest = UserCoordinates(latitude: -5.166, longitude: -42.792);
 const _northeast = UserCoordinates(latitude: -5.164, longitude: -42.789);
 
 const _csv =
-    '"id","codigo","denominacao","endereco","lat","long","created_at","updated_at"\n'
-    '1,"2362","T-SANTA FÉ","Rua B, Loteamento Mário Covas, Teresina - PI",-5.165446,-42.791169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
-    '2,"1848","CONJUNTO BENTINHO 1","Rua Seis, 8831 - Angelim, Teresina - PI",-5.165446,-42.790369,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
-    '3,"1850","PARADA DISTANTE","Rua Distante",-5.165446,-42.786169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
-    '4,"1851","PARADA INVÁLIDA","Rua Inválida",nao,-42.789,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n';
+    '"codigo","denominacao","endereco","lat","long","created_at","updated_at"\n'
+    '"2362","T-SANTA FÉ","Rua B, Loteamento Mário Covas, Teresina - PI",-5.165446,-42.791169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
+    '"1848","CONJUNTO BENTINHO 1","Rua Seis, 8831 - Angelim, Teresina - PI",-5.165446,-42.790369,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
+    '"1850","PARADA DISTANTE","Rua Distante",-5.165446,-42.786169,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n'
+    '"1851","PARADA INVÁLIDA","Rua Inválida",nao,-42.789,"2019-10-09 14:03:26","2019-10-09 14:03:26"\n';
 
 class _FakeAssetBundle extends AssetBundle {
   _FakeAssetBundle(this.content);
@@ -36,7 +36,7 @@ void main() {
       final stops = await service.findWithinBounds(_southwest, _northeast);
 
       expect(stops, hasLength(2));
-      expect(stops.map((stop) => stop.id), ['1', '2']);
+      expect(stops.map((stop) => stop.code), ['2362', '1848']);
       expect(stops.first.code, '2362');
       expect(stops.first.name, 'T-SANTA FÉ');
       expect(
@@ -52,7 +52,7 @@ void main() {
 
       final stops = await service.findWithinBounds(_northeast, _southwest);
 
-      expect(stops.map((stop) => stop.id), ['1', '2']);
+      expect(stops.map((stop) => stop.code), ['2362', '1848']);
     });
 
     test('carrega o catálogo uma única vez', () async {
@@ -67,7 +67,7 @@ void main() {
 
     test('falha quando o cabeçalho não tem as colunas esperadas', () async {
       final service = AssetBusStopService(
-        bundle: _FakeAssetBundle('"id","codigo"\n1,"2362"\n'),
+        bundle: _FakeAssetBundle('"codigo"\n"2362"\n'),
       );
 
       await expectLater(
@@ -90,7 +90,7 @@ void main() {
       final stops = await service.search('2362');
 
       expect(stops, hasLength(1));
-      expect(stops.first.id, '1');
+      expect(stops.first.code, '2362');
       expect(stops.first.code, '2362');
       expect(stops.first.name, 'T-SANTA FÉ');
     });

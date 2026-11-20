@@ -74,10 +74,7 @@ class FakeTrackingRepository implements TrackingRepository {
     _controller.close();
   }
 
-  String _key(Line line) {
-    final code = line.boardingCode?.trim();
-    return code == null || code.isEmpty ? line.id.trim() : code;
-  }
+  String _key(Line line) => line.publicCode;
 }
 
 /// Cria uma linha acompanhada sem traçado nem ônibus, para testes de status.

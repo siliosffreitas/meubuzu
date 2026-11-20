@@ -49,7 +49,6 @@ class _FakeTrackingRepository implements TrackingRepository {
 
 final _trackedLine = TrackedLine(
   line: const Line(
-    id: '46',
     name: 'MOCAMBINHO DUQUE DE CAXIAS',
     origin: 'MOCAMBINHO',
     destination: 'MOCAMBINHO',
@@ -62,7 +61,6 @@ final _trackedLine = TrackedLine(
 );
 
 const _line = PlaceSuggestion(
-  id: '875A-10',
   code: '875A-10',
   type: PlaceSuggestionType.line,
   title: 'Perdizes ↔ Terminal Lapa',

@@ -114,14 +114,12 @@ class AssetBusStopService implements BusStopService {
     final header = rows.first
         .map((column) => column.trim().toLowerCase())
         .toList(growable: false);
-    final idIndex = columnIndex(header, 'id', assetPath);
     final codeIndex = columnIndex(header, 'codigo', assetPath);
     final nameIndex = columnIndex(header, 'denominacao', assetPath);
     final addressIndex = columnIndex(header, 'endereco', assetPath);
     final latitudeIndex = columnIndex(header, 'lat', assetPath);
     final longitudeIndex = columnIndex(header, 'long', assetPath);
     final requiredColumns = <int>[
-      idIndex,
       codeIndex,
       nameIndex,
       addressIndex,
@@ -146,7 +144,6 @@ class AssetBusStopService implements BusStopService {
 
       stops.add(
         BusStop(
-          id: row[idIndex].trim(),
           code: row[codeIndex].trim(),
           name: row[nameIndex].trim(),
           address: row[addressIndex].trim(),

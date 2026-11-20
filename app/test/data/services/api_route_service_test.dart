@@ -43,7 +43,7 @@ void main() {
         MockClient((request) async {
           captured = request;
           return jsonResponse({
-            'lineId': '11111111-1111-1111-1111-111111111111',
+            'boardingCode': '11111111-1111-1111-1111-111111111111',
             'direction': 0,
             'coordinates': [
               [-5.16, -42.79],

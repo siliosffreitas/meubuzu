@@ -30,7 +30,7 @@ class ApiTrackingService implements TrackingService {
 
     final codes = <String>[];
     for (final line in lines) {
-      final code = normalizeLineCode(line.boardingCode ?? '');
+      final code = normalizeLineCode(line.publicCode);
       if (code.isNotEmpty && !codes.contains(code)) {
         codes.add(code);
       }
@@ -63,7 +63,7 @@ class ApiTrackingService implements TrackingService {
 
   List<BusPosition> _parseLine(Map<String, dynamic> line) {
     final blockLineCode = normalizeLineCode(
-      _text(line['boardingCode']) ?? _text(line['requestedId']) ?? '',
+      _text(line['boardingCode']) ?? _text(line['requestedCode']) ?? '',
     );
     final blockDataMode = _text(line['dataMode']);
     final blockSource = _text(line['source']);

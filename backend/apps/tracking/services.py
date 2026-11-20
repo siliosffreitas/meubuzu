@@ -31,6 +31,10 @@ from .sources import (
 
 MAX_TRACKING_LINES = 200
 
+# Versão do envelope em cache: incrementar ao alterar o formato público para
+# que payloads com identificadores antigos não sobrevivam a um deploy.
+TRACKING_PAYLOAD_VERSION = 2
+
 SOURCE_STATUS_OK = "ok"
 SOURCE_STATUS_EMPTY = "no_positions"
 
@@ -147,7 +151,6 @@ def _heading_between(
 def _rebase_position(
     row: VehiclePositionDTO,
     *,
-    line_id: str,
     boarding_code: str,
     now_city: datetime,
     city_tz: ZoneInfo,
@@ -183,7 +186,6 @@ def _rebase_position(
 
     is_stale = (received_at - captured_at).total_seconds() > stale_after_seconds
     return position_payload(
-        line_id=line_id,
         boarding_code=boarding_code,
         vehicle_code=row.vehicle_code,
         latitude=row.latitude,
@@ -202,9 +204,8 @@ def _positions_for_line(
     line: Line,
     rows: list[VehiclePositionDTO],
     *,
-    line_id: str,
     boarding_code: str,
-    requested_id: str,
+    requested_code: str,
     source: str,
     data_mode: str,
     now_city: datetime,
@@ -231,7 +232,6 @@ def _positions_for_line(
         for index, row in enumerate(history):
             payload = _rebase_position(
                 row,
-                line_id=line_id,
                 boarding_code=boarding_code,
                 now_city=now_city,
                 city_tz=city_tz,
@@ -263,9 +263,8 @@ def _positions_for_line(
 
     positions.sort(key=lambda item: item["capturedAt"])
     return line_positions_payload(
-        line_id=line_id,
         boarding_code=boarding_code,
-        requested_id=requested_id,
+        requested_code=requested_code,
         source=source,
         data_mode=data_mode,
         is_stale=any(position["isStale"] for position in positions),
@@ -279,8 +278,9 @@ def _cache_key(city: City, requested: list[str], now: datetime) -> str:
     bucket = int(now.timestamp()) // ttl
     # Os zeros à esquerda fazem parte do sgLinha; não os remova da chave.
     codes = [code.strip() for code in requested]
-    raw = f"{city.slug}|{','.join(codes)}|{bucket}"
-    return f"tracking:positions:{hashlib.sha1(raw.encode()).hexdigest()}"
+    raw = f"v{TRACKING_PAYLOAD_VERSION}|{city.slug}|{','.join(codes)}|{bucket}"
+    digest = hashlib.sha1(raw.encode()).hexdigest()
+    return f"tracking:positions:v{TRACKING_PAYLOAD_VERSION}:{digest}"
 
 
 def get_positions_payload(
@@ -310,7 +310,7 @@ def get_positions_payload(
 
     resolved: list[tuple[str, Line]] = []
     unresolved: list[str] = []
-    seen_line_ids: set[str] = set()
+    seen_boarding_codes: set[str] = set()
     for identifier in requested:
         try:
             line = resolve_line_by_boarding_code(city, identifier)
@@ -319,10 +319,10 @@ def get_positions_payload(
                 raise
             unresolved.append(identifier)
             continue
-        line_pk = str(line.pk)
-        if line_pk in seen_line_ids:
+        boarding_code = line.boarding_code.strip()
+        if boarding_code in seen_boarding_codes:
             continue
-        seen_line_ids.add(line_pk)
+        seen_boarding_codes.add(boarding_code)
         resolved.append((identifier, line))
 
     cache_key = _cache_key(city, requested, now_utc)
@@ -348,9 +348,8 @@ def get_positions_payload(
         _positions_for_line(
             line,
             rows,
-            line_id=str(line.pk),
             boarding_code=line.boarding_code,
-            requested_id=identifier,
+            requested_code=identifier,
             source=source_kind,
             data_mode="demo" if source_kind == CSV_SOURCE else "live",
             now_city=now_city,

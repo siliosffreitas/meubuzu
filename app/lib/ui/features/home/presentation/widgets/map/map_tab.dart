@@ -221,10 +221,7 @@ class _MapTabState extends State<MapTab>
   void _stopTrackingForCityChange() {
     final trackedLines = List<TrackedLine>.of(_trackingViewModel.trackedLines);
     for (final tracked in trackedLines) {
-      final boardingCode = tracked.line.boardingCode?.trim();
-      final code = boardingCode != null && boardingCode.isNotEmpty
-          ? boardingCode
-          : tracked.line.id.trim();
+      final code = tracked.line.publicCode;
       if (code.isEmpty) {
         continue;
       }
@@ -269,8 +266,8 @@ class _MapTabState extends State<MapTab>
         repository: widget.searchRepository,
         trackingRepository: widget.trackingRepository,
         favoritesRepository: widget.favoritesRepository,
-        activeSuggestionId: activeSuggestion?.type == PlaceSuggestionType.line
-            ? activeSuggestion!.id
+        activeSuggestionCode: activeSuggestion?.type == PlaceSuggestionType.line
+            ? activeSuggestion!.code
             : null,
       ),
     );
@@ -499,9 +496,8 @@ class _MapTabState extends State<MapTab>
 
   /// Abre os detalhes de uma linha que já está no mapa.
   ///
-  /// Usa o código de embarque exibido e, quando ele não existe, o código
-  /// interno da linha. Ao remover a linha pela tela de detalhes, o painel é
-  /// atualizado pelo próprio stream de rastreamento.
+  /// Usa o código de embarque (`sgLinha`). Ao remover a linha pela tela de
+  /// detalhes, o painel é atualizado pelo próprio stream de rastreamento.
   Future<void> _openTrackedLineDetails(TrackedLine tracked) async {
     final code = _trackingCode(tracked);
     if (code.isEmpty) {
@@ -520,13 +516,8 @@ class _MapTabState extends State<MapTab>
     }
   }
 
-  /// Código de rastreamento (`sgLinha`) da linha, com fallback para o interno.
-  String _trackingCode(TrackedLine tracked) {
-    final boardingCode = tracked.line.boardingCode?.trim();
-    return boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : tracked.line.id.trim();
-  }
+  /// Código de rastreamento (`sgLinha`) da linha.
+  String _trackingCode(TrackedLine tracked) => tracked.line.publicCode;
 
   /// Encerra o rastreamento da linha removida pelo gesto no painel.
   void _removeTrackedLine(TrackedLine tracked) {
@@ -615,7 +606,7 @@ class _MapTabState extends State<MapTab>
     setState(() {
       _selectedSuggestion = suggestion;
       _selectedMarker = Marker(
-        markerId: MarkerId('search-${suggestion.id}'),
+        markerId: MarkerId('search-${suggestion.code}'),
         position: target,
         icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
         infoWindow: InfoWindow(

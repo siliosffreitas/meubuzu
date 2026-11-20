@@ -22,7 +22,7 @@ class ApiLineStopsService implements LineStopsService {
     return _fetchCodes(ApiPaths.city(
       _citySlug(),
       'lines/$normalized/stops',
-    ));
+    ), key: 'code');
   }
 
   @override
@@ -34,7 +34,7 @@ class ApiLineStopsService implements LineStopsService {
     return _fetchCodes(ApiPaths.city(
       _citySlug(),
       'stops/$normalized/lines',
-    ));
+    ), key: 'boardingCode');
   }
 
   String _citySlug() {
@@ -47,7 +47,7 @@ class ApiLineStopsService implements LineStopsService {
     return city.slug;
   }
 
-  Future<List<String>> _fetchCodes(String path) async {
+  Future<List<String>> _fetchCodes(String path, {required String key}) async {
     final body = await _client.get(
       path,
       accessToken: _auth.accessToken,
@@ -60,7 +60,7 @@ class ApiLineStopsService implements LineStopsService {
 
     return items
         .whereType<Map<String, dynamic>>()
-        .map((item) => item['code']?.toString().trim() ?? '')
+        .map((item) => item[key]?.toString().trim() ?? '')
         .where((code) => code.isNotEmpty)
         .toList(growable: false);
   }

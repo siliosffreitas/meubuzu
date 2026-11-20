@@ -140,7 +140,7 @@ Set<Marker> buildNearbyStopMarkers(
 
     markers.add(
       Marker(
-        markerId: MarkerId('stop-${stop.id}'),
+        markerId: MarkerId('stop-${stop.code}'),
         position: LatLng(stop.latitude, stop.longitude),
         anchor: anchorFor?.call(stop) ?? const Offset(0.5, 1.0),
         infoWindow: InfoWindow(title: stop.name, snippet: stop.address),

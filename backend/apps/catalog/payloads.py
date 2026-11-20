@@ -28,7 +28,6 @@ def stop_payload(stop: Stop) -> dict:
     """Formato público de uma parada usado pelos endpoints do catálogo."""
 
     return {
-        "id": str(stop.id),
         "code": stop.code,
         "name": stop.name,
         "address": stop.address,
@@ -44,8 +43,6 @@ def line_payload(line: Line) -> dict:
     """Formato público de uma linha usado pelos endpoints do catálogo."""
 
     return {
-        "id": str(line.id),
-        "code": line.code,
         "boardingCode": line.boarding_code,
         "name": line.name,
         "origin": line.origin,
@@ -60,7 +57,7 @@ def route_payload(route: Route) -> dict:
     """Formato público do traçado de uma linha."""
 
     return {
-        "lineId": str(route.line_id),
+        "boardingCode": route.line.boarding_code,
         "direction": route.direction,
         "coordinates": route.path,
         "updatedAt": route.updated_at.isoformat() if route.updated_at else None,

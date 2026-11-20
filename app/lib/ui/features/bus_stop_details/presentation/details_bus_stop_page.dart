@@ -140,7 +140,7 @@ class _DetailsBusStopPageState extends State<DetailsBusStopPage> {
           busStop,
         ),
         trackingLines: _viewModel.trackedLineCodes,
-        favoriteLineIds: _viewModel.favoriteLineIds,
+        favoriteLineCodes: _viewModel.favoriteLineCodes,
         onFavoriteTap: _viewModel.hasFavorites ? _viewModel.toggleFavorite : null,
       ),
       DetailsBusStopNotFound() => _NotFoundView(
@@ -190,7 +190,7 @@ class _BusStopContent extends StatelessWidget {
     required this.distanceInMeters,
     required this.mapPreview,
     required this.trackingLines,
-    required this.favoriteLineIds,
+    required this.favoriteLineCodes,
     required this.onFavoriteTap,
   });
 
@@ -199,7 +199,7 @@ class _BusStopContent extends StatelessWidget {
   final double? distanceInMeters;
   final Widget mapPreview;
   final Set<String> trackingLines;
-  final Set<String> favoriteLineIds;
+  final Set<String> favoriteLineCodes;
   final ValueChanged<String>? onFavoriteTap;
 
   @override
@@ -224,10 +224,10 @@ class _BusStopContent extends StatelessWidget {
             BusStopLineTileWithNavigation(
               line: lines[index],
               trackingLines: trackingLines,
-              isFavorite: favoriteLineIds.contains(lines[index].id),
+              isFavorite: favoriteLineCodes.contains(lines[index].publicCode),
               onFavoriteTap: onFavoriteTap == null
                   ? null
-                  : () => onFavoriteTap!(lines[index].id),
+                  : () => onFavoriteTap!(lines[index].publicCode),
             ),
             const SizedBox(height: 8),
           ],

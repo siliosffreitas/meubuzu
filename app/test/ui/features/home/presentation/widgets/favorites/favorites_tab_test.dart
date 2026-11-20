@@ -6,16 +6,14 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/favorites/favorite
 
 import '../../../../../../helpers/fake_favorites_repository.dart';
 
-Favorite _favorite(String lineId, String citySlug, String cityLabel) {
+Favorite _favorite(String boardingCode, String citySlug, String cityLabel) {
   return Favorite.fromJson({
-    'id': 'favorite-$lineId',
-    'lineId': lineId,
+    'boardingCode': boardingCode,
     'line': {
-      'id': lineId,
-      'name': 'LINHA $lineId',
+      'name': 'LINHA $boardingCode',
       'origin': 'TERMINAL',
-      'destination': 'BAIRRO $lineId',
-      'boardingCode': lineId,
+      'destination': 'BAIRRO $boardingCode',
+      'boardingCode': boardingCode,
     },
     'city': {
       'slug': citySlug,

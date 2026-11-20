@@ -6,7 +6,6 @@ import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/widgets/search_results_panel.dart';
 
 const _line = PlaceSuggestion(
-  id: '46',
   code: '0301',
   type: PlaceSuggestionType.line,
   title: 'MOCAMBINHO DUQUE DE CAXIAS',
@@ -14,7 +13,6 @@ const _line = PlaceSuggestion(
 );
 
 const _stop = PlaceSuggestion(
-  id: '2362',
   code: '2362',
   type: PlaceSuggestionType.stop,
   title: 'T-SANTA FÉ',
@@ -84,7 +82,7 @@ void main() {
             query: '301',
             isLoading: false,
             results: const [_line],
-            activeSuggestionId: _line.id,
+            activeSuggestionCode: _line.code,
             statusLabel: '2 de 5 rastreamentos hoje',
             onSelected: (_) {},
           ),
@@ -184,7 +182,7 @@ void main() {
             query: '301',
             isLoading: false,
             results: const [_line, _stop],
-            favoriteLineIds: const {'46'},
+            favoriteLineCodes: const {'0301'},
             onFavoriteTap: favored.add,
             onSelected: (suggestion) => selected = suggestion,
           ),
@@ -197,7 +195,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.star_rounded));
       await tester.pump();
 
-      expect(favored, ['46']);
+      expect(favored, ['0301']);
       expect(selected, isNull, reason: 'a estrela não deve abrir a linha');
     });
 

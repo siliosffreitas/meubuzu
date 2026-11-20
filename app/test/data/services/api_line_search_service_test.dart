@@ -34,16 +34,12 @@ http.Response linesResponse() => http.Response(
     'count': 2,
     'lines': [
       {
-        'id': '11111111-1111-1111-1111-111111111111',
-        'code': '0001',
         'boardingCode': '1',
         'name': 'CENTRO - NORTE',
         'origin': 'Centro',
         'destination': 'Norte',
       },
       {
-        'id': '22222222-2222-2222-2222-222222222222',
-        'code': '0002',
         'boardingCode': '2',
         'name': 'NORTE - CENTRO',
         'origin': 'Norte',
@@ -72,7 +68,6 @@ void main() {
       expect(captured.url.queryParameters['q'], 'centro');
       expect(captured.headers['Authorization'], 'Bearer fake-access-token');
       expect(lines, hasLength(2));
-      expect(lines.first.id, '11111111-1111-1111-1111-111111111111');
       expect(lines.first.boardingCode, '1');
       expect(lines.first.name, 'CENTRO - NORTE');
       expect(lines.first.origin, 'Centro');

@@ -203,7 +203,10 @@ class _FavoritesTabState extends State<FavoritesTab>
             FavoriteLineTile(
               favorite: favorite,
               onOpen: () => _openFavorite(favorite),
-              onRemove: () => _viewModel.toggle(favorite.lineId),
+              onRemove: () => _viewModel.toggle(
+                    favorite.displayCode,
+                    citySlug: favorite.citySlug,
+                  ),
             ),
             const SizedBox(height: 10),
           ],

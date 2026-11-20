@@ -34,10 +34,38 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   @override
   List<Favorite> get snapshot => List.unmodifiable(_favorites);
 
+  String? get _selectedCitySlug {
+    final slug = _auth.selectedCity?.slug.trim();
+    return slug == null || slug.isEmpty ? null : slug;
+  }
+
+  Favorite? _findFavorite(String boardingCode, {String? citySlug}) {
+    final code = boardingCode.trim();
+    final slug = citySlug?.trim();
+    for (final favorite in _favorites) {
+      if (favorite.displayCode.trim() != code) {
+        continue;
+      }
+      if (slug != null && favorite.citySlug != slug) {
+        continue;
+      }
+      return favorite;
+    }
+    return null;
+  }
+
   @override
-  bool isFavorite(String lineId) {
-    final normalized = lineId.trim();
-    return _favorites.any((favorite) => favorite.lineId == normalized);
+  bool isFavorite(String boardingCode, {String? citySlug}) {
+    final favorite = _findFavorite(boardingCode, citySlug: citySlug);
+    if (favorite != null) {
+      return true;
+    }
+    // Sem cidade informada, considera apenas a cidade selecionada para não
+    // confundir códigos iguais em cidades diferentes.
+    final selectedSlug = _selectedCitySlug;
+    return selectedSlug == null
+        ? false
+        : _findFavorite(boardingCode, citySlug: selectedSlug) != null;
   }
 
   @override
@@ -47,24 +75,59 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   }
 
   @override
-  Future<void> add(String lineId, {String? citySlug}) async {
-    final normalized = lineId.trim();
-    if (normalized.isEmpty || isFavorite(normalized)) {
+  Future<void> add(String boardingCode, {String? citySlug}) async {
+    final code = boardingCode.trim();
+    if (code.isEmpty || isFavorite(code, citySlug: citySlug)) {
       return;
     }
 
-    final slug = citySlug ?? _auth.selectedCity?.slug;
-    if (slug == null || slug.trim().isEmpty) {
+    final slug = (citySlug ?? _selectedCitySlug)?.trim();
+    if (slug == null || slug.isEmpty) {
       throw StateError('É necessário escolher uma cidade para favoritar.');
     }
 
-    final favorite = await _service.add(normalized, slug.trim());
+    final favorite = await _service.add(code, slug);
     _emit(
       _sorted([
-        ..._favorites.where((item) => item.lineId != favorite.lineId),
+        ..._favorites.where(
+          (item) =>
+              !(item.citySlug == favorite.citySlug &&
+                  item.displayCode == favorite.displayCode),
+        ),
         favorite,
       ]),
     );
+  }
+
+  @override
+  Future<void> remove(String boardingCode, {String? citySlug}) async {
+    final code = boardingCode.trim();
+    if (code.isEmpty) {
+      return;
+    }
+    final favorite = _findFavorite(code, citySlug: citySlug);
+    if (favorite == null) {
+      return;
+    }
+    await _service.remove(favorite.citySlug, code);
+    _emit(
+      _favorites
+          .where(
+            (item) =>
+                !(item.citySlug == favorite.citySlug &&
+                    item.displayCode == code),
+          )
+          .toList(),
+    );
+  }
+
+  @override
+  Future<void> toggle(String boardingCode, {String? citySlug}) async {
+    if (isFavorite(boardingCode, citySlug: citySlug)) {
+      await remove(boardingCode, citySlug: citySlug);
+      return;
+    }
+    await add(boardingCode, citySlug: citySlug);
   }
 
   static List<Favorite> _sorted(List<Favorite> favorites) {
@@ -83,8 +146,8 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
       return citySlug;
     }
 
-    final aCode = a.line.boardingCode?.trim() ?? '';
-    final bCode = b.line.boardingCode?.trim() ?? '';
+    final aCode = a.displayCode;
+    final bCode = b.displayCode;
     final aBlank = aCode.isEmpty ? 1 : 0;
     final bBlank = bCode.isEmpty ? 1 : 0;
     if (aBlank != bBlank) {
@@ -103,41 +166,7 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
       return 1;
     }
 
-    final boarding = aCode.compareTo(bCode);
-    if (boarding != 0) {
-      return boarding;
-    }
-
-    final lineId = a.line.id.compareTo(b.line.id);
-    if (lineId != 0) {
-      return lineId;
-    }
-
-    final lineName = a.line.name.compareTo(b.line.name);
-    if (lineName != 0) {
-      return lineName;
-    }
-
-    return a.id.compareTo(b.id);
-  }
-
-  @override
-  Future<void> remove(String lineId) async {
-    final normalized = lineId.trim();
-    if (normalized.isEmpty || !isFavorite(normalized)) {
-      return;
-    }
-    await _service.remove(normalized);
-    _emit(_favorites.where((item) => item.lineId != normalized).toList());
-  }
-
-  @override
-  Future<void> toggle(String lineId, {String? citySlug}) async {
-    if (isFavorite(lineId)) {
-      await remove(lineId);
-      return;
-    }
-    await add(lineId, citySlug: citySlug);
+    return a.line.name.compareTo(b.line.name);
   }
 
   void _emit(List<Favorite> favorites) {

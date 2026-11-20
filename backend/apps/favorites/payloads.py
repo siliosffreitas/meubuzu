@@ -8,9 +8,10 @@ from .models import Favorite
 
 
 def favorite_payload(favorite: Favorite) -> dict:
+    """Favorito identificado por `citySlug` + `boardingCode`, sem IDs internos."""
+
     return {
-        "id": str(favorite.id),
-        "lineId": str(favorite.line_id),
+        "boardingCode": favorite.line.boarding_code,
         "line": line_payload(favorite.line),
         "city": city_payload(favorite.line.city),
         "createdAt": favorite.created_at.isoformat() if favorite.created_at else None,

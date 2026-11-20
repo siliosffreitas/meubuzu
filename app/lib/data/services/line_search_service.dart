@@ -7,7 +7,7 @@ import '../utils/search_normalizer.dart';
 
 /// Contrato de busca de linhas no catálogo local.
 abstract interface class LineSearchService implements Service {
-  /// Busca linhas por código ou nome.
+  /// Busca linhas por código de embarque, nome, origem ou destino.
   Future<List<Line>> search(String query);
 
   /// Busca linhas pelos [codes] informados, preservando a ordem recebida.
@@ -37,11 +37,10 @@ class AssetLineSearchService implements LineSearchService {
     return lines
         .where(
           (line) =>
-              normalizeSearchText(line.id).contains(normalizedQuery) ||
+              normalizeSearchText(line.boardingCode).contains(normalizedQuery) ||
               normalizeSearchText(line.name).contains(normalizedQuery) ||
-              (line.boardingCode != null &&
-                  normalizeSearchText(line.boardingCode!)
-                      .contains(normalizedQuery)),
+              normalizeSearchText(line.origin).contains(normalizedQuery) ||
+              normalizeSearchText(line.destination).contains(normalizedQuery),
         )
         .toList(growable: false);
   }
@@ -54,43 +53,25 @@ class AssetLineSearchService implements LineSearchService {
 
     final index = await (_linesByCode ??= _loadLinesByCode());
     final result = <Line>[];
-    final seenCodes = <String>{};
-    final seenLines = <Line>{};
+    final seen = <String>{};
 
     for (final code in codes) {
       final normalized = code.trim();
-      if (normalized.isEmpty || !seenCodes.add(normalized)) {
+      if (normalized.isEmpty || !seen.add(normalized)) {
         continue;
       }
       final line = index[normalized];
-      if (line == null || !seenLines.add(line)) {
-        continue;
+      if (line != null) {
+        result.add(line);
       }
-      result.add(line);
     }
     return result;
   }
 
-  /// Indexa as linhas por `codigoLinha` e por `sgLinha`.
-  ///
-  /// O `sgLinha` tem prioridade quando o mesmo código aparece nas duas colunas.
+  /// Indexa as linhas exclusivamente pelo `sgLinha`, identidade pública.
   Future<Map<String, Line>> _loadLinesByCode() async {
     final lines = await (_lines ??= _loadLines());
-    final index = <String, Line>{};
-
-    for (final line in lines) {
-      final id = line.id.trim();
-      if (id.isNotEmpty) {
-        index[id] = line;
-      }
-    }
-    for (final line in lines) {
-      final boardingCode = line.boardingCode?.trim();
-      if (boardingCode != null && boardingCode.isNotEmpty) {
-        index[boardingCode] = line;
-      }
-    }
-    return index;
+    return {for (final line in lines) line.publicCode: line};
   }
 
   Future<List<Line>> _loadLines() async {
@@ -103,7 +84,6 @@ class AssetLineSearchService implements LineSearchService {
     final header = rows.first
         .map((column) => column.trim().toLowerCase())
         .toList(growable: false);
-    final idIndex = columnIndex(header, 'codigolinha', assetPath);
     final nameIndex = columnIndex(header, 'nomelinha', assetPath);
     final originIndex = columnIndex(header, 'getorigemida', assetPath);
     final destinationIndex = columnIndex(header, 'destinoida', assetPath);
@@ -111,24 +91,25 @@ class AssetLineSearchService implements LineSearchService {
 
     final lines = <Line>[];
     for (final row in rows.skip(1)) {
-      if (row.length <= idIndex || row.length <= nameIndex) {
+      if (row.length <= nameIndex ||
+          row.length <= boardingIndex ||
+          row.every((value) => value.trim().isEmpty)) {
         continue;
       }
-      if (row.every((value) => value.trim().isEmpty)) {
+
+      final boardingCode = row[boardingIndex].trim();
+      if (boardingCode.isEmpty) {
         continue;
       }
 
       lines.add(
         Line(
-          id: row[idIndex].trim(),
           name: row[nameIndex].trim(),
           origin: originIndex < row.length ? row[originIndex].trim() : '',
           destination: destinationIndex < row.length
               ? row[destinationIndex].trim()
               : '',
-          boardingCode: boardingIndex < row.length
-              ? row[boardingIndex].trim()
-              : null,
+          boardingCode: boardingCode,
         ),
       );
     }

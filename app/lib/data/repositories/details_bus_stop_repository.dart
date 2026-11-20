@@ -55,7 +55,7 @@ class DetailsBusStopRepositoryImpl implements DetailsBusStopRepository {
     _linesController.add(_sortByDisplayCode(lines));
   }
 
-  /// Ordena as linhas pelo código exibido (`sgLinha`, com fallback para o id).
+  /// Ordena as linhas pelo código de embarque (`sgLinha`).
   List<Line> _sortByDisplayCode(List<Line> lines) {
     final sorted = [...lines]..sort(_compareLines);
     return List<Line>.unmodifiable(sorted);
@@ -71,12 +71,7 @@ class DetailsBusStopRepositoryImpl implements DetailsBusStopRepository {
     return first.name.toLowerCase().compareTo(second.name.toLowerCase());
   }
 
-  String _displayCode(Line line) {
-    final boardingCode = line.boardingCode?.trim();
-    return boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : line.id.trim();
-  }
+  String _displayCode(Line line) => line.publicCode;
 
   @override
   void dispose() {

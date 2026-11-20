@@ -23,7 +23,7 @@ class _FakeLineSearchService implements LineSearchService {
     return lines
         .where(
           (line) =>
-              line.id == query || line.boardingCode?.trim() == query.trim(),
+              line.boardingCode.trim() == query.trim(),
         )
         .toList(growable: false);
   }
@@ -34,7 +34,7 @@ class _FakeLineSearchService implements LineSearchService {
     return lines
         .where(
           (line) =>
-              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+              wanted.contains(line.boardingCode),
         )
         .toList(growable: false);
   }
@@ -85,14 +85,12 @@ BusPosition _position(String busCode, {String lineCode = '0301'}) {
 
 void main() {
   const line = Line(
-    id: '46',
     name: 'MOCAMBINHO DUQUE DE CAXIAS',
     origin: 'MOCAMBINHO',
     destination: 'MOCAMBINHO',
     boardingCode: '0301',
   );
   const otherLine = Line(
-    id: '47',
     name: 'OUTRA LINHA',
     origin: 'CENTRO',
     destination: 'SHOPPING',
@@ -287,8 +285,8 @@ void main() {
 
     test('consulta todas as linhas de uma vez e separa as posições por linha', () async {
       final trackingService = _FakeTrackingService([
-        _position('4171', lineCode: line.boardingCode!),
-        _position('5096', lineCode: otherLine.boardingCode!),
+        _position('4171', lineCode: line.boardingCode),
+        _position('5096', lineCode: otherLine.boardingCode),
       ]);
       final repository = TrackingRepositoryImpl(
         _FakeRouteService({'0301': route, '0302': null}),
@@ -303,10 +301,10 @@ void main() {
       await repository.startTracking('0302');
 
       expect(trackingService.queries, hasLength(1));
-      expect(trackingService.queries.single.map((queried) => queried.id), [
-        line.id,
-        otherLine.id,
-      ]);
+      expect(
+        trackingService.queries.single.map((queried) => queried.boardingCode),
+        [line.boardingCode, otherLine.boardingCode],
+      );
 
       final routes = await repository.trackingRoutes.firstWhere(
         (routes) => routes.length == 2,

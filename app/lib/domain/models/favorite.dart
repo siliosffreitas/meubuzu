@@ -29,17 +29,18 @@ class FavoriteCity {
 }
 
 /// Linha favorita vinculada à conta do usuário.
+///
+/// Um favorito é identificado por `citySlug` + `boardingCode`; IDs internos
+/// não fazem parte do contrato público.
 class Favorite {
   const Favorite({
-    required this.id,
-    required this.lineId,
+    required this.boardingCode,
     required this.line,
     required this.city,
     required this.createdAt,
   });
 
-  final String id;
-  final String lineId;
+  final String boardingCode;
   final Line line;
   final FavoriteCity city;
   final DateTime? createdAt;
@@ -47,13 +48,14 @@ class Favorite {
   factory Favorite.fromJson(Map<String, dynamic> json) {
     final lineJson = json['line'];
     final cityJson = json['city'];
+    final line = lineJson is Map<String, dynamic>
+        ? Line.fromJson(lineJson)
+        : Line.fromJson(const {});
 
     return Favorite(
-      id: json['id']?.toString() ?? '',
-      lineId: json['lineId']?.toString() ?? json['id']?.toString() ?? '',
-      line: lineJson is Map<String, dynamic>
-          ? Line.fromJson(lineJson)
-          : Line.fromJson(const {}),
+      boardingCode:
+          _text(json['boardingCode']) ?? line.publicCode,
+      line: line,
       city: cityJson is Map<String, dynamic>
           ? FavoriteCity.fromJson(cityJson)
           : FavoriteCity.fromJson(const {}),
@@ -61,12 +63,21 @@ class Favorite {
     );
   }
 
+  static String? _text(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  /// Slug da cidade do favorito, usado na remoção.
+  String get citySlug => city.slug.trim();
+
   /// Código exibido e usado na navegação para detalhes da linha.
   String get displayCode {
-    final boardingCode = line.boardingCode?.trim();
-    return boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : line.id;
+    final code = boardingCode.trim();
+    return code.isEmpty ? line.publicCode : code;
   }
 
   /// Trajeto curto exibido abaixo do nome da linha.

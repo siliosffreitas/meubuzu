@@ -38,5 +38,4 @@ Set<Polyline> buildTrackingPolylines(List<TrackedLine> trackedLines) {
 }
 
 /// Identificador estável da linha acompanhada.
-String trackedLineKey(TrackedLine tracked) =>
-    tracked.line.boardingCode ?? '${tracked.line.id}-${tracked.line.name}';
+String trackedLineKey(TrackedLine tracked) => tracked.line.publicCode;

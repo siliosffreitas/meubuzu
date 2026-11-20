@@ -6,5 +6,9 @@ app_name = "favorites"
 
 urlpatterns = [
     path("favorites", FavoritesView.as_view(), name="favorite-list"),
-    path("favorites/<str:line_id>", FavoriteDetailView.as_view(), name="favorite-detail"),
+    path(
+        "favorites/<slug:city_slug>/<str:boarding_code>",
+        FavoriteDetailView.as_view(),
+        name="favorite-detail",
+    ),
 ]

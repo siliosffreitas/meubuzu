@@ -30,32 +30,33 @@ class FakeFavoritesRepository implements FavoritesRepository {
   List<Favorite> get snapshot => List.unmodifiable(_favorites);
 
   @override
-  bool isFavorite(String lineId) =>
-      _favorites.any((favorite) => favorite.lineId == lineId);
+  bool isFavorite(String boardingCode, {String? citySlug}) => _favorites.any(
+    (favorite) =>
+        favorite.displayCode == boardingCode.trim() &&
+        (citySlug == null || favorite.citySlug == citySlug),
+  );
 
   @override
   Future<void> refresh() => onRefresh?.call() ?? Future.value();
 
   @override
-  Future<void> add(String lineId, {String? citySlug}) async {
-    added.add(lineId);
-    if (isFavorite(lineId)) {
+  Future<void> add(String boardingCode, {String? citySlug}) async {
+    added.add(boardingCode);
+    if (isFavorite(boardingCode, citySlug: citySlug)) {
       return;
     }
     _emit([
       ..._favorites,
       Favorite.fromJson({
-        'id': 'favorite-$lineId',
-        'lineId': lineId,
+        'boardingCode': boardingCode,
         'line': {
-          'id': lineId,
-          'name': 'LINHA $lineId',
+          'name': 'LINHA $boardingCode',
           'origin': 'Origem',
           'destination': 'Destino',
-          'boardingCode': lineId,
+          'boardingCode': boardingCode,
         },
         'city': {
-          'slug': 'teresina',
+          'slug': citySlug ?? 'teresina',
           'name': 'Teresina',
           'label': 'Teresina - PI',
           'timezone': 'America/Fortaleza',
@@ -65,14 +66,24 @@ class FakeFavoritesRepository implements FavoritesRepository {
   }
 
   @override
-  Future<void> remove(String lineId) async {
-    removed.add(lineId);
-    _emit(_favorites.where((item) => item.lineId != lineId).toList());
+  Future<void> remove(String boardingCode, {String? citySlug}) async {
+    removed.add(boardingCode);
+    _emit(
+      _favorites
+          .where(
+            (item) =>
+                !(item.displayCode == boardingCode.trim() &&
+                    (citySlug == null || item.citySlug == citySlug)),
+          )
+          .toList(),
+    );
   }
 
   @override
-  Future<void> toggle(String lineId, {String? citySlug}) =>
-      isFavorite(lineId) ? remove(lineId) : add(lineId, citySlug: citySlug);
+  Future<void> toggle(String boardingCode, {String? citySlug}) =>
+      isFavorite(boardingCode, citySlug: citySlug)
+          ? remove(boardingCode, citySlug: citySlug)
+          : add(boardingCode, citySlug: citySlug);
 
   void _emit(List<Favorite> favorites) {
     _favorites = List.unmodifiable(favorites);

@@ -24,14 +24,12 @@ const _city = City(
 );
 
 const _line0301 = Line(
-  id: 'uuid-0301',
   name: 'Linha 35',
   origin: 'Terminal',
   destination: 'Centro',
   boardingCode: '0301',
 );
 const _line0245 = Line(
-  id: 'uuid-0245',
   name: 'Linha 47',
   origin: 'Terminal',
   destination: 'Bairro',
@@ -58,7 +56,6 @@ Map<String, dynamic> position({
   bool isStale = false,
 }) {
   return {
-    'lineId': 'uuid-$boardingCode',
     'boardingCode': boardingCode,
     'vehicleCode': vehicleCode,
     'latitude': -5.1,
@@ -85,9 +82,8 @@ void main() {
             'city': 'teresina',
             'lines': [
               {
-                'lineId': 'uuid-0301',
                 'boardingCode': '0301',
-                'requestedId': '0301',
+                'requestedCode': '0301',
                 'source': 'csv_demo',
                 'dataMode': 'demo',
                 'isStale': true,
@@ -175,7 +171,6 @@ void main() {
           return jsonResponse({
             'lines': [
               {
-                'lineId': 'uuid-0245',
                 'boardingCode': '0245',
                 'source': 'csv_demo',
                 'dataMode': 'demo',
@@ -190,7 +185,6 @@ void main() {
                 ],
               },
               {
-                'lineId': 'uuid-0301',
                 'boardingCode': '0301',
                 'source': 'csv_demo',
                 'dataMode': 'demo',
@@ -221,11 +215,9 @@ void main() {
           return jsonResponse({
             'lines': [
               {
-                'lineId': 'uuid-0301',
                 'boardingCode': '0301',
                 'positions': [
                   {
-                    'lineId': 'uuid-0301',
                     'boardingCode': '0301',
                     'vehicleCode': 'SEM_COORDENADA',
                     'latitude': null,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from django.db import models
+from django.db.models import Q
 
 
 class City(models.Model):
@@ -154,7 +155,8 @@ class Stop(models.Model):
 class Line(models.Model):
     """Linha de ônibus pertencente ao catálogo de uma cidade.
 
-    `code` é o `codigoLinha` e `boarding_code` é o `sgLinha` da fonte. O
+    `code` é o `codigoLinha` (uso interno de importação e busca) e
+    `boarding_code` é o `sgLinha`, identificador público da linha. O
     `search_text` mantém ambos normalizados para busca textual sem pg_trgm.
     """
 
@@ -173,7 +175,7 @@ class Line(models.Model):
     )
     external_id = models.CharField("id de origem", max_length=64, blank=True, default="")
     code = models.CharField("codigoLinha", max_length=20)
-    boarding_code = models.CharField("sgLinha", max_length=20, blank=True, default="")
+    boarding_code = models.CharField("sgLinha", max_length=20)
     name = models.CharField("nome", max_length=200)
     origin = models.TextField("origem", blank=True, default="")
     destination = models.TextField("destino", blank=True, default="")
@@ -197,7 +199,18 @@ class Line(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["city", "code"], name="catalog_line_city_code_uniq"
-            )
+            ),
+            # O `sgLinha` é a identidade pública da linha: toda linha ativa deve
+            # tê-lo preenchido e não pode haver duplicata dentro da cidade.
+            models.CheckConstraint(
+                condition=Q(is_active=False) | ~Q(boarding_code=""),
+                name="catalog_line_active_boarding_code_required",
+            ),
+            models.UniqueConstraint(
+                fields=["city", "boarding_code"],
+                condition=Q(is_active=True),
+                name="catalog_line_active_city_boarding_uniq",
+            ),
         ]
         indexes = [
             models.Index(fields=["city", "is_active"], name="catalog_line_city_active_idx"),

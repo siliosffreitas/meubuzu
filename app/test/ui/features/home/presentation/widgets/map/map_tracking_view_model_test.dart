@@ -10,7 +10,6 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_s
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_view_model.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',

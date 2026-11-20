@@ -134,7 +134,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
   Future<Line?> _findLine(String lineCode) async {
     final results = await _lineSearchService.search(lineCode);
     for (final line in results) {
-      if (line.boardingCode?.trim() == lineCode) {
+      if (line.publicCode == lineCode) {
         return line;
       }
     }
@@ -210,7 +210,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
         if (current == null) {
           continue;
         }
-        final code = normalizeLineCode(current.line.boardingCode ?? '');
+        final code = normalizeLineCode(current.line.publicCode);
         _trackedLines[key] = TrackedLine(
           line: current.line,
           route: current.route,

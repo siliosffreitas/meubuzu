@@ -58,9 +58,9 @@ class FavoritesViewModel extends ViewmodelBase {
     }
   }
 
-  Future<void> toggle(String lineId) async {
+  Future<void> toggle(String boardingCode, {String? citySlug}) async {
     try {
-      await _repository.toggle(lineId);
+      await _repository.toggle(boardingCode, citySlug: citySlug);
       _errorMessage = null;
     } catch (_) {
       _errorMessage = 'Não foi possível atualizar o favorito.';

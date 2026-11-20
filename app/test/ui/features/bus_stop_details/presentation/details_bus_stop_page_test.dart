@@ -16,7 +16,6 @@ import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_st
 import '../../../../helpers/fake_favorites_repository.dart';
 
 const _busStop = BusStop(
-  id: '1',
   code: '174',
   name: 'PRAÇA DO IPÊ',
   address: 'Rua do Mercado, 180 · em frente à praça',
@@ -25,7 +24,6 @@ const _busStop = BusStop(
 );
 
 const _line = Line(
-  id: '46',
   name: 'JARDIM DAS FLORES',
   origin: 'TERMINAL CENTRAL',
   destination: 'JARDIM DAS FLORES',
@@ -33,7 +31,6 @@ const _line = Line(
 );
 
 const _otherLine = Line(
-  id: '203',
   name: 'VILA DO SOL',
   origin: 'TERMINAL CENTRAL',
   destination: 'VILA DO SOL',
@@ -149,7 +146,6 @@ TrackedLine _trackedLine(String code) {
   return TrackedLine(
     line: Line(
       // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
-      id: 'codigo-interno-$code',
       name: 'LINHA RASTREADA',
       origin: 'TERMINAL CENTRAL',
       destination: 'JARDIM DAS FLORES',
@@ -334,7 +330,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.star_outline_rounded).first);
       await tester.pumpAndSettle();
 
-      expect(favorites.added, ['46']);
+      expect(favorites.added, ['101']);
       expect(find.text('Detalhes da parada'), findsOneWidget);
       expect(find.byIcon(Icons.star_rounded), findsOneWidget);
     });

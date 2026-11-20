@@ -6,7 +6,6 @@ import 'package:meubuzu/ui/core/widgets/stop_ring_icon.dart';
 import 'package:meubuzu/ui/features/line_details/presentation/widgets/line_stop_timeline_tile.dart';
 
 const _busStop = BusStop(
-  id: '1',
   code: '2362',
   name: 'T-SANTA FÉ',
   address: 'Rua B, Teresina - PI',

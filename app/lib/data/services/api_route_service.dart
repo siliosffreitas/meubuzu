@@ -8,8 +8,8 @@ import 'route_service.dart';
 /// Consulta o traçado da linha no catálogo remoto da cidade selecionada.
 ///
 /// Substitui o `AssetRouteService`: o backend expõe o traçado em
-/// `GET /v1/cities/{citySlug}/lines/{lineId}/route`, que também aceita o
-/// `codigoLinha` ou `sgLinha` como identificador.
+/// `GET /v1/cities/{citySlug}/lines/{boardingCode}/route`, identificado apenas
+/// pelo `sgLinha`.
 class ApiRouteService implements RouteService {
   ApiRouteService(this._client, this._auth);
 

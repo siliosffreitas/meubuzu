@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import UUID
-
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.db.models.functions import Cast
 from rest_framework import status
@@ -19,22 +17,18 @@ from .serializers import CreateFavoriteSerializer
 _FAVORITE_SELECT = ("line__city", "line__source")
 
 
-def _find_favorite(user, identifier: str) -> Favorite | None:
-    """Localiza um favorito do usuário por UUID, `codigoLinha` ou `sgLinha`."""
+def _find_favorite(user, city_slug: str, boarding_code: str) -> Favorite | None:
+    """Localiza um favorito pelo par público (cidade + código de embarque)."""
 
-    normalized = (identifier or "").strip()
-    queryset = Favorite.objects.filter(user=user).select_related(*_FAVORITE_SELECT)
-
-    try:
-        uuid_value = UUID(normalized)
-    except (ValueError, AttributeError):
-        uuid_value = None
-
-    if uuid_value is not None:
-        return queryset.filter(line_id=uuid_value).first()
-    return queryset.filter(
-        Q(line__code__iexact=normalized) | Q(line__boarding_code__iexact=normalized)
-    ).first()
+    return (
+        Favorite.objects.filter(
+            user=user,
+            line__city__slug=city_slug,
+            line__boarding_code__iexact=(boarding_code or "").strip(),
+        )
+        .select_related(*_FAVORITE_SELECT)
+        .first()
+    )
 
 
 class FavoritesView(APIView):
@@ -72,7 +66,6 @@ class FavoritesView(APIView):
                 "line__boarding_code",
                 "line__code",
                 "line__name",
-                "id",
             )
         )
         return Response({"favorites": [favorite_payload(favorite) for favorite in favorites]})
@@ -82,7 +75,7 @@ class FavoritesView(APIView):
         serializer.is_valid(raise_exception=True)
 
         city = get_active_city(serializer.validated_data["citySlug"])
-        line = resolve_line(city, serializer.validated_data["lineId"])
+        line = resolve_line(city, serializer.validated_data["boardingCode"])
 
         # `get_or_create` é idempotente; a constraint única impede duplicatas
         # mesmo quando duas requisições chegam ao mesmo tempo.
@@ -96,12 +89,12 @@ class FavoritesView(APIView):
 
 
 class FavoriteDetailView(APIView):
-    """Remove um favorito da conta autenticada."""
+    """Remove um favorito da conta autenticada por cidade e código de embarque."""
 
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, line_id: str):
-        favorite = _find_favorite(request.user, line_id)
+    def delete(self, request, city_slug: str, boarding_code: str):
+        favorite = _find_favorite(request.user, city_slug, boarding_code)
         if favorite is None:
             raise ApiError(
                 "Favorito não encontrado.",

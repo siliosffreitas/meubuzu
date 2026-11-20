@@ -58,7 +58,7 @@ class ApiLineSearchService implements LineSearchService {
     return lines
         .whereType<Map<String, dynamic>>()
         .map(Line.fromJson)
-        .where((line) => line.id.isNotEmpty)
+        .where((line) => line.publicCode.isNotEmpty)
         .toList(growable: false);
   }
 }

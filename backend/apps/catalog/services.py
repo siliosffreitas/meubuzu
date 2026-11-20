@@ -6,7 +6,6 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db import models
 
 from apps.common.exceptions import ApiError
 
@@ -46,6 +45,12 @@ def get_active_city(slug: str) -> City:
 # --- Catálogo de paradas em cache ------------------------------------------
 
 CATALOG_CACHE_TTL_SECONDS = getattr(settings, "CATALOG_CACHE_TTL_SECONDS", 300)
+
+# Versão do formato dos payloads em cache. Incrementar quando o contrato mudar
+# (por exemplo, ao remover IDs internos dos payloads de linhas e paradas) para
+# que um deploy não sirva payloads antigos até o TTL expirar.
+CATALOG_PAYLOAD_VERSION = 2
+
 MAX_BBOX_AREA = Decimal("1.0")
 MAX_BBOX_SPAN = Decimal("2.0")
 MAX_CODES = 200
@@ -120,11 +125,16 @@ def invalidate_catalog_cache(city_slug: str) -> None:
 
 def _cache_key(city_slug: str, params: dict) -> str:
     raw = json.dumps(
-        {"city": city_slug, "version": catalog_version(city_slug), "params": params},
+        {
+            "city": city_slug,
+            "version": catalog_version(city_slug),
+            "payloadVersion": CATALOG_PAYLOAD_VERSION,
+            "params": params,
+        },
         sort_keys=True,
         ensure_ascii=False,
     )
-    return "catalog:stops:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return "catalog:stops:v2:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
 def cached_stops(
@@ -187,11 +197,16 @@ def cached_stops(
 
 def _lines_cache_key(city_slug: str, params: dict) -> str:
     raw = json.dumps(
-        {"city": city_slug, "version": catalog_version(city_slug), "params": params},
+        {
+            "city": city_slug,
+            "version": catalog_version(city_slug),
+            "payloadVersion": CATALOG_PAYLOAD_VERSION,
+            "params": params,
+        },
         sort_keys=True,
         ensure_ascii=False,
     )
-    return "catalog:lines:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return "catalog:lines:v2:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
 def cached_lines(
@@ -203,8 +218,8 @@ def cached_lines(
 ) -> tuple[list[dict], bool]:
     """Consulta linhas ativas de uma cidade, servindo do cache Redis.
 
-    `query` usa o `search_text` normalizado e `codes` preserva a ordem recebida,
-    como esperado pelo `findByCodes` do app.
+    `query` usa o `search_text` normalizado e `codes` (lista de `sgLinha`) preserva
+    a ordem recebida, como esperado pelo `findByCodes` do app.
     """
 
     params: dict = {"limit": limit}
@@ -227,18 +242,14 @@ def cached_lines(
         for token in normalize_search_text(query).split():
             lines = lines.filter(search_text__contains=token)
     if codes:
-        lines = lines.filter(code__in=codes) | lines.filter(
-            boarding_code__in=codes
-        )
-        lines = lines.distinct()
+        # `codes` contém apenas `sgLinha`: o identificador público da linha.
+        lines = lines.filter(boarding_code__in=codes)
 
     if codes:
-        by_code: dict[str, Line] = {}
-        for line in lines:
-            by_code.setdefault(line.code, line)
-            if line.boarding_code:
-                by_code.setdefault(line.boarding_code, line)
-        ordered = [by_code[code] for code in codes if code in by_code]
+        by_boarding_code = {line.boarding_code: line for line in lines}
+        ordered = [
+            by_boarding_code[code] for code in codes if code in by_boarding_code
+        ]
         selected = ordered[:limit]
     else:
         selected = list(lines[:limit])
@@ -248,45 +259,29 @@ def cached_lines(
     return payloads, False
 
 
-def resolve_line(city: City, identifier: str) -> Line:
-    """Resolve uma linha por UUID, `codigoLinha`, `sgLinha` ou alias.
+def resolve_line(city: City, boarding_code: str) -> Line:
+    """Resolve uma linha exclusivamente pelo `boardingCode` (`sgLinha`).
 
-    Códigos ambíguos retornam `409 ambiguous_line_code`, conforme RF-006.
+    UUID, `codigoLinha` e aliases são apenas internos e nunca identificam uma
+    linha nos endpoints públicos. O código é preservado com zeros à esquerda
+    (por exemplo, `0301`).
     """
 
-    from uuid import UUID
-
-    normalized = (identifier or "").strip()
+    normalized = (boarding_code or "").strip()
     matches: list[Line] = []
-
-    try:
-        uuid_value = UUID(normalized)
-    except (ValueError, AttributeError):
-        uuid_value = None
-
-    if uuid_value is not None:
-        match = Line.objects.filter(
-            city=city, pk=uuid_value, is_active=True
-        ).select_related("source").first()
-        if match is not None:
-            return match
-
-    text = normalize_search_text(normalized)
-    if text:
+    if normalized:
         matches = list(
-            Line.objects.filter(city=city, is_active=True)
-            .select_related("source")
-            .filter(
-                models.Q(code__iexact=normalized)
-                | models.Q(boarding_code__iexact=normalized)
-                | models.Q(aliases__alias__iexact=normalized)
+            Line.objects.filter(
+                city=city,
+                is_active=True,
+                boarding_code__iexact=normalized,
             )
-            .distinct()
+            .select_related("source")[:2]
         )
 
     if not matches:
         raise ApiError(
-            "Linha não encontrada.",
+            "Linha não encontrada para o código informado.",
             code="line_not_found",
             title="Linha não encontrada",
             status_code=404,
@@ -302,61 +297,22 @@ def resolve_line(city: City, identifier: str) -> Line:
 
 
 def resolve_line_by_boarding_code(city: City, sg_linha: str) -> Line:
-    """Resolve uma linha exclusivamente pelo `sgLinha` (código de embarque).
+    """Alias de `resolve_line` usado pelo rastreamento."""
 
-    Diferente de `resolve_line`, esta função não aceita UUID nem `codigoLinha`:
-    o contrato de rastreamento usa o código exibido ao usuário, preservando os
-    zeros à esquerda (por exemplo, `0301`).
-    """
-
-    normalized = (sg_linha or "").strip()
-    matches: list[Line] = []
-    if normalized:
-        matches = list(
-            Line.objects.filter(
-                city=city,
-                is_active=True,
-                boarding_code__iexact=normalized,
-            )
-            .select_related("source")[:2]
-        )
-
-    if not matches:
-        raise ApiError(
-            "Linha não encontrada para o sgLinha informado.",
-            code="line_not_found",
-            title="Linha não encontrada",
-            status_code=404,
-        )
-    if len(matches) > 1:
-        raise ApiError(
-            "Esse sgLinha identifica mais de uma linha.",
-            code="ambiguous_line_code",
-            title="Código de linha ambíguo",
-            status_code=409,
-        )
-    return matches[0]
+    return resolve_line(city, sg_linha)
 
 
-def resolve_stop(city: City, identifier: str) -> Stop:
-    """Resolve uma parada por UUID ou código, com erro estável."""
+def resolve_stop(city: City, code: str) -> Stop:
+    """Resolve uma parada exclusivamente pelo `code`, com erro estável."""
 
-    from uuid import UUID
-
-    normalized = (identifier or "").strip()
-    try:
-        uuid_value = UUID(normalized)
-    except (ValueError, AttributeError):
-        uuid_value = None
-
-    if uuid_value is not None:
-        stop = Stop.objects.filter(
-            city=city, pk=uuid_value, is_active=True
-        ).first()
-    else:
-        stop = Stop.objects.filter(
-            city=city, code__iexact=normalized, is_active=True
-        ).first()
+    normalized = (code or "").strip()
+    stop = (
+        Stop.objects.filter(city=city, code__iexact=normalized, is_active=True)
+        .select_related("source")
+        .first()
+        if normalized
+        else None
+    )
 
     if stop is None:
         raise ApiError(
@@ -384,6 +340,6 @@ def line_stops(line: Line) -> list[dict]:
 def route_for_line(line: Line) -> dict | None:
     """Retorna o traçado (`direction=0`) da linha, ou `None` se inexistente."""
 
-    route = Route.objects.filter(line=line, direction=0).first()
+    route = Route.objects.filter(line=line, direction=0).select_related("line").first()
     return route_payload(route) if route else None
 

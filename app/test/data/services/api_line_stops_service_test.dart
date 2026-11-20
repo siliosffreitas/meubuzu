@@ -46,12 +46,10 @@ void main() {
             'count': 2,
             'stops': [
               {
-                'id': '11111111-1111-1111-1111-111111111111',
                 'code': '100',
                 'name': 'PRIMEIRA',
               },
               {
-                'id': '22222222-2222-2222-2222-222222222222',
                 'code': '200',
                 'name': 'SEGUNDA',
               },
@@ -76,15 +74,11 @@ void main() {
             'count': 2,
             'lines': [
               {
-                'id': '11111111-1111-1111-1111-111111111111',
-                'code': '0001',
-                'boardingCode': '1',
+                'boardingCode': '0001',
                 'name': 'CENTRO - NORTE',
               },
               {
-                'id': '22222222-2222-2222-2222-222222222222',
-                'code': '0002',
-                'boardingCode': '2',
+                'boardingCode': '0002',
                 'name': 'NORTE - CENTRO',
               },
             ],

@@ -485,7 +485,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 - Rota sempre com cidade explícita: `GET /v1/cities/{citySlug}/lines`.
 - Cidade inexistente retorna `404 city_not_found`; inativa retorna `409 city_inactive`.
 - Busca textual normalizada (sem acentos, case-insensitive) com `pg_trgm`.
-- Considerar `codigoLinha`, `sgLinha`, aliases e nome.
+- Buscar por `sgLinha`, nome, origem e destino. `codigoLinha`, UUID e aliases não identificam linhas em endpoints públicos.
 - Suportar busca por proximidade (`near` + `radius`) quando aplicável.
 - Paginação por cursor.
 - Retornar apenas linhas ativas.
@@ -493,7 +493,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 **Critérios de aceite:**
 
-- Busca por `3`, `0001` e trecho do nome funciona.
+- Busca por `sgLinha` (por exemplo, `0001`) e por trecho do nome funciona.
 - Busca vazia retorna erro de validação.
 - Nenhuma linha de outra cidade aparece.
 - p95 < 300 ms para consultas comuns.
@@ -506,8 +506,8 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 **Regras:**
 
-- Aceitar UUID canônico, `codigoLinha` ou `sgLinha`.
-- Resolver aliases sem ambiguidade; se ambíguo, retornar `409 ambiguous_line_code`.
+- Aceitar somente o `sgLinha` na URL (`/lines/{boardingCode}`, `/lines/{boardingCode}/stops`, `/lines/{boardingCode}/route`, `/lines/{boardingCode}/positions`).
+- UUID, `codigoLinha` e aliases não resolvem linhas em endpoints públicos: retornar `404 line_not_found`. Zeros à esquerda do `sgLinha` são preservados.
 - Retornar origem, destino, código de embarque, cidade e status.
 - Retornar paradas na ordem do itinerário.
 - Retornar `LineString` do traçado quando disponível.
@@ -516,7 +516,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 **Critérios de aceite:**
 
-- Detalhes por qualquer identificador válido retornam a mesma linha.
+- Detalhes pelo `sgLinha` retornam a linha; por UUID, `codigoLinha` ou alias retornam `404`.
 - Paradas mantêm a ordem.
 - Linha sem traçado retorna `200` com `route: null`.
 - Linha inexistente ou de outra cidade retorna `404`.
@@ -552,7 +552,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 - Armazenar `LineString` em `geography(LineString,4326)`.
 - Suportar sentido ida/volta quando disponível.
 - Retornar coordenadas em ordem.
-- Cachear com ETag/versão.
+- Cachear com ETag/versão. As chaves de cache de catálogo e posições incluem a versão do formato do payload; incrementá-la no deploy que altera o contrato evita servir payloads antigos até o TTL expirar.
 - Incluir `updatedAt` da importação de origem.
 
 **Critérios de aceite:**
@@ -602,7 +602,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 **Regras de criação**
 
-- `POST /v1/cities/{citySlug}/tracking-sessions` com `lineId` e `Idempotency-Key`.
+- `POST /v1/cities/{citySlug}/tracking-sessions` com `boardingCode` (`sgLinha`) e `Idempotency-Key`.
 - Exige `trial` ou `paid`; caso contrário `402 subscription_required`.
 - **Trial:** no máximo **1 sessão ativa**. Nova tentativa retorna `409 active_session_exists` com o `sessionId` atual.
 - **Pago:** várias sessões ativas permitidas.
@@ -626,9 +626,9 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 **Heartbeat (D28)**
 
-- App envia `POST /v1/tracking-sessions/{id}/heartbeat` a cada 30 s.
+- App envia `POST /v1/tracking-sessions/{sessionId}/heartbeat` a cada 30 s.
 - Backend renova `expires_at = now + TTL` (default 120 s, configurável).
-- Encerramento explícito: `POST /v1/tracking-sessions/{id}/end`.
+- Encerramento explícito: `POST /v1/tracking-sessions/{sessionId}/end`.
 - Job periódico encerra sessões vencidas e libera o slot do trial.
 - `ended_reason`: `user_stopped`, `line_changed`, `heartbeat_timeout`, `trial_expired`, `subscription_expired`, `account_deleted`.
 
@@ -1077,6 +1077,10 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 ## 10. Modelo de dados
 
+As colunas `id` das tabelas abaixo são chaves internas de banco e **nunca** são
+expostas em rotas, parâmetros ou payloads públicos. A identidade pública de uma
+linha é `boarding_code` (`sgLinha`) e a de uma parada é `code`.
+
 ### 10.1 Extensões
 
 - `postgis`
@@ -1232,7 +1236,7 @@ Restrição: único `(entity, entity_id, field)`.
 | source_id | FK | indexado |
 | external_id | text | id na origem |
 | code | text | `codigoLinha`; único por cidade |
-| boarding_code | text | `sgLinha`; indexado |
+| boarding_code | text | `sgLinha`; obrigatório e único por cidade entre linhas ativas |
 | name | text | obrigatório |
 | origin | text | |
 | destination | text | |
@@ -1546,26 +1550,26 @@ Atualizada por upsert na mesma transação da ingestão.
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | GET | `/v1/cities/{citySlug}/lines` | Access | Busca linhas |
-| GET | `/v1/cities/{citySlug}/lines/{id}` | Access | Detalhes da linha |
-| GET | `/v1/cities/{citySlug}/lines/{id}/stops` | Access | Paradas da linha |
-| GET | `/v1/cities/{citySlug}/lines/{id}/route` | Access | Traçado |
+| GET | `/v1/cities/{citySlug}/lines/{boardingCode}` | Access | Detalhes da linha (`sgLinha`) |
+| GET | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Access | Paradas da linha |
+| GET | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Access | Traçado |
 | GET | `/v1/cities/{citySlug}/positions?codes=...` | Trial/Pago | Posições de várias linhas (`sgLinha`) |
 | GET | `/v1/cities/{citySlug}/lines/{sgLinha}/positions` | Trial/Pago | Posições de uma linha |
 | GET | `/v1/cities/{citySlug}/stops` | Access | Busca/bbox de paradas |
-| GET | `/v1/cities/{citySlug}/stops/{id}` | Access | Detalhes da parada |
-| GET | `/v1/cities/{citySlug}/stops/{id}/lines` | Access | Linhas da parada |
+| GET | `/v1/cities/{citySlug}/stops/{code}` | Access | Detalhes da parada (`code`) |
+| GET | `/v1/cities/{citySlug}/stops/{code}/lines` | Access | Linhas da parada |
 
 #### Rastreamento e favoritos
 
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | POST | `/v1/cities/{citySlug}/tracking-sessions` | Trial/Pago | Inicia rastreamento |
-| POST | `/v1/tracking-sessions/{id}/heartbeat` | Trial/Pago | Mantém sessão viva |
-| POST | `/v1/tracking-sessions/{id}/end` | Trial/Pago | Encerra rastreamento |
+| POST | `/v1/tracking-sessions/{sessionId}/heartbeat` | Trial/Pago | Mantém sessão viva |
+| POST | `/v1/tracking-sessions/{sessionId}/end` | Trial/Pago | Encerra rastreamento |
 | GET | `/v1/tracking-sessions/active` | Trial/Pago | Sessões abertas |
 | GET | `/v1/favorites` | Access | Lista favoritos |
 | POST | `/v1/favorites` | Trial/Pago | Adiciona favorito |
-| DELETE | `/v1/favorites/{lineId}` | Trial/Pago | Remove favorito |
+| DELETE | `/v1/favorites/{citySlug}/{boardingCode}` | Trial/Pago | Remove favorito |
 
 #### Webhooks, ingestão e operação
 
@@ -1629,6 +1633,34 @@ Content-Type: application/json
 }
 ```
 
+**Adicionar favorito**
+
+```http
+POST /v1/favorites
+Content-Type: application/json
+
+{ "boardingCode": "0301", "citySlug": "teresina" }
+```
+
+```json
+{
+  "boardingCode": "0301",
+  "line": {
+    "boardingCode": "0301",
+    "name": "MOCAMBINHO DUQUE DE CAXIAS",
+    "origin": "MOCAMBINHO",
+    "destination": "MOCAMBINHO",
+    "isActive": true,
+    "dataMode": "demo",
+    "updatedAt": "2026-11-17T14:00:00+00:00"
+  },
+  "city": { "slug": "teresina", "name": "Teresina", "state": "PI", "timezone": "America/Fortaleza" },
+  "createdAt": "2026-11-17T14:10:00+00:00"
+}
+```
+
+A remoção usa `DELETE /v1/favorites/teresina/0301` e responde `204`. A identidade do favorito é `citySlug + boardingCode`; nenhum ID interno aparece no corpo ou na URL.
+
 **Iniciar rastreamento**
 
 ```http
@@ -1636,13 +1668,13 @@ POST /v1/cities/teresina/tracking-sessions
 Idempotency-Key: 7c1f3a9e-...
 Content-Type: application/json
 
-{ "lineId": "..." }
+{ "boardingCode": "0301" }
 ```
 
 ```json
 {
   "sessionId": "...",
-  "lineId": "...",
+  "boardingCode": "0301",
   "startedAt": "2026-11-16T18:10:00Z",
   "lastHeartbeatAt": "2026-11-16T18:10:00Z",
   "expiresAt": "2026-11-16T18:12:00Z",
@@ -1671,16 +1703,14 @@ GET /v1/cities/teresina/positions?codes=0301,0245
   "dataMode": "demo",
   "lines": [
     {
-      "lineId": "11111111-1111-1111-1111-111111111111",
       "boardingCode": "0301",
-      "requestedId": "0301",
+      "requestedCode": "0301",
       "source": "csv_demo",
       "dataMode": "demo",
       "isStale": false,
       "sourceStatus": "ok",
       "positions": [
         {
-          "lineId": "11111111-1111-1111-1111-111111111111",
           "boardingCode": "0301",
           "vehicleCode": "5093",
           "latitude": -5.070498,
@@ -1697,9 +1727,8 @@ GET /v1/cities/teresina/positions?codes=0301,0245
       ]
     },
     {
-      "lineId": "22222222-2222-2222-2222-222222222222",
       "boardingCode": "0245",
-      "requestedId": "0245",
+      "requestedCode": "0245",
       "source": "csv_demo",
       "dataMode": "demo",
       "isStale": false,
@@ -1744,7 +1773,7 @@ Content-Type: application/problem+json
   "code": "active_session_exists",
   "detail": "Encerre o rastreamento atual para acompanhar outra linha.",
   "sessionId": "...",
-  "lineId": "..."
+  "boardingCode": "0301"
 }
 ```
 

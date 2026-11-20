@@ -25,7 +25,7 @@ class _FakeLineSearchService implements LineSearchService {
     return lines
         .where(
           (line) =>
-              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+              wanted.contains(line.boardingCode),
         )
         .toList();
   }
@@ -61,14 +61,12 @@ class _FakeBusStopService implements BusStopService {
 void main() {
   group('AssetPlaceSearchRepository', () {
     final line = Line(
-      id: '46',
       name: 'MOCAMBINHO DUQUE DE CAXIAS',
       origin: 'MOCAMBINHO',
       destination: 'MOCAMBINHO',
       boardingCode: '0301',
     );
     final stop = BusStop(
-      id: '1',
       code: '2362',
       name: 'T-SANTA FÉ',
       address: 'Rua B, Loteamento Mário Covas',
@@ -109,7 +107,6 @@ void main() {
 
         final lineSuggestion = suggestions.first;
         expect(lineSuggestion.type, PlaceSuggestionType.line);
-        expect(lineSuggestion.id, '46');
         expect(lineSuggestion.code, '0301');
         expect(lineSuggestion.title, 'MOCAMBINHO DUQUE DE CAXIAS');
         expect(lineSuggestion.subtitle, 'Circular • MOCAMBINHO');
@@ -118,7 +115,6 @@ void main() {
 
         final stopSuggestion = suggestions[1];
         expect(stopSuggestion.type, PlaceSuggestionType.stop);
-        expect(stopSuggestion.id, '2362');
         expect(stopSuggestion.code, '2362');
         expect(stopSuggestion.title, 'T-SANTA FÉ');
         expect(stopSuggestion.subtitle, 'Rua B, Loteamento Mário Covas');
@@ -129,7 +125,6 @@ void main() {
 
     test('monta o trajeto quando origem e destino são diferentes', () async {
       const line = Line(
-        id: '1',
         name: 'CENTRO / SHOPPING',
         origin: 'CENTRO',
         destination: 'SHOPPING',
@@ -146,13 +141,12 @@ void main() {
       expect(suggestions.single.subtitle, 'CENTRO → SHOPPING');
     });
 
-    test('usa o código da linha quando não há código de embarque', () async {
+    test('não sugere linha sem código de embarque', () async {
       const line = Line(
-        id: '408',
         name: 'BELAVISTA VIA S.MARIA',
         origin: 'TERMINAL 1',
         destination: 'TERMINAL 1',
-        boardingCode: null,
+        boardingCode: '',
       );
       final repository = AssetPlaceSearchRepository(
         lineSearchService: _FakeLineSearchService([line]),
@@ -161,27 +155,24 @@ void main() {
 
       final suggestions = await repository.search('belavista');
 
-      expect(suggestions.single.code, '408');
+      expect(suggestions, isEmpty);
     });
 
     test('ordena as linhas pelo sgLinha', () async {
       const lines = [
         Line(
-          id: '46',
           name: 'MOCAMBINHO DUQUE DE CAXIAS',
           origin: 'MOCAMBINHO',
           destination: 'MOCAMBINHO',
           boardingCode: '0301',
         ),
         Line(
-          id: '1',
           name: 'CENTRO / SHOPPING',
           origin: 'CENTRO',
           destination: 'SHOPPING',
           boardingCode: '0101',
         ),
         Line(
-          id: '10',
           name: 'TERMINAL / UNIVERSIDADE',
           origin: 'TERMINAL',
           destination: 'UNIVERSIDADE',
@@ -202,21 +193,19 @@ void main() {
       ]);
     });
 
-    test('ordena usando o código interno quando não há sgLinha', () async {
+    test('não sugere linhas sem sgLinha', () async {
       const lines = [
         Line(
-          id: '408',
           name: 'BELAVISTA VIA S.MARIA',
           origin: 'TERMINAL 1',
           destination: 'TERMINAL 1',
-          boardingCode: null,
+          boardingCode: '',
         ),
         Line(
-          id: '205',
           name: 'CENTRO / SHOPPING',
           origin: 'CENTRO',
           destination: 'SHOPPING',
-          boardingCode: null,
+          boardingCode: '',
         ),
       ];
       final repository = AssetPlaceSearchRepository(
@@ -226,20 +215,18 @@ void main() {
 
       final suggestions = await repository.search('centro');
 
-      expect(suggestions.map((suggestion) => suggestion.code), ['205', '408']);
+      expect(suggestions, isEmpty);
     });
 
     test('desempata linhas de mesmo sgLinha pelo nome', () async {
       const lines = [
         Line(
-          id: '2',
           name: 'ZONA SUL',
           origin: 'A',
           destination: 'B',
           boardingCode: '0501',
         ),
         Line(
-          id: '1',
           name: 'ZONA NORTE',
           origin: 'A',
           destination: 'B',

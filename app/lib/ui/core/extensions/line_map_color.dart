@@ -6,13 +6,10 @@ import '../../../domain/models/line.dart';
 extension LineMapColor on Line {
   /// Cor com que a linha aparece no mapa e nos destaques da busca.
   ///
-  /// É derivada do [boardingCode] (com fallback para [id]) e também do [name],
-  /// para que a mesma linha mantenha sempre a mesma cor entre execuções e
-  /// linhas diferentes não fiquem com cores iguais.
-  Color get mapColor {
-    final code = boardingCode?.trim();
-    return lineMapColor(code == null || code.isEmpty ? id : code, name);
-  }
+  /// É derivada do [boardingCode] e também do [name], para que a mesma linha
+  /// mantenha sempre a mesma cor entre execuções e linhas diferentes não
+  /// fiquem com cores iguais.
+  Color get mapColor => lineMapColor(publicCode, name);
 }
 
 /// Calcula a cor de uma linha a partir do `sgLinha` e do nome da linha.

@@ -101,16 +101,22 @@ class StopApiTests(AuthTestCase, SessionMixin):
             "1848",
         ]
 
-    def test_detail_returns_the_stop(self):
-        response = self.client.get(f"/v1/cities/teresina/stops/{self.near.id}")
+    def test_detail_returns_the_stop_by_code_without_ids(self):
+        response = self.client.get("/v1/cities/teresina/stops/2362")
 
         assert response.status_code == 200, response.content
-        assert response.json()["code"] == "2362"
+        body = response.json()
+        assert body["code"] == "2362"
+        assert body["name"] == "T-SANTA FÉ"
+        assert "id" not in body
+
+    def test_detail_does_not_accept_uuid(self):
+        response = self.client.get(f"/v1/cities/teresina/stops/{self.near.id}")
+
+        self.assert_problem(response, status_code=404, code="stop_not_found")
 
     def test_detail_uses_stable_not_found_error(self):
-        response = self.client.get(
-            "/v1/cities/teresina/stops/00000000-0000-0000-0000-000000000000"
-        )
+        response = self.client.get("/v1/cities/teresina/stops/inexistente")
 
         self.assert_problem(response, status_code=404, code="stop_not_found")
 

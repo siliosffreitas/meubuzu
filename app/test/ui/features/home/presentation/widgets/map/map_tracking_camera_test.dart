@@ -9,7 +9,6 @@ import 'package:meubuzu/domain/models/user_coordinates.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_camera.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -19,7 +18,6 @@ const _line = Line(
 );
 
 const _otherLine = Line(
-  id: '47',
   name: 'OUTRA LINHA',
   origin: 'CENTRO',
   destination: 'SHOPPING',
@@ -29,7 +27,6 @@ const _otherLine = Line(
 );
 
 const _lineWithoutCoordinates = Line(
-  id: '48',
   name: 'LINHA SEM COORDENADAS',
   origin: 'CENTRO',
   destination: 'SHOPPING',
@@ -55,7 +52,6 @@ BusPosition _busPosition(
 
 BusStop _stop(String id, {double latitude = -5.14, double longitude = -42.84}) {
   return BusStop(
-    id: id,
     code: '10$id',
     name: 'PARADA $id',
     address: 'Rua $id',

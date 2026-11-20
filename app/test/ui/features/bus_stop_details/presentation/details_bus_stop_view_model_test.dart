@@ -12,7 +12,6 @@ import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_st
 import 'package:meubuzu/ui/features/bus_stop_details/presentation/details_bus_stop_view_model.dart';
 
 const _busStop = BusStop(
-  id: '1',
   code: '174',
   name: 'PRAÇA DO IPÊ',
   address: 'Rua do Mercado, 180',
@@ -21,7 +20,6 @@ const _busStop = BusStop(
 );
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -136,7 +134,6 @@ TrackedLine _trackedLine(String code) {
   return TrackedLine(
     line: Line(
       // O rastreamento usa o `sgLinha`; o `id` é o código interno do catálogo.
-      id: 'codigo-interno-$code',
       name: 'MOCAMBINHO DUQUE DE CAXIAS',
       origin: 'MOCAMBINHO',
       destination: 'MOCAMBINHO',
@@ -293,7 +290,7 @@ void main() {
       expect(viewModel.trackedLineCodes, {'0301'});
     });
 
-    test('usa o código interno quando o sgLinha está vazio', () async {
+    test('ignora linha acompanhada sem sgLinha', () async {
       final trackingRepository = _FakeTrackingRepository();
       addTearDown(trackingRepository.dispose);
       final viewModel = createViewModel(trackingRepository: trackingRepository);
@@ -301,11 +298,10 @@ void main() {
 
       final tracked = TrackedLine(
         line: const Line(
-          id: '46',
           name: 'SEM SG',
           origin: '',
           destination: '',
-          boardingCode: null,
+          boardingCode: '',
         ),
         route: null,
         busPositions: const [],
@@ -314,7 +310,7 @@ void main() {
       trackingRepository.emit([tracked]);
       await pumpEventQueue();
 
-      expect(viewModel.trackedLineCodes, {'46'});
+      expect(viewModel.trackedLineCodes, isEmpty);
     });
 
     test('limpa as linhas acompanhadas quando o rastreamento falha', () async {

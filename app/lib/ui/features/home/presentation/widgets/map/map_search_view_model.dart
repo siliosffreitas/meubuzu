@@ -71,7 +71,7 @@ class MapSearchViewModel extends ViewmodelBase {
   bool _isLoading = false;
   List<PlaceSuggestion> _results = const [];
   Set<String> _trackedLineCodes = const {};
-  Set<String> _favoriteLineIds = const {};
+  Set<String> _favoriteLineCodes = const {};
 
   String get query => _query;
   bool get isFocused => _isFocused;
@@ -88,12 +88,12 @@ class MapSearchViewModel extends ViewmodelBase {
   /// A estrela aparece apenas quando há um repositório de favoritos disponível.
   bool get hasFavorites => _favoritesRepository != null;
 
-  /// IDs (`lineId`) das linhas favoritas da conta.
-  Set<String> get favoriteLineIds => _favoriteLineIds;
+  /// Códigos (`boardingCode`) das linhas favoritas da conta.
+  Set<String> get favoriteLineCodes => _favoriteLineCodes;
 
-  /// Alterna o favorito da linha [lineId].
-  Future<void> toggleFavorite(String lineId) async {
-    await _favoritesRepository?.toggle(lineId);
+  /// Alterna o favorito da linha [boardingCode].
+  Future<void> toggleFavorite(String boardingCode) async {
+    await _favoritesRepository?.toggle(boardingCode);
   }
 
   /// A lista de sugestões aparece apenas enquanto o campo está em uso.
@@ -147,22 +147,15 @@ class MapSearchViewModel extends ViewmodelBase {
 
   void _handleTrackedLines(List<TrackedLine> trackedLines) {
     _trackedLineCodes = {
-      for (final tracked in trackedLines) _searchCode(tracked.line),
+      for (final code
+          in trackedLines.map((tracked) => _searchCode(tracked.line)))
+        if (code.isNotEmpty) code,
     };
     notifyListeners();
   }
 
-  /// Código usado na busca (`sgLinha`), com fallback para o código interno.
-  ///
-  /// O rastreamento é iniciado pelo `sgLinha` (o `code` da sugestão), enquanto
-  /// [Line.id] guarda o `codigoLinha` do catálogo. Comparar apenas o `id`
-  /// deixaria de reconhecer a linha acompanhada.
-  String _searchCode(Line line) {
-    final boardingCode = line.boardingCode?.trim();
-    return boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : line.id.trim();
-  }
+  /// Código usado na busca e no rastreamento: o `sgLinha` da linha.
+  String _searchCode(Line line) => line.publicCode;
 
   void _handleTrackingError(Object error, StackTrace stackTrace) {
     _trackedLineCodes = const {};
@@ -170,12 +163,12 @@ class MapSearchViewModel extends ViewmodelBase {
   }
 
   void _handleFavorites(List<Favorite> favorites) {
-    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    _favoriteLineCodes = {for (final favorite in favorites) favorite.displayCode};
     notifyListeners();
   }
 
   void _handleFavoritesError(Object error, StackTrace stackTrace) {
-    _favoriteLineIds = const {};
+    _favoriteLineCodes = const {};
     notifyListeners();
   }
 

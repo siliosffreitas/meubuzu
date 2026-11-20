@@ -126,12 +126,12 @@ O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS
 | `GET` | `/v1/cities` | Lista as cidades ativas |
 | `GET` | `/v1/cities/{citySlug}` | Detalhe de uma cidade ativa |
 | `GET` | `/v1/cities/{citySlug}/stops` | Paradas da cidade (`bbox`, `q` ou `codes`) |
-| `GET` | `/v1/cities/{citySlug}/stops/{id}` | Detalhe de uma parada ativa |
+| `GET` | `/v1/cities/{citySlug}/stops/{code}` | Detalhe de uma parada ativa |
 | `GET` | `/v1/cities/{citySlug}/lines` | Busca de linhas (`q` ou `codes`) |
-| `GET` | `/v1/cities/{citySlug}/lines/{id}` | Detalhe da linha |
-| `GET` | `/v1/cities/{citySlug}/lines/{id}/stops` | Paradas da linha na ordem do itinerário |
-| `GET` | `/v1/cities/{citySlug}/lines/{id}/route` | Traçado da linha (`route: null` se ausente) |
-| `GET` | `/v1/cities/{citySlug}/stops/{id}/lines` | Linhas que passam pela parada |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}` | Detalhe da linha (`sgLinha`) |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Paradas da linha na ordem do itinerário |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Traçado da linha (`route: null` se ausente) |
+| `GET` | `/v1/cities/{citySlug}/stops/{code}/lines` | Linhas que passam pela parada |
 | `GET` | `/v1/me/preferences` | Preferências da conta (cidade selecionada) |
 | `PUT` | `/v1/me/preferences` | Define a cidade selecionada (`selectedCitySlug`) |
 | `GET` | `/healthz` | Liveness |
@@ -198,7 +198,6 @@ paradas existentes em vez de duplicá-las — e registra a fonte `csv-paradas` c
 {
   "stops": [
     {
-      "id": "11111111-1111-1111-1111-111111111111",
       "code": "2362",
       "name": "T-SANTA FÉ",
       "address": "Rua B - Loteamento Mário Covas, Teresina - PI",
@@ -238,8 +237,6 @@ antes `import_stops` (as paradas precisam existir para o itinerário).
 
 ```json
 {
-  "id": "11111111-1111-1111-1111-111111111111",
-  "code": "3",
   "boardingCode": "0001",
   "name": "POTY VELHO B. ESPERANCA VIA ACARAPE",
   "origin": "TERMINAL 1",
@@ -250,29 +247,34 @@ antes `import_stops` (as paradas precisam existir para o itinerário).
 }
 ```
 
-Os endpoints de linha aceitam como `{id}` o UUID canônico, o `codigoLinha`, o
-`sgLinha` ou um alias local. Código ambíguo retorna `409 ambiguous_line_code`;
-linha inexistente retorna `404 line_not_found`. O traçado usa coordenadas
-`[latitude, longitude]` na ordem do itinerário:
+Os endpoints de linha aceitam somente o `sgLinha` como `{boardingCode}`; zeros
+à esquerda são preservados. UUID, `codigoLinha` e aliases não resolvem linhas em
+endpoints públicos e retornam `404 line_not_found`. O `codigoLinha` continua
+sendo usado apenas na importação e na busca textual interna. Linhas ativas sem
+`sgLinha` são bloqueadas pela migration `catalog/0005_require_line_boarding_code`.
+O traçado usa coordenadas `[latitude, longitude]` na ordem do itinerário:
 
 ```json
 {
-  "lineId": "11111111-1111-1111-1111-111111111111",
+  "boardingCode": "0001",
   "direction": 0,
   "coordinates": [[-5.09867, -42.784517], [-5.10007, -42.78449]],
   "updatedAt": "2026-11-17T14:00:00+00:00"
 }
 ```
 
-`GET /v1/cities/{citySlug}/stops/{id}/lines` aceita UUID ou código da parada e
-devolve as linhas ativas que passam por ela no mesmo formato da busca.
+`GET /v1/cities/{citySlug}/stops/{code}/lines` aceita o `code` público da parada
+e devolve as linhas ativas que passam por ela no mesmo formato da busca.
 
 **Cache Redis:** o catálogo é servido do cache Django (`REDIS_URL`), com chave
 versionada por cidade e TTL `CATALOG_CACHE_TTL_SECONDS` (padrão 300 s). A
 resposta informa `X-Catalog-Cache: HIT | MISS`. A importação incrementa a versão
 da cidade e invalida todas as consultas antigas de uma vez; não é necessário
-varrer chaves. Sem Redis, o Django usa `LocMemCache` (apenas para desenvolvimento
-local).
+varrer chaves. As chaves também incluem `CATALOG_PAYLOAD_VERSION` (hoje `2`) e
+as de posições incluem `TRACKING_PAYLOAD_VERSION` (hoje `2`): ao mudar o formato
+de um payload, incrementar a versão correspondente no deploy evita servir JSON
+antigo com identificadores removidos até o TTL expirar. Sem Redis, o Django usa
+`LocMemCache` (apenas para desenvolvimento local).
 
 ### Testes e qualidade
 
@@ -351,9 +353,9 @@ Favoritos ficam associados à conta no PostgreSQL (`favorites_favorite`), para a
 
 Endpoints (token de acesso obrigatório):
 
-- `GET /v1/favorites` — lista os favoritos da conta ordenados por cidade e, dentro da cidade, pelo código da linha (`sgLinha`/`boardingCode`, em ordem numérica quando aplicável; `sgLinha` vazio vai ao final do grupo); cada item traz `lineId`, `line` e `city`.
-- `POST /v1/favorites` — corpo `{ "lineId": "<uuid|código>", "citySlug": "<slug>" }`; é idempotente e valida cidade/linha como o catálogo.
-- `DELETE /v1/favorites/{lineId}` — remove o favorito; aceita UUID, `codigoLinha` ou `sgLinha`.
+- `GET /v1/favorites` — lista os favoritos da conta ordenados por cidade e, dentro da cidade, pelo código da linha (`sgLinha`/`boardingCode`, em ordem numérica quando aplicável; `sgLinha` vazio vai ao final do grupo); cada item traz `boardingCode`, `line` e `city`, sem IDs internos.
+- `POST /v1/favorites` — corpo `{ "boardingCode": "<sgLinha>", "citySlug": "<slug>" }`; é idempotente e valida cidade/linha como o catálogo.
+- `DELETE /v1/favorites/{citySlug}/{boardingCode}` — remove o favorito identificado por cidade e `sgLinha`.
 
 Favoritar, desfavoritar e abrir uma linha favorita não contam como rastreamento nem alteram a cota.
 

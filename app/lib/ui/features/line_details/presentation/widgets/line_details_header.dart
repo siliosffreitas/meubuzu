@@ -18,10 +18,7 @@ class LineDetailsHeader extends StatelessWidget {
   /// Indica se a linha já está sendo acompanhada no mapa.
   final bool isTracking;
 
-  String get _displayCode {
-    final code = line.boardingCode?.trim();
-    return code == null || code.isEmpty ? line.id : code;
-  }
+  String get _displayCode => line.publicCode;
 
   @override
   Widget build(BuildContext context) {

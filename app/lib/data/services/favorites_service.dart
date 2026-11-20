@@ -5,8 +5,9 @@ import '../../domain/models/favorite.dart';
 abstract interface class FavoritesService implements Service {
   Future<List<Favorite>> fetch();
 
-  /// Adiciona a linha [lineId] do catálogo da cidade [citySlug].
-  Future<Favorite> add(String lineId, String citySlug);
+  /// Adiciona a linha [boardingCode] do catálogo da cidade [citySlug].
+  Future<Favorite> add(String boardingCode, String citySlug);
 
-  Future<void> remove(String lineId);
+  /// Remove o favorito identificado por cidade e código de embarque.
+  Future<void> remove(String citySlug, String boardingCode);
 }

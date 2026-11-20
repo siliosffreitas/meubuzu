@@ -13,7 +13,6 @@ const _otherPosition = UserCoordinates(latitude: -5.07, longitude: -42.8);
 const _southwest = UserCoordinates(latitude: -5.08, longitude: -42.85);
 const _northeast = UserCoordinates(latitude: -5.05, longitude: -42.75);
 const _busStop = BusStop(
-  id: '1',
   code: '2362',
   name: 'T-SANTA FÉ',
   address: 'Rua B, Teresina - PI',
@@ -21,7 +20,6 @@ const _busStop = BusStop(
   longitude: -42.7932,
 );
 const _otherBusStop = BusStop(
-  id: '2',
   code: '1848',
   name: 'CONJUNTO BENTINHO 1',
   address: 'Rua Seis, Teresina - PI',

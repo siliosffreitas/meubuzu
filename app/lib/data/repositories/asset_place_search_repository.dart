@@ -22,21 +22,21 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
       return const [];
     }
 
-    final lines = [...await _lineSearchService.search(trimmed)]
+    final lines = [
+      ...await _lineSearchService.search(trimmed),
+    ]..removeWhere((line) => line.publicCode.isEmpty)
       ..sort(_compareLines);
     final stops = await _busStopService.search(trimmed);
 
-    final suggestions = <PlaceSuggestion>[
+    return <PlaceSuggestion>[
       for (final line in lines) _lineToSuggestion(line),
       for (final stop in stops) _stopToSuggestion(stop),
     ];
-    return suggestions;
   }
 
   PlaceSuggestion _lineToSuggestion(Line line) {
     return PlaceSuggestion(
-      id: line.id,
-      code: _displayCode(line),
+      code: line.publicCode,
       type: PlaceSuggestionType.line,
       title: line.name,
       subtitle: _lineRoute(line),
@@ -45,14 +45,10 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
     );
   }
 
-  /// Código exibido da linha: o `sgLinha` quando existe, senão o `codigoLinha`.
-  String _displayCode(Line line) => line.boardingCode?.trim().isNotEmpty == true ? line.boardingCode! : line.id;
-
-  /// Ordena as linhas pelo `sgLinha` (fallback para o código interno).
   int _compareLines(Line first, Line second) {
-    final codeComparison = _displayCode(first)
+    final codeComparison = first.publicCode
         .toLowerCase()
-        .compareTo(_displayCode(second).toLowerCase());
+        .compareTo(second.publicCode.toLowerCase());
     if (codeComparison != 0) {
       return codeComparison;
     }
@@ -61,7 +57,6 @@ class AssetPlaceSearchRepository implements PlaceSearchRepository {
 
   PlaceSuggestion _stopToSuggestion(BusStop stop) {
     return PlaceSuggestion(
-      id: stop.code,
       code: stop.code,
       type: PlaceSuggestionType.stop,
       title: stop.name,

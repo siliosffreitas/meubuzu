@@ -7,20 +7,17 @@ import 'package:meubuzu/domain/models/favorite.dart';
 import '../../helpers/fake_auth_repository.dart';
 
 Favorite _favorite(
-  String lineId, {
-  String? boardingCode,
+  String boardingCode, {
   String citySlug = 'teresina',
   String cityName = 'Teresina',
   String cityLabel = 'Teresina - PI',
 }) => Favorite.fromJson({
-  'id': 'favorite-$lineId',
-  'lineId': lineId,
+  'boardingCode': boardingCode,
   'line': {
-    'id': lineId,
-    'name': 'LINHA $lineId',
+    'name': 'LINHA $boardingCode',
     'origin': 'Origem',
     'destination': 'Destino',
-    'boardingCode': boardingCode ?? lineId,
+    'boardingCode': boardingCode,
   },
   'city': {
     'slug': citySlug,
@@ -33,7 +30,7 @@ Favorite _favorite(
 class _FakeFavoritesService implements FavoritesService {
   List<Favorite> favorites = [];
   final added = <Map<String, String>>[];
-  final removed = <String>[];
+  final removed = <Map<String, String>>[];
   bool shouldFail = false;
   final Map<String, Favorite> addResults = {};
 
@@ -46,17 +43,26 @@ class _FakeFavoritesService implements FavoritesService {
   }
 
   @override
-  Future<Favorite> add(String lineId, String citySlug) async {
-    added.add({'lineId': lineId, 'citySlug': citySlug});
-    final favorite = addResults[lineId] ?? _favorite(lineId);
+  Future<Favorite> add(String boardingCode, String citySlug) async {
+    added.add({'boardingCode': boardingCode, 'citySlug': citySlug});
+    final favorite =
+        addResults[boardingCode] ??
+        _favorite(boardingCode, citySlug: citySlug);
     favorites = [...favorites, favorite];
     return favorite;
   }
 
   @override
-  Future<void> remove(String lineId) async {
-    removed.add(lineId);
-    favorites = favorites.where((item) => item.lineId != lineId).toList();
+  Future<void> remove(String citySlug, String boardingCode) async {
+    removed.add({'citySlug': citySlug, 'boardingCode': boardingCode});
+    favorites =
+        favorites
+            .where(
+              (item) =>
+                  !(item.citySlug == citySlug &&
+                      item.displayCode == boardingCode),
+            )
+            .toList();
   }
 }
 
@@ -96,7 +102,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(emissions, [0, 2]);
-    expect(repository.snapshot.map((item) => item.lineId), [
+    expect(repository.snapshot.map((item) => item.displayCode), [
       'linha-1',
       'linha-2',
     ]);
@@ -109,14 +115,29 @@ void main() {
     await repository.add('linha-1');
 
     expect(service.added, [
-      {'lineId': 'linha-1', 'citySlug': 'teresina'},
+      {'boardingCode': 'linha-1', 'citySlug': 'teresina'},
     ]);
     expect(repository.isFavorite('linha-1'), isTrue);
 
     await repository.toggle('linha-1');
 
-    expect(service.removed, ['linha-1']);
+    expect(service.removed, [
+      {'citySlug': 'teresina', 'boardingCode': 'linha-1'},
+    ]);
     expect(repository.isFavorite('linha-1'), isFalse);
+  });
+
+  test('remove usa a cidade do favorito, mesmo sem cidade selecionada', () async {
+    service.favorites = [
+      _favorite('1', citySlug: 'outra', cityName: 'Outra'),
+    ];
+    await repository.refresh();
+
+    await repository.remove('1');
+
+    expect(service.removed, [
+      {'citySlug': 'outra', 'boardingCode': '1'},
+    ]);
   });
 
   test('add não duplica e exige cidade selecionada', () async {
@@ -136,34 +157,31 @@ void main() {
 
   test('refresh ordena favoritos por cidade e sgLinha', () async {
     service.favorites = [
-      _favorite('id-10', boardingCode: '10'),
-      _favorite('id-2', boardingCode: '2'),
-      _favorite('id-301', boardingCode: '0301'),
+      _favorite('10'),
+      _favorite('2'),
+      _favorite('0301'),
     ];
 
     await repository.refresh();
 
-    expect(repository.snapshot.map((item) => item.lineId), [
-      'id-2',
-      'id-10',
-      'id-301',
+    expect(repository.snapshot.map((item) => item.displayCode), [
+      '2',
+      '10',
+      '0301',
     ]);
   });
 
   test('add insere favorito na posição correta por sgLinha', () async {
-    service.favorites = [
-      _favorite('id-10', boardingCode: '10'),
-      _favorite('id-2', boardingCode: '2'),
-    ];
+    service.favorites = [_favorite('10'), _favorite('2')];
     await repository.refresh();
-    service.addResults['id-5'] = _favorite('id-5', boardingCode: '5');
+    service.addResults['5'] = _favorite('5');
 
-    await repository.add('id-5');
+    await repository.add('5');
 
-    expect(repository.snapshot.map((item) => item.lineId), [
-      'id-2',
-      'id-5',
-      'id-10',
+    expect(repository.snapshot.map((item) => item.displayCode), [
+      '2',
+      '5',
+      '10',
     ]);
   });
 }

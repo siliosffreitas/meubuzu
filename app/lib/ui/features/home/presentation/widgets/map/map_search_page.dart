@@ -21,7 +21,7 @@ class MapSearchPage extends StatefulWidget {
     this.trackingRepository,
     this.favoritesRepository,
     this.viewModel,
-    this.activeSuggestionId,
+    this.activeSuggestionCode,
   });
 
   /// Permite injetar um repositório de busca fake em testes.
@@ -37,7 +37,7 @@ class MapSearchPage extends StatefulWidget {
   final MapSearchViewModel? viewModel;
 
   /// Linha atualmente exibida no mapa, destacada na lista de resultados.
-  final String? activeSuggestionId;
+  final String? activeSuggestionCode;
 
   @override
   State<MapSearchPage> createState() => _MapSearchPageState();
@@ -140,9 +140,9 @@ class _MapSearchPageState extends State<MapSearchPage> {
                       isLoading: _viewModel.isLoading,
                       results: _viewModel.results,
                       maxHeight: double.infinity,
-                      activeSuggestionId: widget.activeSuggestionId,
+                      activeSuggestionCode: widget.activeSuggestionCode,
                       trackedLineCodes: _viewModel.trackedLineCodes,
-                      favoriteLineIds: _viewModel.favoriteLineIds,
+                      favoriteLineCodes: _viewModel.favoriteLineCodes,
                       onFavoriteTap: _viewModel.hasFavorites
                           ? _viewModel.toggleFavorite
                           : null,

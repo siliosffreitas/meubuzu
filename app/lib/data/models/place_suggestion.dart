@@ -4,9 +4,11 @@ import '../utils/search_normalizer.dart';
 enum PlaceSuggestionType { line, stop }
 
 /// Sugestão de linha ou parada retornada pela busca.
+///
+/// O `code` é o identificador público: `boardingCode` (`sgLinha`) para linhas
+/// e `code` para paradas.
 class PlaceSuggestion {
   const PlaceSuggestion({
-    required this.id,
     required this.code,
     required this.type,
     required this.title,
@@ -15,10 +17,7 @@ class PlaceSuggestion {
     this.longitude,
   });
 
-  final String id;
-
-  /// Código curto exibido em destaque (por exemplo, `sgLinha` da linha ou o
-  /// código da parada).
+  /// Código curto exibido em destaque e usado na navegação.
   final String code;
 
   final PlaceSuggestionType type;
@@ -35,7 +34,7 @@ class PlaceSuggestion {
   final double? longitude;
 
   bool matches(String query) {
-    return normalizeSearchText('$code $title $subtitle $id')
+    return normalizeSearchText('$code $title $subtitle')
         .contains(normalizeSearchText(query));
   }
 }

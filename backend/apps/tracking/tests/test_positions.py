@@ -49,6 +49,15 @@ class PositionApiTests(TestCase):
         self.tmp = TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
 
+        # Padrão determinístico: terça-feira, arquivo TUESDAY_FILE. Testes que
+        # precisam de outro dia aplicam seu próprio patch no método.
+        clock_patch = patch(
+            "apps.tracking.services.datetime",
+            _fixed_datetime(datetime(2026, 11, 17, 15, 5, tzinfo=UTC)),
+        )
+        clock_patch.start()
+        self.addCleanup(clock_patch.stop)
+
         override = override_settings(
             CACHES={
                 "default": {
@@ -138,15 +147,17 @@ class PositionApiTests(TestCase):
         assert body["city"] == "teresina"
         assert body["source"] == "csv_demo"
         assert body["dataMode"] == "demo"
-        assert [block["lineId"] for block in body["lines"]] == [
-            str(self.line.id),
-            str(self.other_line.id),
+        assert [block["boardingCode"] for block in body["lines"]] == [
+            "0301",
+            "0245",
         ]
+        assert all("lineId" not in block for block in body["lines"])
         assert body["unresolvedLines"] == []
 
         line_35 = body["lines"][0]
-        assert line_35["requestedId"] == "0301"
+        assert line_35["requestedCode"] == "0301"
         assert line_35["boardingCode"] == "0301"
+        assert "requestedId" not in line_35
         assert line_35["sourceStatus"] == "ok"
         assert line_35["isStale"] is True
         assert [item["vehicleCode"] for item in line_35["positions"]] == ["5093", "4171"]
@@ -155,7 +166,6 @@ class PositionApiTests(TestCase):
         last = line_35["positions"][-1]
         self.assertAlmostEqual(last["heading"], 44.89, delta=0.5)
         assert {key: value for key, value in last.items() if key != "heading"} == {
-            "lineId": str(self.line.id),
             "boardingCode": "0301",
             "vehicleCode": "4171",
             "latitude": -5.1,
@@ -340,8 +350,8 @@ class PositionApiTests(TestCase):
 
         assert response.status_code == 200, response.content
         body = response.json()
-        assert [block["lineId"] for block in body["lines"]] == [str(self.line.id)]
-        assert [block["requestedId"] for block in body["lines"]] == ["0301"]
+        assert [block["boardingCode"] for block in body["lines"]] == ["0301"]
+        assert [block["requestedCode"] for block in body["lines"]] == ["0301"]
         assert body["unresolvedLines"] == ["9999"]
 
     def test_codigo_linha_is_not_accepted_as_sglinha(self):
@@ -376,7 +386,7 @@ class PositionApiTests(TestCase):
 
         assert response.status_code == 200, response.content
         block = response.json()["lines"][0]
-        assert block["lineId"] == str(self.line.id)
+        assert "lineId" not in block
         assert block["boardingCode"] == "0301"
 
     def test_single_route_keeps_line_not_found(self):

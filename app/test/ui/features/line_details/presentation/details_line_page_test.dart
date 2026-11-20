@@ -14,7 +14,6 @@ import '../../../../helpers/fake_favorites_repository.dart';
 import '../../../../helpers/fake_tracking_repository.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -22,7 +21,6 @@ const _line = Line(
 );
 
 const _firstStop = BusStop(
-  id: '1',
   code: '174',
   name: 'T-SANTA FÉ',
   address: 'Rua B, Loteamento Mário Covas',
@@ -31,7 +29,6 @@ const _firstStop = BusStop(
 );
 
 const _secondStop = BusStop(
-  id: '2',
   code: '175',
   name: 'CONJUNTO BENTINHO 1',
   address: 'Rua Seis, 8831 - Angelim',
@@ -41,7 +38,6 @@ const _secondStop = BusStop(
 
 BusStop _stop(int position) {
   return BusStop(
-    id: '$position',
     code: '10$position',
     name: 'PARADA $position',
     address: 'Rua $position',
@@ -482,7 +478,7 @@ void main() {
       final favorites = FakeFavoritesRepository();
       addTearDown(repository.dispose);
       addTearDown(favorites.dispose);
-      await favorites.add(_line.id);
+      await favorites.add(_line.boardingCode);
 
       await tester.pumpWidget(_app(repository, favoritesRepository: favorites));
       await tester.pumpAndSettle();
@@ -492,7 +488,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.star_rounded));
       await tester.pumpAndSettle();
 
-      expect(favorites.removed, ['46']);
+      expect(favorites.removed, [_line.boardingCode]);
       expect(find.byIcon(Icons.star_outline_rounded), findsOneWidget);
     });
 

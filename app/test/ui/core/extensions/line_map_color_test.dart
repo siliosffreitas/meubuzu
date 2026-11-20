@@ -3,12 +3,10 @@ import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 
 Line _line({
-  String id = '1',
   String name = 'LINHA TESTE',
-  String? boardingCode,
+  String boardingCode = '0301',
 }) {
   return Line(
-    id: id,
     name: name,
     origin: 'ORIGEM',
     destination: 'DESTINO',
@@ -68,7 +66,6 @@ void main() {
   group('LineMapColor', () {
     test('deriva a cor do boardingCode e do nome', () {
       final line = _line(
-        id: '46',
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
         boardingCode: '0301',
       );
@@ -78,12 +75,10 @@ void main() {
 
     test('diferencia linhas com o mesmo código de embarque', () {
       final first = _line(
-        id: '46',
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
         boardingCode: '0301',
       );
       final second = _line(
-        id: '999',
         name: 'MOCAMBINHO VIA CENTRO',
         boardingCode: '0301',
       );
@@ -91,20 +86,13 @@ void main() {
       expect(first.mapColor, isNot(second.mapColor));
     });
 
-    test('usa o id quando não há boardingCode', () {
-      final line = _line(id: '408', name: 'BELAVISTA VIA S.MARIA');
-
-      expect(line.mapColor, lineMapColor('408', 'BELAVISTA VIA S.MARIA'));
-    });
-
-    test('usa o id quando o boardingCode está vazio', () {
+    test('linha sem código de embarque ainda tem cor determinística', () {
       final line = _line(
-        id: '408',
         name: 'BELAVISTA VIA S.MARIA',
         boardingCode: '  ',
       );
 
-      expect(line.mapColor, lineMapColor('408', 'BELAVISTA VIA S.MARIA'));
+      expect(line.mapColor, lineMapColor('', 'BELAVISTA VIA S.MARIA'));
     });
   });
 }

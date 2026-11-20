@@ -66,7 +66,7 @@ class DetailsBusStopViewModel extends ViewmodelBase {
   List<Line>? _lines;
   UserCoordinates? _position;
   Set<String> _trackedLineCodes = const {};
-  Set<String> _favoriteLineIds = const {};
+  Set<String> _favoriteLineCodes = const {};
   bool _isDisposed = false;
 
   /// Estado atual da tela.
@@ -75,15 +75,15 @@ class DetailsBusStopViewModel extends ViewmodelBase {
   /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa.
   Set<String> get trackedLineCodes => _trackedLineCodes;
 
-  /// IDs das linhas favoritas, para exibir a estrela preenchida.
-  Set<String> get favoriteLineIds => _favoriteLineIds;
+  /// Códigos de embarque das linhas favoritas, para exibir a estrela preenchida.
+  Set<String> get favoriteLineCodes => _favoriteLineCodes;
 
   /// A estrela aparece apenas quando há um repositório de favoritos disponível.
   bool get hasFavorites => _favoritesRepository != null;
 
-  /// Alterna o favorito da linha [lineId].
-  Future<void> toggleFavorite(String lineId) async {
-    await _favoritesRepository?.toggle(lineId);
+  /// Alterna o favorito da linha [boardingCode].
+  Future<void> toggleFavorite(String boardingCode) async {
+    await _favoritesRepository?.toggle(boardingCode);
   }
 
   /// Distância em metros até a parada, quando a localização está disponível.
@@ -150,7 +150,9 @@ class DetailsBusStopViewModel extends ViewmodelBase {
 
   void _handleTrackedLines(List<TrackedLine> trackedLines) {
     _trackedLineCodes = {
-      for (final tracked in trackedLines) _searchCode(tracked.line),
+      for (final code
+          in trackedLines.map((tracked) => _searchCode(tracked.line)))
+        if (code.isNotEmpty) code,
     };
     if (!_isDisposed) {
       notifyListeners();
@@ -165,26 +167,21 @@ class DetailsBusStopViewModel extends ViewmodelBase {
   }
 
   void _handleFavorites(List<Favorite> favorites) {
-    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    _favoriteLineCodes = {for (final favorite in favorites) favorite.displayCode};
     if (!_isDisposed) {
       notifyListeners();
     }
   }
 
   void _handleFavoritesError(Object error, StackTrace stackTrace) {
-    _favoriteLineIds = const {};
+    _favoriteLineCodes = const {};
     if (!_isDisposed) {
       notifyListeners();
     }
   }
 
-  /// Código usado na busca (`sgLinha`), com fallback para o código interno.
-  String _searchCode(Line line) {
-    final boardingCode = line.boardingCode?.trim();
-    return boardingCode != null && boardingCode.isNotEmpty
-        ? boardingCode
-        : line.id.trim();
-  }
+  /// Código usado na busca e no rastreamento: o `sgLinha` da linha.
+  String _searchCode(Line line) => line.publicCode;
 
   void _update(DetailsBusStopState state) {
     if (_isDisposed) {

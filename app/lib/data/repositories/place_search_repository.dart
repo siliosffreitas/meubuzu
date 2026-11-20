@@ -12,7 +12,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
 
   static const _catalog = <PlaceSuggestion>[
     PlaceSuggestion(
-      id: '875A-10',
       code: '875A-10',
       type: PlaceSuggestionType.line,
       title: 'Perdizes ↔ Terminal Lapa',
@@ -21,7 +20,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.676,
     ),
     PlaceSuggestion(
-      id: '8000-1',
       code: '8000-1',
       type: PlaceSuggestionType.line,
       title: 'Terminal Lapa ↔ Praça Ramos',
@@ -30,7 +28,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.701,
     ),
     PlaceSuggestion(
-      id: '918P-10',
       code: '918P-10',
       type: PlaceSuggestionType.line,
       title: 'Vila Nova Cachoeirinha ↔ Lapa',
@@ -39,7 +36,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.674,
     ),
     PlaceSuggestion(
-      id: '101',
       code: '101',
       type: PlaceSuggestionType.line,
       title: 'Terminal Pinheiros ↔ Centro',
@@ -48,7 +44,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.694,
     ),
     PlaceSuggestion(
-      id: 'parada-se',
       code: 'SE',
       type: PlaceSuggestionType.stop,
       title: 'Praça da Sé',
@@ -57,7 +52,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.6333,
     ),
     PlaceSuggestion(
-      id: 'parada-luz',
       code: 'LUZ',
       type: PlaceSuggestionType.stop,
       title: 'Estação da Luz',
@@ -66,7 +60,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.635,
     ),
     PlaceSuggestion(
-      id: 'parada-lapa',
       code: 'LAPA',
       type: PlaceSuggestionType.stop,
       title: 'Terminal Lapa',
@@ -75,7 +68,6 @@ class FakePlaceSearchRepository implements PlaceSearchRepository {
       longitude: -46.703,
     ),
     PlaceSuggestion(
-      id: 'parada-masp',
       code: 'MASP',
       type: PlaceSuggestionType.stop,
       title: 'MASP',

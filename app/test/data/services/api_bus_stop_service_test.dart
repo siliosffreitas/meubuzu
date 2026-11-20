@@ -35,7 +35,6 @@ http.Response stopsResponse() => http.Response(
     'count': 2,
     'stops': [
       {
-        'id': '11111111-1111-1111-1111-111111111111',
         'code': '2362',
         'name': 'T-SANTA FÉ',
         'address': 'Rua B, Teresina - PI',
@@ -43,7 +42,6 @@ http.Response stopsResponse() => http.Response(
         'longitude': -42.791169,
       },
       {
-        'id': '22222222-2222-2222-2222-222222222222',
         'code': '1848',
         'name': 'BENTINHO',
         'address': 'Rua Seis, Teresina - PI',

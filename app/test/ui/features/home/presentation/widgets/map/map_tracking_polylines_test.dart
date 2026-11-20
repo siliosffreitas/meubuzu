@@ -8,7 +8,6 @@ import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_polylines.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -57,13 +56,12 @@ void main() {
       expect(polylines.single.color, _line.mapColor);
     });
 
-    test('usa id e nome quando não há código de embarque', () {
+    test('mantém letras e zeros à esquerda do sgLinha na chave', () {
       const line = Line(
-        id: '46',
-        name: 'MOCAMBINHO DUQUE DE CAXIAS',
-        origin: 'MOCAMBINHO',
-        destination: 'MOCAMBINHO',
-        boardingCode: null,
+        name: 'TERMINAL CENTRAL',
+        origin: 'CENTRO',
+        destination: 'TERMINAL',
+        boardingCode: 'T832',
       );
       final tracked = TrackedLine(
         line: line,
@@ -75,11 +73,8 @@ void main() {
 
       final polylines = buildTrackingPolylines([tracked]);
 
-      expect(
-        polylines.single.polylineId.value,
-        'tracked-46-MOCAMBINHO DUQUE DE CAXIAS',
-      );
-      expect(trackedLineKey(tracked), '46-MOCAMBINHO DUQUE DE CAXIAS');
+      expect(polylines.single.polylineId.value, 'tracked-T832');
+      expect(trackedLineKey(tracked), 'T832');
     });
   });
 }

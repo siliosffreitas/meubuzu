@@ -58,7 +58,7 @@ class DetailsLineViewModel extends ViewmodelBase {
   Line? _line;
   List<BusStop>? _stops;
   List<TrackedLine> _trackedLines = const [];
-  Set<String> _favoriteLineIds = const {};
+  Set<String> _favoriteLineCodes = const {};
   bool _isTracking = false;
   bool _isDisposed = false;
 
@@ -73,17 +73,17 @@ class DetailsLineViewModel extends ViewmodelBase {
 
   /// Indica se a linha carregada está favorita.
   bool get isFavorite {
-    final id = _line?.id.trim();
-    return id != null && id.isNotEmpty && _favoriteLineIds.contains(id);
+    final code = _line?.publicCode;
+    return code != null && code.isNotEmpty && _favoriteLineCodes.contains(code);
   }
 
   /// Alterna o favorito da linha carregada, quando possível.
   Future<void> toggleFavorite() async {
-    final id = _line?.id.trim();
-    if (id == null || id.isEmpty) {
+    final code = _line?.publicCode;
+    if (code == null || code.isEmpty) {
       return;
     }
-    await _favoritesRepository?.toggle(id);
+    await _favoritesRepository?.toggle(code);
   }
 
   /// Inicia o carregamento da linha e das paradas.
@@ -156,14 +156,14 @@ class DetailsLineViewModel extends ViewmodelBase {
   void _handleTrackingError(Object error, StackTrace stackTrace) {}
 
   void _handleFavorites(List<Favorite> favorites) {
-    _favoriteLineIds = {for (final favorite in favorites) favorite.lineId};
+    _favoriteLineCodes = {for (final favorite in favorites) favorite.displayCode};
     if (!_isDisposed) {
       notifyListeners();
     }
   }
 
   void _handleFavoritesError(Object error, StackTrace stackTrace) {
-    _favoriteLineIds = const {};
+    _favoriteLineCodes = const {};
     if (!_isDisposed) {
       notifyListeners();
     }
@@ -171,25 +171,17 @@ class DetailsLineViewModel extends ViewmodelBase {
 
   /// Verifica se [tracked] corresponde à linha desta tela.
   ///
-  /// O código da rota pode ser o `sgLinha` exibido ou o código interno, então a
-  /// comparação aceita ambos.
+  /// Tanto a rota quanto o rastreamento usam apenas o `sgLinha`.
   bool _isCurrentLine(TrackedLine tracked) {
     final target = lineCode.trim();
-    final boardingCode = tracked.line.boardingCode?.trim();
-    final lineId = tracked.line.id.trim();
-    return boardingCode == target ||
-        lineId == target ||
-        (_line != null && lineId == _line!.id.trim());
+    return tracked.line.publicCode == target ||
+        (_line != null && _line!.publicCode == target);
   }
 
   /// Código usado como chave pelo [TrackingRepository] ao iniciar/remover.
   String get _trackingCode {
-    final boardingCode = _line?.boardingCode?.trim();
-    if (boardingCode != null && boardingCode.isNotEmpty) {
-      return boardingCode;
-    }
-    final id = _line?.id.trim();
-    return id == null || id.isEmpty ? lineCode.trim() : id;
+    final code = _line?.publicCode;
+    return code == null || code.isEmpty ? lineCode.trim() : code;
   }
 
   /// Remove a linha atual do mapa.

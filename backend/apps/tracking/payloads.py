@@ -13,7 +13,6 @@ def _iso(value: datetime | None) -> str | None:
 
 def position_payload(
     *,
-    line_id: str,
     boarding_code: str,
     vehicle_code: str,
     latitude: float,
@@ -27,7 +26,6 @@ def position_payload(
     is_stale: bool,
 ) -> dict:
     return {
-        "lineId": line_id,
         "boardingCode": boarding_code,
         "vehicleCode": vehicle_code,
         "latitude": latitude,
@@ -45,9 +43,8 @@ def position_payload(
 
 def line_positions_payload(
     *,
-    line_id: str,
     boarding_code: str,
-    requested_id: str,
+    requested_code: str,
     source: str,
     data_mode: str,
     is_stale: bool,
@@ -55,9 +52,8 @@ def line_positions_payload(
     positions: list[dict],
 ) -> dict:
     return {
-        "lineId": line_id,
         "boardingCode": boarding_code,
-        "requestedId": requested_id,
+        "requestedCode": requested_code,
         "source": source,
         "dataMode": data_mode,
         "isStale": is_stale,

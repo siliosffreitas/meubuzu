@@ -3,9 +3,11 @@ import 'dart:math';
 import 'user_coordinates.dart';
 
 /// Parada de ônibus do catálogo (local em staging, remoto em produção).
+///
+/// A identidade pública da parada é o `code`: nenhum ID interno de banco é
+/// exposto em payloads, rotas ou marcadores.
 class BusStop {
   const BusStop({
-    required this.id,
     required this.code,
     required this.name,
     required this.address,
@@ -13,7 +15,6 @@ class BusStop {
     required this.longitude,
   });
 
-  final String id;
   final String code;
   final String name;
   final String address;
@@ -23,7 +24,6 @@ class BusStop {
   /// Lê uma parada no formato devolvido pela API do catálogo.
   factory BusStop.fromJson(Map<String, dynamic> json) {
     return BusStop(
-      id: json['id']?.toString() ?? '',
       code: json['code']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       address: json['address']?.toString() ?? '',

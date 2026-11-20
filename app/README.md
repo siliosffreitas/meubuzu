@@ -185,13 +185,13 @@ repositório consulta o `LineSearchService`, hoje `ApiLineSearchService`, que ch
 (`ApiBusStopService`), que chama `GET /v1/cities/{citySlug}/stops?q=...` ou
 `?codes=...`. Ambos usam a cidade selecionada e o token de acesso. Os detalhes da
 linha e as paradas do itinerário vêm de
-`GET /v1/cities/{citySlug}/lines/{id}/stops`, e o traçado de
-`GET /v1/cities/{citySlug}/lines/{id}/route`; o app não lê mais
+`GET /v1/cities/{citySlug}/lines/{boardingCode}/stops`, e o traçado de
+`GET /v1/cities/{citySlug}/lines/{boardingCode}/route`; o app não lê mais
 `assets/lines.csv`, `assets/lines_paradas.json` nem `assets/routes/` em produção.
 
 Os resultados são exibidos em seções separadas: **LINHAS • N** e
 **PARADAS • N**, com um resumo da quantidade no topo. As linhas são ordenadas
-pelo `sgLinha` (com o `codigoLinha` como fallback). Cada linha recebe uma cor
+pelo `sgLinha` (`boardingCode`), e linhas sem código são ignoradas. Cada linha recebe uma cor
 própria, calculada a partir do `sgLinha` e do nome da linha, exibida no fundo do bloco do código.
 As paradas mostram o código antes do endereço. A linha atualmente exibida no
 mapa recebe o selo **Acompanhando no mapa**; o cabeçalho também reserva espaço
@@ -207,8 +207,8 @@ As posições vêm do backend, pela city selecionada. O `ApiTrackingService` cha
 `GET /v1/cities/{citySlug}/positions?codes=0301,0245` uma única vez por
 atualização, usando o `sgLinha` (`boardingCode`) das linhas acompanhadas; o app
 não escolhe CSV nem sabe se a origem é o replay de demonstração ou o futuro banco
-volátil. O backend devolve um bloco por linha com `lineId` (UUID),
-`boardingCode`, `dataMode`, `isStale`, `source`, `sourceStatus` e `positions`;
+volátil. O backend devolve um bloco por linha com `boardingCode` (`sgLinha`),
+`requestedCode`, `dataMode`, `isStale`, `source`, `sourceStatus` e `positions`;
 cada posição traz `boardingCode` para o repositório agrupar os marcadores por
 linha, além da coordenada atual, de `previousLatitude` / `previousLongitude` e
 de `heading`. A janela de 5 minutos limita apenas a posição atual; a anterior

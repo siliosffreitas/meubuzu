@@ -26,13 +26,13 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
 46,MOCAMBINHO DUQUE DE CAXIAS,MOCAMBINHO,MOCAMBINHO,0301
 ''';
 
-    test('busca linhas por código', () async {
+    test('busca linhas pelo sgLinha', () async {
       final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
 
-      final lines = await service.search('875');
+      final lines = await service.search('0001');
 
       expect(lines, hasLength(1));
-      expect(lines.first.id, '875A-10');
+      expect(lines.first.boardingCode, '0001');
       expect(lines.first.name, 'PERDIZES ↔ TERMINAL LAPA');
       expect(lines.first.origin, 'PERDIZES');
       expect(lines.first.destination, 'TERMINAL LAPA');
@@ -44,7 +44,7 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
       final lines = await service.search('perdizes');
 
       expect(lines, hasLength(1));
-      expect(lines.first.id, '875A-10');
+      expect(lines.first.boardingCode, '0001');
     });
 
     test('retorna lista vazia para consulta sem resultados', () async {
@@ -65,7 +65,7 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
         final lines = await service.search('301');
 
         expect(lines, hasLength(1));
-        expect(lines.first.id, '46');
+        expect(lines.first.boardingCode, '0301');
         expect(lines.first.name, 'MOCAMBINHO DUQUE DE CAXIAS');
         expect(lines.first.boardingCode, '0301');
       },
@@ -84,22 +84,16 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
 
       final lines = await service.findByCodes(['0402', '0001']);
 
-      expect(lines.map((line) => line.id), ['8000-1', '875A-10']);
+      expect(lines.map((line) => line.boardingCode), ['0402', '0001']);
     });
 
-    test(
-      'busca pelo código interno e pelo código de embarque sem duplicar',
-      () async {
-        final service = AssetLineSearchService(
-          bundle: _FakeAssetBundle(catalog),
-        );
+    test('codigoLinha não resolve linha na busca pública', () async {
+      final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
 
-        final lines = await service.findByCodes(['46', '0301']);
+      final lines = await service.findByCodes(['46', '0301']);
 
-        expect(lines, hasLength(1));
-        expect(lines.first.id, '46');
-      },
-    );
+      expect(lines.map((line) => line.boardingCode), ['0301']);
+    });
 
     test('ignora códigos vazios, repetidos e desconhecidos', () async {
       final service = AssetLineSearchService(bundle: _FakeAssetBundle(catalog));
@@ -107,7 +101,19 @@ codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha
       final lines = await service.findByCodes([' 0402 ', '0402', '', '9999']);
 
       expect(lines, hasLength(1));
-      expect(lines.first.id, '8000-1');
+      expect(lines.first.boardingCode, '0402');
+    });
+
+    test('linhas sem sgLinha não entram no catálogo', () async {
+      final service = AssetLineSearchService(
+        bundle: _FakeAssetBundle(
+          'codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha\n'
+          '46,SEM CODIGO,Origem,Destino,\n',
+        ),
+      );
+
+      expect(await service.search('sem codigo'), isEmpty);
+      expect(await service.findByCodes(['46']), isEmpty);
     });
 
     test('lista vazia retorna lista vazia sem carregar o asset', () async {

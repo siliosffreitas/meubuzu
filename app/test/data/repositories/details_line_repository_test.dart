@@ -25,7 +25,7 @@ class _FakeLineSearchService implements LineSearchService {
     return lines
         .where(
           (line) =>
-              wanted.contains(line.id) || wanted.contains(line.boardingCode),
+              wanted.contains(line.boardingCode),
         )
         .toList();
   }
@@ -78,14 +78,12 @@ class _FakeBusStopService implements BusStopService {
 
 void main() {
   const line = Line(
-    id: '46',
     name: 'MOCAMBINHO DUQUE DE CAXIAS',
     origin: 'MOCAMBINHO',
     destination: 'MOCAMBINHO',
     boardingCode: '0301',
   );
   const stop174 = BusStop(
-    id: '1',
     code: '174',
     name: 'PARADA 174',
     address: 'Rua A',
@@ -93,7 +91,6 @@ void main() {
     longitude: -42.8,
   );
   const stop175 = BusStop(
-    id: '2',
     code: '175',
     name: 'PARADA 175',
     address: 'Rua B',

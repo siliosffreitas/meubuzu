@@ -110,3 +110,31 @@ class ImportLinesCommandTests(TestCase):
         assert LineStop.objects.filter(line__city=self.city).count() == 0
         assert Route.objects.filter(line__city=self.city).count() == 0
         assert CatalogSource.objects.filter(city=self.city).count() == 0
+
+    def test_import_skips_lines_without_sglinha(self):
+        self.lines_path.write_text(
+            "codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha\n"
+            "3,CENTRO - NORTE,Centro,Norte,0001\n"
+            "4,SEM SGLINHA,Norte,Centro,\n",
+            encoding="utf-8",
+        )
+
+        self._import()
+
+        assert list(
+            Line.objects.filter(city=self.city).values_list("code", flat=True)
+        ) == ["3"]
+
+    def test_import_skips_duplicate_sglinha_within_city(self):
+        self.lines_path.write_text(
+            "codigoLinha,nomeLinha,getOrigemIda,destinoIda,sgLinha\n"
+            "3,CENTRO - NORTE,Centro,Norte,0001\n"
+            "4,NORTE - CENTRO,Norte,Centro,0001\n",
+            encoding="utf-8",
+        )
+
+        self._import()
+
+        line = Line.objects.get(city=self.city)
+        assert line.code == "3"
+        assert line.boarding_code == "0001"

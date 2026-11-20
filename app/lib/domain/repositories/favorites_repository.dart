@@ -8,15 +8,18 @@ abstract interface class FavoritesRepository implements Repository {
 
   List<Favorite> get snapshot;
 
-  bool isFavorite(String lineId);
+  /// Verifica o favorito pelo `boardingCode`, opcionalmente em uma cidade.
+  bool isFavorite(String boardingCode, {String? citySlug});
 
   /// Busca os favoritos no backend e substitui o estado local.
   Future<void> refresh();
 
-  Future<void> add(String lineId, {String? citySlug});
+  /// Adiciona a linha [boardingCode] da cidade selecionada (ou [citySlug]).
+  Future<void> add(String boardingCode, {String? citySlug});
 
-  Future<void> remove(String lineId);
+  /// Remove o favorito da cidade do item, quando não informada [citySlug].
+  Future<void> remove(String boardingCode, {String? citySlug});
 
   /// Adiciona ou remove, alternando o estado atual da linha.
-  Future<void> toggle(String lineId, {String? citySlug});
+  Future<void> toggle(String boardingCode, {String? citySlug});
 }

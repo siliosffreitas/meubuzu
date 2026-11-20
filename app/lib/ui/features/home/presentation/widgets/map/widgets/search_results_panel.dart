@@ -17,9 +17,9 @@ class SearchResultsPanel extends StatelessWidget {
     required this.results,
     required this.onSelected,
     this.maxHeight = 352,
-    this.activeSuggestionId,
+    this.activeSuggestionCode,
     this.trackedLineCodes = const {},
-    this.favoriteLineIds = const {},
+    this.favoriteLineCodes = const {},
     this.onFavoriteTap,
     this.statusLabel,
     this.onEditSearch,
@@ -39,14 +39,14 @@ class SearchResultsPanel extends StatelessWidget {
   final double maxHeight;
 
   /// Linha atualmente exibida no mapa. Recebe o selo "Acompanhando no mapa".
-  final String? activeSuggestionId;
+  final String? activeSuggestionCode;
 
   /// Códigos (`sgLinha`) das linhas já acompanhadas no mapa. Também recebem o
   /// selo "Acompanhando no mapa".
   final Set<String> trackedLineCodes;
 
-  /// IDs das linhas favoritas da conta.
-  final Set<String> favoriteLineIds;
+  /// Códigos de embarque das linhas favoritas da conta.
+  final Set<String> favoriteLineCodes;
 
   /// Ação da estrela. Quando nula, a estrela não é exibida.
   final ValueChanged<String>? onFavoriteTap;
@@ -110,12 +110,12 @@ class SearchResultsPanel extends StatelessWidget {
           (suggestion) => _LineSuggestionTile(
             suggestion: suggestion,
             isActive:
-                suggestion.id == activeSuggestionId ||
+                suggestion.code == activeSuggestionCode ||
                 trackedLineCodes.contains(suggestion.code.trim()),
-            isFavorite: favoriteLineIds.contains(suggestion.id),
+            isFavorite: favoriteLineCodes.contains(suggestion.code.trim()),
             onFavorite: onFavoriteTap == null
                 ? null
-                : () => onFavoriteTap!(suggestion.id),
+                : () => onFavoriteTap!(suggestion.code.trim()),
             onTap: () => onSelected(suggestion),
           ),
         ),

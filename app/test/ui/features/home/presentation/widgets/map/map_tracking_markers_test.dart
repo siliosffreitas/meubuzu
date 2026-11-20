@@ -10,7 +10,6 @@ import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_d
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_tracking_markers.dart';
 
 const _line = Line(
-  id: '46',
   name: 'MOCAMBINHO DUQUE DE CAXIAS',
   origin: 'MOCAMBINHO',
   destination: 'MOCAMBINHO',
@@ -18,7 +17,6 @@ const _line = Line(
 );
 
 const _otherLine = Line(
-  id: '47',
   name: 'OUTRA LINHA',
   origin: 'CENTRO',
   destination: 'SHOPPING',
