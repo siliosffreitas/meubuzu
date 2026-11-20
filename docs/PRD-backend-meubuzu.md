@@ -673,7 +673,7 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 - Adicionar favorito é idempotente.
 - Limite validado em transação.
 - `favorite_limit_reached` (409) quando aplicável.
-- Retornar `city` em cada favorito para o app montar a UI sem consultas extras.
+- `GET /v1/favorites` retorna `{"cities": [{"city": <cidade>, "lines": [{"boardingCode", "line", "createdAt"}]}]}`: a cidade aparece uma única vez por grupo (D41), sem consultas extras para montar a UI; `POST /v1/favorites` continua devolvendo um favorito com `city`.
 - Favoritos são globais por usuário, filtráveis por cidade no app.
 
 **Critérios de aceite:**
@@ -2279,6 +2279,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | D31 | Exclusão de conta | Exclusão total; trial permanece vinculado à conta da loja |
 | D32 | Seletor com uma cidade | Sempre exibido no primeiro acesso |
 | D33 | Dados importados e edição | Import periódico (semanal/mensal) é a fonte de verdade; admin edita qualquer campo |
+| D41 | Formato da listagem de favoritos | Raiz `cities`: `[{"city", "lines"}]` por cidade; cidade não se repete; POST permanece plano |
 
 ### 20.2 Em aberto
 
@@ -2353,6 +2354,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 |---|---|---|
 | 1.0 | 16/11/2026 | Versão inicial do PRD |
 | 1.8 | 16/11/2026 | Consolidação das decisões D1–D33: Teresina como cidade de lançamento, staging com CSVs, gate de acesso à API, catálogo gratuito somente leitura, trial de 7 dias com cartão via loja, assinatura mensal sem web, favoritos condicionados ao trial, heartbeat e cotas, fuso por cidade, exclusão total de conta, seletor de cidade e import periódico com override administrativo |
+| 1.9 | 19/11/2026 | D41: `GET /v1/favorites` agrupa as linhas por cidade, sem repetir os dados da cidade |
 
 ---
 

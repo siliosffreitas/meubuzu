@@ -353,8 +353,8 @@ Favoritos ficam associados à conta no PostgreSQL (`favorites_favorite`), para a
 
 Endpoints (token de acesso obrigatório):
 
-- `GET /v1/favorites` — lista os favoritos da conta ordenados por cidade e, dentro da cidade, pelo código da linha (`sgLinha`/`boardingCode`, em ordem numérica quando aplicável; `sgLinha` vazio vai ao final do grupo); cada item traz `boardingCode`, `line` e `city`, sem IDs internos.
-- `POST /v1/favorites` — corpo `{ "boardingCode": "<sgLinha>", "citySlug": "<slug>" }`; é idempotente e valida cidade/linha como o catálogo.
+- `GET /v1/favorites` — lista os favoritos agrupados por cidade: `{"cities": [{"city": {...}, "lines": [{"boardingCode", "line", "createdAt"}]}]}` (D41). A cidade aparece uma vez por grupo, sem IDs internos; os grupos vêm ordenados por cidade e, dentro de cada um, pelo código da linha (`sgLinha`/`boardingCode`, em ordem numérica quando aplicável; `sgLinha` vazio vai ao final do grupo).
+- `POST /v1/favorites` — corpo `{ "boardingCode": "<sgLinha>", "citySlug": "<slug>" }`; é idempotente, valida cidade/linha como o catálogo e responde um favorito com `boardingCode`, `line`, `city` e `createdAt`.
 - `DELETE /v1/favorites/{citySlug}/{boardingCode}` — remove o favorito identificado por cidade e `sgLinha`.
 
 Favoritar, desfavoritar e abrir uma linha favorita não contam como rastreamento nem alteram a cota.

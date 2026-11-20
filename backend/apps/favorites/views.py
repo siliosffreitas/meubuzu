@@ -11,7 +11,7 @@ from apps.catalog.services import get_active_city, resolve_line
 from apps.common.exceptions import ApiError
 
 from .models import Favorite
-from .payloads import favorite_payload
+from .payloads import favorite_payload, favorites_payload
 from .serializers import CreateFavoriteSerializer
 
 _FAVORITE_SELECT = ("line__city", "line__source")
@@ -68,7 +68,7 @@ class FavoritesView(APIView):
                 "line__name",
             )
         )
-        return Response({"favorites": [favorite_payload(favorite) for favorite in favorites]})
+        return Response({"cities": favorites_payload(favorites)})
 
     def post(self, request):
         serializer = CreateFavoriteSerializer(data=request.data)
