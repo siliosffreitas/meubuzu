@@ -156,7 +156,9 @@ class DetailsLineViewModel extends ViewmodelBase {
   void _handleTrackingError(Object error, StackTrace stackTrace) {}
 
   void _handleFavorites(List<Favorite> favorites) {
-    _favoriteLineCodes = {for (final favorite in favorites) favorite.displayCode};
+    _favoriteLineCodes = {
+      for (final favorite in favorites) favorite.displayCode,
+    };
     if (!_isDisposed) {
       notifyListeners();
     }
@@ -171,11 +173,13 @@ class DetailsLineViewModel extends ViewmodelBase {
 
   /// Verifica se [tracked] corresponde à linha desta tela.
   ///
-  /// Tanto a rota quanto o rastreamento usam apenas o `sgLinha`.
+  /// Tanto a rota quanto o rastreamento usam apenas o `sgLinha`. A comparação
+  /// usa o mesmo código de `_trackingCode` para não confundir outras linhas
+  /// acompanhadas com a linha aberta na tela.
   bool _isCurrentLine(TrackedLine tracked) {
-    final target = lineCode.trim();
-    return tracked.line.publicCode == target ||
-        (_line != null && _line!.publicCode == target);
+    final trackedCode = tracked.line.publicCode.trim();
+    final currentCode = _trackingCode.trim();
+    return trackedCode.isNotEmpty && trackedCode == currentCode;
   }
 
   /// Código usado como chave pelo [TrackingRepository] ao iniciar/remover.

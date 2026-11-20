@@ -209,6 +209,40 @@ void main() {
       expect(homeExtra, 0);
     });
 
+    testWidgets('linha não rastreada não mostra status de acompanhada', (
+      tester,
+    ) async {
+      const otherLine = Line(
+        name: 'VALE DO GAVIAO',
+        origin: 'ORIGEM',
+        destination: 'DESTINO',
+        boardingCode: '0245',
+      );
+      final repository = _FakeDetailsLineRepository(
+        line: otherLine,
+        stops: const [_firstStop],
+      );
+      addTearDown(repository.dispose);
+      final trackingRepository = FakeTrackingRepository(
+        trackedLines: [trackedLineFor(_line)],
+      );
+      addTearDown(trackingRepository.dispose);
+
+      await tester.pumpWidget(
+        _app(
+          repository,
+          lineCode: '0245',
+          trackingRepository: trackingRepository,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Não acompanhada'), findsOneWidget);
+      expect(find.text('Começar a acompanhar'), findsOneWidget);
+      expect(find.text('Acompanhando no mapa'), findsNothing);
+      expect(find.text('Remover do mapa'), findsNothing);
+    });
+
     testWidgets('mostra o status de acompanhada e remove do mapa', (
       tester,
     ) async {

@@ -218,6 +218,27 @@ void main() {
       expect(notifications, 1);
     });
 
+    test('não marca como acompanhada outra linha que está no mapa', () async {
+      repository
+        ..line = _line
+        ..stops = const [_firstStop];
+      final viewModel = createViewModel();
+      addTearDown(viewModel.dispose);
+      await viewModel.load();
+      await pumpEventQueue();
+
+      const otherLine = Line(
+        name: 'VALE DO GAVIAO',
+        origin: 'ORIGEM',
+        destination: 'DESTINO',
+        boardingCode: '0245',
+      );
+      trackingRepository.emit([trackedLineFor(otherLine)]);
+      await pumpEventQueue();
+
+      expect(viewModel.isTracking, isFalse);
+    });
+
     test('reconhece a linha acompanhada pelo sgLinha da rota', () async {
       const otherLine = Line(
         name: 'MOCAMBINHO DUQUE DE CAXIAS',
@@ -283,42 +304,45 @@ void main() {
       expect(viewModel.isFavorite, isFalse);
     });
 
-    test('reflete o favorito e alterna pelo sgLinha da linha carregada', () async {
-      repository
-        ..line = _line
-        ..stops = const [_firstStop];
-      final favorites = FakeFavoritesRepository();
-      addTearDown(favorites.dispose);
-      await favorites.add(_line.boardingCode);
+    test(
+      'reflete o favorito e alterna pelo sgLinha da linha carregada',
+      () async {
+        repository
+          ..line = _line
+          ..stops = const [_firstStop];
+        final favorites = FakeFavoritesRepository();
+        addTearDown(favorites.dispose);
+        await favorites.add(_line.boardingCode);
 
-      final viewModel = createViewModel(favoritesRepository: favorites);
-      addTearDown(viewModel.dispose);
-      final addedBeforeToggle = List<String>.from(favorites.added);
+        final viewModel = createViewModel(favoritesRepository: favorites);
+        addTearDown(viewModel.dispose);
+        final addedBeforeToggle = List<String>.from(favorites.added);
 
-      expect(viewModel.hasFavorites, isTrue);
-      expect(
-        viewModel.isFavorite,
-        isFalse,
-        reason: 'a linha ainda não carregou',
-      );
+        expect(viewModel.hasFavorites, isTrue);
+        expect(
+          viewModel.isFavorite,
+          isFalse,
+          reason: 'a linha ainda não carregou',
+        );
 
-      await viewModel.toggleFavorite();
-      expect(
-        favorites.added,
-        addedBeforeToggle,
-        reason: 'não favorita sem linha carregada',
-      );
+        await viewModel.toggleFavorite();
+        expect(
+          favorites.added,
+          addedBeforeToggle,
+          reason: 'não favorita sem linha carregada',
+        );
 
-      await viewModel.load();
-      await pumpEventQueue();
+        await viewModel.load();
+        await pumpEventQueue();
 
-      expect(viewModel.isFavorite, isTrue);
+        expect(viewModel.isFavorite, isTrue);
 
-      await viewModel.toggleFavorite();
-      await pumpEventQueue();
+        await viewModel.toggleFavorite();
+        await pumpEventQueue();
 
-      expect(favorites.removed, [_line.boardingCode]);
-      expect(viewModel.isFavorite, isFalse);
-    });
+        expect(favorites.removed, [_line.boardingCode]);
+        expect(viewModel.isFavorite, isFalse);
+      },
+    );
   });
 }
