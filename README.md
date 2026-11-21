@@ -55,7 +55,7 @@ Regras do modelo de acesso:
 - **Após o teste**, o app continua útil em modo somente leitura: busca, linhas, paradas, itinerários e favoritos existentes. O rastreamento e a edição de favoritos ficam bloqueados com oferta de assinatura.
 - **1 rastreamento = 1 linha acompanhada.** Duas linhas ao mesmo tempo, no plano pago, contam como dois rastreamentos. Fechar e abrir a mesma linha novamente conta como um novo rastreamento.
 - **A cota é global por conta**, independente de cidade, e reinicia à meia-noite no fuso da cidade selecionada (Teresina: `America/Fortaleza`).
-- **A cidade é escolhida no app.** Teresina é a cidade de lançamento; a escolha é salva no backend e restaurada em outro dispositivo.
+- **A cidade é escolhida no app.** Teresina é a cidade de lançamento; São Paulo entra em seguida, com catálogo e posições da API Olho Vivo (SPTrans) e traçados do GTFS, liberada por comando. A escolha é salva no backend e restaurada em outro dispositivo.
 
 O cache de dados cadastrais de paradas, linhas e ônibus está previsto para o plano pago. As posições dos veículos continuam sendo atualizadas online.
 
@@ -129,4 +129,4 @@ As sugestões abaixo ampliam o produto; não significam que já estejam implemen
 
 O aplicativo é desenvolvido em Flutter para Android e iOS. O backend fica no diretório `backend/` e é implementado em **Python + Django 5.2 LTS + Django REST Framework + PostgreSQL/PostGIS**, com Redis e Celery para cache e tarefas assíncronas. O protótipo antigo em Dart/Vaden está preservado na tag `backend-vaden`; as decisões de backend estão em `docs/PRD-backend-meubuzu.md`.
 
-A fonte de dados é a API de Teresina. Enquanto o acesso não é liberado, o backend usa os CSVs de `app/assets` apenas em staging, com `dataMode=demo` e aviso explícito de dados de demonstração.
+A fonte de dados de Teresina é a API própria. Enquanto o acesso não é liberado, o backend usa os CSVs de `app/assets` apenas em staging, com `dataMode=demo` e aviso explícito de dados de demonstração. São Paulo usa a API Olho Vivo (SPTrans) para catálogo e posições e o GTFS local apenas para os traçados; a cidade nasce inativa e só é liberada por comando.

@@ -159,6 +159,54 @@ class LineApiTests(AuthTestCase, SessionMixin):
         assert [stop["code"] for stop in body["stops"]] == ["100", "200"]
         assert all("id" not in stop for stop in body["stops"])
 
+    def test_line_stops_accept_direction_parameter(self):
+        first = make_stop(self.city, "100", "PRIMEIRA")
+        second = make_stop(self.city, "200", "SEGUNDA")
+        LineStop.objects.create(line=self.line, stop=first, direction=0, sequence=1)
+        LineStop.objects.create(line=self.line, stop=second, direction=1, sequence=1)
+
+        default = self.client.get("/v1/cities/teresina/lines/1/stops")
+        reverse = self.client.get("/v1/cities/teresina/lines/1/stops?direction=1")
+
+        assert [stop["code"] for stop in default.json()["stops"]] == ["100"]
+        assert [stop["code"] for stop in reverse.json()["stops"]] == ["200"]
+
+    def test_line_stops_fall_back_to_reverse_direction(self):
+        stop = make_stop(self.city, "100", "PRIMEIRA")
+        LineStop.objects.create(line=self.line, stop=stop, direction=1, sequence=1)
+
+        response = self.client.get("/v1/cities/teresina/lines/1/stops")
+
+        assert response.status_code == 200, response.content
+        assert [item["code"] for item in response.json()["stops"]] == ["100"]
+
+    def test_repeated_stop_in_same_direction_is_allowed(self):
+        stop = make_stop(self.city, "100", "PRIMEIRA")
+        LineStop.objects.create(line=self.line, stop=stop, direction=0, sequence=1)
+        LineStop.objects.create(line=self.line, stop=stop, direction=0, sequence=2)
+
+        response = self.client.get("/v1/cities/teresina/lines/1/stops")
+
+        assert response.status_code == 200, response.content
+        assert [item["code"] for item in response.json()["stops"]] == ["100", "100"]
+
+    def test_invalid_direction_is_rejected(self):
+        response = self.client.get("/v1/cities/teresina/lines/1/stops?direction=2")
+
+        self.assert_problem(response, status_code=400, code="invalid_direction")
+
+    def test_line_route_falls_back_to_reverse_direction(self):
+        Route.objects.create(
+            line=self.line,
+            direction=1,
+            path=[[-5.16, -42.79], [-5.17, -42.80]],
+        )
+
+        response = self.client.get("/v1/cities/teresina/lines/1/route")
+
+        assert response.status_code == 200, response.content
+        assert response.json()["direction"] == 1
+
     def test_line_route_returns_coordinates_in_order(self):
         Route.objects.create(
             line=self.line,

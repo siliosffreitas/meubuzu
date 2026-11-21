@@ -6,7 +6,9 @@ Instruções para agentes de IA (opencode) que trabalham neste repositório.
 
 O MeuBuzu mostra a localização de ônibus em tempo real e ajuda o usuário a
 encontrar linhas e paradas. A cidade de lançamento é **Teresina-PI**, que possui
-API própria de rastreamento. Este repositório é um monorepo com:
+API própria de rastreamento. A cobertura seguinte é **São Paulo-SP**, com
+catálogo e posições da API Olho Vivo (SPTrans) e traçados do GTFS; a cidade
+nasce inativa e é liberada por comando. Este repositório é um monorepo com:
 
 - `app/`: aplicativo Flutter (Android e iOS; sem web).
 - `backend/`: API em Python + Django 5.2 LTS + DRF + PostgreSQL/PostGIS +
@@ -17,7 +19,7 @@ Documentação de referência:
 
 - `README.md`: visão de produto, planos e requisitos.
 - `CLAUDE.md`: regras de negócio e diretrizes gerais.
-- `docs/PRD-backend-meubuzu.md`: PRD do backend e decisões D1–D40 (fonte de
+- `docs/PRD-backend-meubuzu.md`: PRD do backend e decisões D1–D48 (fonte de
   verdade para backend, dados, API e billing).
 - `app/README.md`: arquitetura do app, Google Maps e localização.
 - `backend/README.md`: decisões de armazenamento e backend.
@@ -140,6 +142,24 @@ cd backend
 .venv/bin/python manage.py migrate
 .venv/bin/ruff check .
 .venv/bin/python manage.py check --deploy
+
+# Celery (worker e beat em terminais separados)
+.venv/bin/celery -A config worker -l info
+.venv/bin/celery -A config beat -l info
+
+# São Paulo: GTFS, API e catálogo
+.venv/bin/python manage.py validate_sptrans_gtfs
+.venv/bin/python manage.py check_sptrans_access --line 1012-10
+.venv/bin/python manage.py import_sptrans_catalog --city sao-paulo --dry-run --limit 5
+.venv/bin/python manage.py import_sptrans_catalog --city sao-paulo
+
+# Rastreamento e partições
+.venv/bin/python manage.py crawl_sptrans_positions --city sao-paulo --dry-run
+.venv/bin/python manage.py crawl_sptrans_positions --city sao-paulo
+.venv/bin/python manage.py maintain_tracking_partitions --dry-run
+
+# Ativação explícita (São Paulo nasce inativa)
+.venv/bin/python manage.py set_city_active sao-paulo --active
 ```
 
 A infraestrutura local sobe com `docker compose up -d` (PostGIS, Redis e
@@ -147,6 +167,12 @@ Mailpit). O backend usa PostgreSQL/PostGIS como fonte de verdade, com Redis e
 Celery para cache, locks e tarefas. Catálogo é importado em ciclo semanal
 (default) ou mensal por cidade; posições são ingeridas a cada 30 s. O `.env` do
 Django contém configuração local; não versione credenciais reais.
+
+São Paulo usa a API Olho Vivo (SPTrans) para catálogo e posições e o GTFS local
+apenas para traçados e lista semente. O token fica em `SPTRANS_API_TOKEN`, e os
+arquivos do GTFS em `SPTRANS_GTFS_DIR` (`backend/data/gtfs/sptrans/`, ignorado
+pelo git). Teresina continua no CSV de demonstração. O histórico de posições é
+particionado por dia UTC e retido por **24 horas**.
 
 Para testes no emulador Android, rode `.venv/bin/python manage.py runserver
 0.0.0.0:8000`, inclua `10.0.2.2` em `DJANGO_ALLOWED_HOSTS` e acesse
@@ -184,6 +210,39 @@ API_BASE_URL_IOS=http://127.0.0.1:8000
   no iOS nem vice-versa.
 - Não coloque segredos de servidor no `.env`: os valores passados com
   `--dart-define-from-file` ficam embutidos no aplicativo.
+
+### Backend (`backend/.env`)
+
+Variáveis novas da cobertura de São Paulo (o token nunca é versionado):
+
+```sh
+SPTRANS_API_BASE_URL=https://api.olhovivo.sptrans.com.br/v2.1
+SPTRANS_API_TOKEN=
+SPTRANS_API_TIMEOUT_SECONDS=30
+SPTRANS_API_REQUESTS_PER_SECOND=5
+SPTRANS_API_MAX_RETRIES=3
+SPTRANS_GTFS_DIR=./data/gtfs/sptrans
+
+TRACKING_LIVE_ACCESS_ENABLED=false  # true SOMENTE em staging
+TRACKING_CRAWL_LOCK_SECONDS=25
+
+TRACKING_HISTORY_ENABLED=true
+TRACKING_HISTORY_RETENTION_HOURS=24
+TRACKING_HISTORY_TRIM_MINUTES=60
+TRACKING_HISTORY_TRIM_BATCH=50000
+TRACKING_HISTORY_MAX_CAPTURE_AGE_SECONDS=600
+
+CELERY_BROKER_URL=redis://127.0.0.1:6379/1
+CELERY_RESULT_BACKEND=
+CELERY_TASK_ALWAYS_EAGER=false
+```
+
+- `SPTRANS_GTFS_DIR` aponta para arquivos baixados manualmente no portal da
+  SPTrans (exige login) e não versionados.
+- `TrackingSource.config` e `CatalogSource.config` guardam apenas nomes de
+  variáveis, nunca valores de token.
+- `TRACKING_LIVE_ACCESS_ENABLED=true` só pode existir em staging. Em produção, o
+  rastreamento live depende de trial/assinatura.
 
 ## Arquitetura e convenções do app
 
@@ -335,7 +394,20 @@ services ficam em `lib/data/` porque não pertencem a uma única feature:
 - **Cidade no backend:** endpoints escopados por cidade devem herdar de
   `CityScopedAPIView`; os erros estáveis são `city_not_found` (404) e
   `city_inactive` (409). O seed de Teresina é uma migration
-  (`catalog/0002_seed_teresina`), não um fixture manual.
+  (`catalog/0002_seed_teresina`), não um fixture manual. São Paulo é criada
+  inativa por `catalog/0007_seed_sao_paulo` e só é ativada com
+  `set_city_active sao-paulo --active`.
+- **SPTrans:** o token fica apenas em `SPTRANS_API_TOKEN`; nunca o imprima em
+  logs, comandos ou respostas. Os IDs internos (`cl`) vivem em
+  `LineSourceRef` e não podem aparecer em payload público. O GTFS é usado
+  somente para `shapes.txt` e lista semente de linhas; paradas e itinerários vêm
+  da API.
+- **Histórico de posições:** retenção de 24 h em partição diária UTC. Não
+  aumente a retenção nem remova o trim sem medir disco/volume em staging. A
+  falha do histórico nunca pode derrubar a atualização de `LatestPosition`.
+- **Fonte por cidade:** Teresina é `csv_demo`; São Paulo é `sptrans_api`. Não
+  sirva posições de uma cidade para outra nem use a flag
+  `TRACKING_LIVE_ACCESS_ENABLED` em produção.
 - **Billing:** o app nunca concede acesso pago; ele lê `GET /v1/me/entitlements`.
   Trial e assinatura só mudam por webhook do RevenueCat.
 

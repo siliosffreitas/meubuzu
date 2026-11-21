@@ -1,6 +1,7 @@
 # Plano — Cobertura de São Paulo no MeuBuzu
 
 **Versão:** 1.0
+
 **Data:** 21/11/2026
 **Status:** Planejamento aprovado — implementação pendente
 **Escopo:** backend Django + ajustes de teste no app Flutter
@@ -634,38 +635,38 @@ backend armazena os dois sentidos, mas o app consome `direction=0`.
 
 ## 12. Checklist de implementação
 
-- [ ] Configurar e validar `SPTRANS_API_TOKEN`.
-- [ ] Copiar e validar GTFS; definir `SPTRANS_GTFS_DIR`.
-- [ ] Adicionar `backend/data/gtfs/` ao `.gitignore`.
-- [ ] Adicionar `celery`, `requests` e `responses`.
-- [ ] Criar `config/celery.py` e configurações de beat.
-- [ ] Migration da cidade São Paulo inativa.
-- [ ] Criar `LineSourceRef`, `CatalogImportRun` e ajustar `LineStop`.
-- [ ] Criar `TrackingSource` e `LatestPosition`; seeds de Teresina e São Paulo.
-- [ ] Criar `PositionHistory` particionada por dia, com índice em `captured_at`.
-- [ ] Implementar `ensure_partitions()` e comando `maintain_tracking_partitions`.
-- [ ] Implementar jobs de criação/`DROP` (diário) e trim (horário).
-- [ ] Implementar cliente SPTrans e leitor GTFS.
-- [ ] Implementar `check_sptrans_access` e `validate_sptrans_gtfs`.
-- [ ] Implementar crawler de catálogo + comando + task.
-- [ ] Implementar crawler de posições + comando + task.
-- [ ] Refatorar leitura de posições para fonte por cidade.
-- [ ] Garantir que nenhum ID interno seja exposto.
-- [ ] Criar `set_city_active`.
-- [ ] Adicionar testes de isolamento por cidade.
-- [ ] Atualizar admin, logs e health.
-- [ ] Atualizar `README`, PRD, AGENTS e `.env.example`.
-- [ ] Rodar `ruff`, `manage.py test`, `makemigrations --check`.
-- [ ] Rodar `flutter analyze` e `flutter test`.
-- [ ] Medir volume real do histórico nas primeiras 24 h de staging.
-- [ ] Validar staging e app ponta a ponta.
-- [ ] Ativar São Paulo em staging; produção somente após o gate.
+- [ ] Configurar e validar `SPTRANS_API_TOKEN` (operacional; depende do token real).
+- [ ] Copiar e validar GTFS; definir `SPTRANS_GTFS_DIR` (operacional; GTFS não versionado).
+- [x] Adicionar `backend/data/gtfs/` ao `.gitignore`.
+- [x] Adicionar `celery`, `requests` e `responses`.
+- [x] Criar `config/celery.py` e configurações de beat.
+- [x] Migration da cidade São Paulo inativa.
+- [x] Criar `LineSourceRef`, `CatalogImportRun` e ajustar `LineStop`.
+- [x] Criar `TrackingSource` e `LatestPosition`; seeds de Teresina e São Paulo.
+- [x] Criar `PositionHistory` particionada por dia, com índice em `captured_at`.
+- [x] Implementar `ensure_partitions()` e comando `maintain_tracking_partitions`.
+- [x] Implementar jobs de criação/`DROP` (diário) e trim (horário).
+- [x] Implementar cliente SPTrans e leitor GTFS.
+- [x] Implementar `check_sptrans_access` e `validate_sptrans_gtfs`.
+- [x] Implementar crawler de catálogo + comando + task.
+- [x] Implementar crawler de posições + comando + task.
+- [x] Refatorar leitura de posições para fonte por cidade.
+- [x] Garantir que nenhum ID interno seja exposto.
+- [x] Criar `set_city_active`.
+- [x] Adicionar testes de isolamento por cidade.
+- [x] Atualizar admin, logs e health (`/readyz` reporta as fontes ativas).
+- [x] Atualizar `README`, PRD, AGENTS e `.env.example`.
+- [x] Rodar `ruff`, `manage.py test`, `makemigrations --check`.
+- [x] Rodar `flutter analyze` e `flutter test`.
+- [ ] Medir volume real do histórico nas primeiras 24 h de staging (operacional).
+- [ ] Validar staging e app ponta a ponta (operacional; exige token e GTFS).
+- [ ] Ativar São Paulo em staging; produção somente após o gate (operacional).
 
 ---
 
 ## 13. Referências
 
-- `docs/PRD-backend-meubuzu.md` — decisões D1–D41, modelo de dados, API e
+- `docs/PRD-backend-meubuzu.md` — decisões D1–D48, modelo de dados, API e
   importação.
 - `backend/apps/catalog/models.py` — `City`, `CatalogSource`, `Line`,
   `LineStop`, `Route`, `Stop`.

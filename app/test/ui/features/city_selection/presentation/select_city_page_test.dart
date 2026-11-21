@@ -12,6 +12,17 @@ import '../../../../helpers/auth_test_helpers.dart';
 import '../../../../helpers/fake_auth_repository.dart';
 import '../../../../helpers/fake_city_repository.dart';
 
+const saoPaulo = City(
+  slug: 'sao-paulo',
+  name: 'São Paulo',
+  label: 'São Paulo - SP',
+  state: 'SP',
+  country: 'BR',
+  timezone: 'America/Sao_Paulo',
+  latitude: -23.55052,
+  longitude: -46.633308,
+);
+
 void main() {
   group('SelectCityPage', () {
     FakeAuthRepository authenticated() {
@@ -83,6 +94,30 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.selectedCities, ['teresina']);
+      expect(find.text('Abrir troca'), findsOneWidget);
+    });
+
+    testWidgets('lista Teresina e São Paulo e confirma São Paulo', (
+      tester,
+    ) async {
+      final auth = authenticated();
+      final viewModel = SelectCityViewModel(
+        FakeCityRepository(cities: const [testCity, saoPaulo]),
+        auth,
+      );
+
+      await pumpPage(tester, viewModel: viewModel);
+
+      expect(find.text('Teresina - PI'), findsOneWidget);
+      expect(find.text('São Paulo - SP'), findsOneWidget);
+      expect(find.text('America/Sao_Paulo'), findsOneWidget);
+
+      await tester.tap(find.text('São Paulo - SP'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+
+      expect(auth.selectedCities, ['sao-paulo']);
       expect(find.text('Abrir troca'), findsOneWidget);
     });
 

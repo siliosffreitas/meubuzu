@@ -10,7 +10,7 @@
 **Plataformas:** Android e iOS (sem web)  
 **Público:** fundador/desenvolvedor solo e futuros colaboradores
 
-> Este é o documento único de produto e técnica do backend. As decisões numeradas (D1–D40) estão na seção 20 e prevalecem em caso de conflito com o texto corrido.
+> Este é o documento único de produto e técnica do backend. As decisões numeradas (D1–D48) estão na seção 20 e prevalecem em caso de conflito com o texto corrido.
 
 ---
 
@@ -1346,10 +1346,10 @@ Restrição: exclusão por sobreposição com `tstzrange` e `EXCLUDE USING gist`
 | data_mode | text | `demo`, `live` |
 | ingested_at | timestamptz | auto |
 
-- Particionada por range de `captured_at` (mensal).
-- Único `(vehicle_id, captured_at, source_id)`.
+- Particionada por range de `captured_at` (**diária**), com trim horário.
+- Único `(city_id, source_id, vehicle_code, captured_at)`.
 - Checks de latitude/longitude, velocidade e direção.
-- **Retenção: 30 dias** (D15), com job de expurgo diário.
+- **Retenção: 24 h** (D15), com job diário de criação/`DROP` de partições e trim horário.
 
 #### `tracking_latest_position`
 
@@ -1875,7 +1875,7 @@ class CatalogSource(Protocol):
 - Alerta se a fonte não atualizar por X minutos.
 - Alerta se o import atrasar mais que 1,5× o intervalo configurado.
 - Quarentena para registros inválidos.
-- Retenção e particionamento de posições (30 dias).
+- Retenção e particionamento de posições (24 h, partição diária).
 - Log de importações e ingestões consultável no admin.
 
 ### 12.7 Gate de acesso à API de Teresina
@@ -1982,7 +1982,7 @@ Até o gate, `CsvDemoSource` mantém staging funcional.
   - OTP: expurgo após expiração.
   - Sessões e refresh tokens: expurgo após revogação/expiração.
   - Sessões de rastreamento: 90 dias após encerramento (métrica).
-  - Posições: **30 dias**.
+  - Posições: **24 horas** (partição diária, trim horário).
   - Logs: 30–90 dias, sem PII.
   - Conta: exclusão total sob solicitação; retenção mínima legal documentada.
 - Exportação de dados disponível antes da exclusão.
@@ -2252,7 +2252,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | D3 | Seleção de cidade no app | Preferência no backend + cache local (ampliada por D12) |
 | D4 | Comportamento após o trial | Catálogo somente leitura (D20) |
 | D5 | Fuso e reset da cota | Fuso da cidade suportada (D30) |
-| D6 | Retenção de posições e logs | 30 dias para posições; 30–90 dias para logs |
+| D6 | Retenção de posições e logs | 24 h para posições (D15); 30–90 dias para logs |
 | D7 | Região de hospedagem | São Paulo (GRU / `sa-east-1`) como default |
 | D8 | Pagamento web | Removido: sem web, sem Stripe (D22) |
 | D9 | WebSocket | Polling no MVP |
@@ -2261,7 +2261,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | D12 | Preferência de cidade | No backend, para sincronizar entre dispositivos |
 | D13 | Lançamento catálogo-only | **Substituída por D17**: catálogo-only é apenas demonstração interna |
 | D14 | Frequência de posições | 30 s, configurável por cidade |
-| D15 | Retenção de posições | 30 dias |
+| D15 | Retenção de posições | 24 h, com partição diária e trim horário |
 | D16 | Cobrança em fase sem rastreamento | Gratuito, sem anúncios, favoritos ilimitados (staging/demo) |
 | D17 | Condição de lançamento | Somente com acesso total à API de Teresina; sem data oficial |
 | D18 | Modelo comercial | Trial de 7 dias + assinatura |
@@ -2280,6 +2280,13 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | D32 | Seletor com uma cidade | Sempre exibido no primeiro acesso |
 | D33 | Dados importados e edição | Import periódico (semanal/mensal) é a fonte de verdade; admin edita qualquer campo |
 | D41 | Formato da listagem de favoritos | Raiz `cities`: `[{"city", "lines"}]` por cidade; cidade não se repete; POST permanece plano |
+| D42 | Segunda cidade | São Paulo-SP (`sao-paulo`), fuso `America/Sao_Paulo`, importação semanal; criada inativa e ativada por comando |
+| D43 | Fonte do catálogo de São Paulo | API Olho Vivo (SPTrans) para linhas, paradas e itinerários; GTFS local apenas para `shapes.txt` e lista semente |
+| D44 | Identificadores da SPTrans | `cl` interno fica em `LineSourceRef`; `boardingCode` público é `lt-tl` (ex.: `1012-10`); `cp` continua sendo o código da parada |
+| D45 | Sentidos da linha | Os sentidos `sl=1`/`sl=2` viram um único `Line` com `direction` 0/1; `direction=0` é o padrão e `?direction=1` é opcional |
+| D46 | Fonte de rastreamento por cidade | Teresina `csv_demo`; São Paulo `sptrans_api`; leitura sempre pelo backend |
+| D47 | GTFS | Não versionado; `SPTRANS_GTFS_DIR` aponta para pasta local/volume |
+| D48 | Acesso live em staging | `TRACKING_LIVE_ACCESS_ENABLED=true` libera o rastreamento live sem billing somente em staging; produção depende de trial/assinatura |
 
 ### 20.2 Em aberto
 

@@ -4,6 +4,7 @@ import uuid
 
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 
 class City(models.Model):
@@ -55,23 +56,41 @@ class CatalogSource(models.Model):
     """Fonte da qual o catálogo de uma cidade foi importado.
 
     O `data_mode` segue D2/RF-016: CSV só existe em staging (`demo`); produção
-    usa a API da cidade (`live`).
+    usa a API da cidade (`live`). O `kind` identifica o adaptador usado na
+    importação e `config` guarda apenas nomes de variáveis de ambiente, nunca
+    segredos.
     """
 
     class DataMode(models.TextChoices):
         DEMO = "demo", "demonstração"
         LIVE = "live", "produção"
 
+    class Kind(models.TextChoices):
+        CSV = "csv", "CSV"
+        SPTRANS_API = "sptrans_api", "API Olho Vivo (SPTrans)"
+        GTFS = "gtfs", "GTFS"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="sources")
     slug = models.SlugField("slug", max_length=60)
     name = models.CharField("nome", max_length=120)
+    kind = models.CharField(
+        "tipo",
+        max_length=20,
+        choices=Kind.choices,
+        default=Kind.CSV,
+    )
     data_mode = models.CharField(
         "modo dos dados",
         max_length=8,
         choices=DataMode.choices,
         default=DataMode.DEMO,
     )
+    base_url = models.URLField("URL base", blank=True, default="")
+    config = models.JSONField("configuração", default=dict, blank=True)
+    last_import_at = models.DateTimeField("última importação", null=True, blank=True)
+    last_error_at = models.DateTimeField("último erro em", null=True, blank=True)
+    last_error_message = models.TextField("último erro", blank=True, default="")
     is_active = models.BooleanField("ativa", default=True)
     created_at = models.DateTimeField("criada em", auto_now_add=True)
     updated_at = models.DateTimeField("atualizada em", auto_now=True)
@@ -88,6 +107,70 @@ class CatalogSource(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class CatalogImportRun(models.Model):
+    """Execução da importação de catálogo de uma cidade.
+
+    Guarda apenas metadados e contadores: nenhum payload bruto, token ou
+    identificador interno de terceiros é persistido aqui.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = "running", "em execução"
+        SUCCESS = "success", "sucesso"
+        PARTIAL = "partial", "parcial"
+        FAILED = "failed", "falha"
+
+    class Trigger(models.TextChoices):
+        MANUAL = "manual", "manual"
+        SCHEDULE = "schedule", "agendada"
+        ADMIN = "admin", "admin"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="import_runs")
+    source = models.ForeignKey(
+        CatalogSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="import_runs",
+    )
+    trigger = models.CharField(
+        "gatilho",
+        max_length=16,
+        choices=Trigger.choices,
+        default=Trigger.MANUAL,
+    )
+    status = models.CharField(
+        "status",
+        max_length=16,
+        choices=Status.choices,
+        default=Status.RUNNING,
+    )
+    started_at = models.DateTimeField("iniciada em", default=timezone.now)
+    finished_at = models.DateTimeField("finalizada em", null=True, blank=True)
+    lines_created = models.PositiveIntegerField("linhas criadas", default=0)
+    lines_updated = models.PositiveIntegerField("linhas atualizadas", default=0)
+    lines_deactivated = models.PositiveIntegerField("linhas desativadas", default=0)
+    stops_created = models.PositiveIntegerField("paradas criadas", default=0)
+    stops_updated = models.PositiveIntegerField("paradas atualizadas", default=0)
+    routes_updated = models.PositiveIntegerField("traçados atualizados", default=0)
+    errors = models.PositiveIntegerField("erros", default=0)
+    message = models.TextField("mensagem", blank=True, default="")
+    created_at = models.DateTimeField("criada em", auto_now_add=True)
+
+    class Meta:
+        db_table = "catalog_import_run"
+        verbose_name = "execução de importação"
+        verbose_name_plural = "execuções de importação"
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["city", "-started_at"], name="catalog_import_city_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.city.slug} {self.started_at:%Y-%m-%d %H:%M} ({self.status})"
 
 
 class Stop(models.Model):
@@ -249,6 +332,47 @@ class LineAlias(models.Model):
         return self.alias
 
 
+class LineSourceRef(models.Model):
+    """Referência da linha em uma fonte externa, por sentido.
+
+    A API Olho Vivo identifica cada sentido da linha por um `cl` interno. Esse
+    código é usado apenas na importação e no crawl de posições: nunca aparece
+    nos payloads públicos do MeuBuzu.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    line = models.ForeignKey(
+        Line, on_delete=models.CASCADE, related_name="source_refs"
+    )
+    source = models.ForeignKey(
+        CatalogSource,
+        on_delete=models.CASCADE,
+        related_name="line_refs",
+    )
+    external_id = models.CharField("id de origem", max_length=64)
+    direction = models.PositiveSmallIntegerField("sentido", default=0)
+    created_at = models.DateTimeField("criada em", auto_now_add=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+
+    class Meta:
+        db_table = "catalog_line_source_ref"
+        verbose_name = "referência de linha na fonte"
+        verbose_name_plural = "referências de linha na fonte"
+        ordering = ["line", "direction"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "external_id"],
+                name="catalog_line_ref_source_external_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["line", "direction"], name="catalog_line_ref_dir_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.line.boarding_code} ({self.direction})"
+
+
 class LineStop(models.Model):
     """Relaciona uma linha a uma parada, na ordem do itinerário."""
 
@@ -267,9 +391,6 @@ class LineStop(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["line", "direction", "sequence"], name="catalog_line_stop_sequence_uniq"
-            ),
-            models.UniqueConstraint(
-                fields=["line", "stop", "direction"], name="catalog_line_stop_pair_uniq"
             ),
         ]
         indexes = [models.Index(fields=["line", "direction"], name="catalog_line_stop_dir_idx")]

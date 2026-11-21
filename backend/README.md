@@ -42,7 +42,7 @@ O `docker compose` procura o `docker-compose.yml` na pasta atual. Da raiz do rep
 | Container | Portas | Para que serve |
 | --- | --- | --- |
 | `meubuzu_db` | `5432` | PostgreSQL 17 + PostGIS: fonte de verdade do backend. |
-| `meubuzu_redis` | `6379` | Cache, rate limit, locks distribuídos e, no futuro, broker do Celery. |
+| `meubuzu_redis` | `6379` | Cache, rate limit, locks distribuídos e broker do Celery. |
 | `meubuzu_mailpit` | `1025` (SMTP), `8025` (web) | Servidor SMTP falso que captura os e-mails de desenvolvimento. |
 
 As portas são publicadas apenas em `127.0.0.1`, então os serviços não ficam acessíveis por outros dispositivos da rede local.
@@ -114,6 +114,32 @@ No celular físico, inclua também o IP do Mac em `DJANGO_ALLOWED_HOSTS`.
 
 O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS. O deploy público usa Gunicorn (já configurado no `Dockerfile`) e faz parte da etapa M6 do PRD.
 
+### Celery (worker e beat)
+
+O catálogo semanal, a ingestão de posições a cada 30 s e a manutenção das
+partições do histórico rodam no Celery. Com Redis de pé, suba os dois processos
+em terminais separados:
+
+```sh
+cd backend
+.venv/bin/celery -A config worker -l info
+.venv/bin/celery -A config beat -l info
+```
+
+O beat agenda:
+
+| Tarefa | Cadência | O que faz |
+| --- | --- | --- |
+| `catalog-sptrans-weekly` | segunda, 06:00 UTC | Importa catálogo da API Olho Vivo + GTFS. |
+| `tracking-sptrans-positions` | a cada 30 s | Lê `/Posicao` e atualiza a última posição. |
+| `tracking-history-partitions-daily` | 00:05 UTC | Cria a partição de amanhã e dropa as expiradas. |
+| `tracking-history-trim-hourly` | a cada hora, minuto 10 | Remove linhas com mais de 24 h. |
+
+Cada execução usa um lock no cache (`TRACKING_CRAWL_LOCK_SECONDS`, padrão 25 s)
+para não sobrepor ciclos. `CELERY_TASK_ALWAYS_EAGER=true` executa as tarefas no
+próprio processo, útil em testes. Os comandos de gerenciamento equivalentes
+estão documentados nas seções de catálogo e rastreamento.
+
 ### Endpoints de autenticação
 
 | Método | Rota | Descrição |
@@ -129,8 +155,8 @@ O `runserver` é apenas para desenvolvimento: é single-process e não tem HTTPS
 | `GET` | `/v1/cities/{citySlug}/stops/{code}` | Detalhe de uma parada ativa |
 | `GET` | `/v1/cities/{citySlug}/lines` | Busca de linhas (`q` ou `codes`) |
 | `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}` | Detalhe da linha (`sgLinha`) |
-| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Paradas da linha na ordem do itinerário |
-| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Traçado da linha (`route: null` se ausente) |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Paradas da linha na ordem do itinerário (`?direction=0|1`) |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Traçado da linha (`?direction=0|1`; `route: null` se ausente) |
 | `GET` | `/v1/cities/{citySlug}/stops/{code}/lines` | Linhas que passam pela parada |
 | `GET` | `/v1/me/preferences` | Preferências da conta (cidade selecionada) |
 | `PUT` | `/v1/me/preferences` | Define a cidade selecionada (`selectedCitySlug`) |
@@ -145,6 +171,20 @@ A tabela `catalog_city` (app `apps.catalog`) guarda `slug`, `name`, `state`,
 `country`, `timezone`, centro (`latitude`/`longitude`), `import_interval`,
 `is_active` e `coverage_note`. Teresina é criada pela migration
 `catalog/0002_seed_teresina` com fuso `America/Fortaleza`.
+
+São Paulo é criada **inativa** pela migration `catalog/0007_seed_sao_paulo`
+(`slug=sao-paulo`, fuso `America/Sao_Paulo`, `import_interval=weekly`). Ela só
+aparece em `GET /v1/cities` depois da ativação explícita, primeiro em staging:
+
+```sh
+cd backend
+.venv/bin/python manage.py set_city_active sao-paulo --active
+.venv/bin/python manage.py set_city_active sao-paulo --inactive
+```
+
+O comando invalida o cache da cidade. `CatalogSource` e `TrackingSource` podem
+ficar ativas mesmo com a cidade inativa, para que catálogo e posições estejam
+prontos no momento da liberação.
 
 `GET /v1/cities` devolve apenas cidades ativas, ordenadas pelo nome. O payload é
 o mesmo em todos os endpoints:
@@ -232,6 +272,30 @@ tanto por `codigoLinha` quanto por `sgLinha`. Produção deve usar a API da
 cidade, não estes CSVs. Para popular o banco local de desenvolvimento, rode
 antes `import_stops` (as paradas precisam existir para o itinerário).
 
+**São Paulo (SPTrans):** o catálogo vem da API Olho Vivo, e o GTFS fornece os
+traçados e a lista semente de linhas. Os arquivos do GTFS não são versionados:
+copie-os para `backend/data/gtfs/sptrans/` (ou aponte `SPTRANS_GTFS_DIR`). O
+token fica apenas no `.env` (`SPTRANS_API_TOKEN`).
+
+```sh
+cd backend
+# 1. Valide o GTFS e o acesso à API (o token nunca é impresso)
+.venv/bin/python manage.py validate_sptrans_gtfs
+.venv/bin/python manage.py check_sptrans_access --line 1012-10
+
+# 2. Importe o catálogo (dry-run primeiro)
+.venv/bin/python manage.py import_sptrans_catalog --city sao-paulo --dry-run --limit 5
+.venv/bin/python manage.py import_sptrans_catalog --city sao-paulo
+```
+
+A importação usa a API como fonte de linhas, paradas e itinerários e o GTFS
+como fonte exclusiva dos traçados. Os dois sentidos da API viram uma única
+`Line`, com `direction` 0/1; os códigos internos (`cl`) ficam em
+`LineSourceRef` e nunca aparecem nos payloads públicos. `--skip-shapes` importa
+só o catálogo da API; `--shapes-only` reimporta apenas os traçados. O comando é
+idempotente, registra cada execução em `CatalogImportRun` e desativa (nunca
+apaga) linhas ausentes na origem.
+
 **Busca de linhas** (`GET /v1/cities/{citySlug}/lines`): exige `q` ou `codes`;
 `codes` preserva a ordem recebida. Cada linha é devolvida como:
 
@@ -300,13 +364,17 @@ O catálogo é **importado** da API da cidade, não editado manualmente como fon
 
 ### Posições dos veículos
 
-Nesta fase as posições são servidas por `PositionSource`, sem tabelas de tracking. A implementação `CsvDemoPositionSource` lê os CSVs históricos de
+Cada cidade tem uma `TrackingSource` ativa (`tracking_source`), registrada por
+migration: Teresina usa `csv_demo` e São Paulo usa `sptrans_api`. O app sempre
+consulta `GET /v1/cities/{citySlug}/positions` e não escolhe a fonte.
+
+**Teresina (demo).** `CsvDemoPositionSource` lê os CSVs históricos de
 `backend/apps/tracking/data/locations/`, escolhe o arquivo pelo dia da semana no
 fuso da cidade, desloca a hora lida para o dia atual e usa a janela de
-`TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s) para escolher apenas a
-captura atual de cada veículo. Para cada linha, devolve a captura mais recente
-de cada veículo; `isStale` é calculado no backend com
-`TRACKING_STALE_AFTER_SECONDS` (padrão: 120 s).
+`TRACKING_POSITION_WINDOW_SECONDS` (padrão: 300 s) para escolher a captura atual
+de cada veículo. Para cada linha, devolve a captura mais recente de cada
+veículo; `isStale` é calculado no backend com `TRACKING_STALE_AFTER_SECONDS`
+(padrão: 120 s).
 
 A janela não se aplica à coordenada anterior: o backend localiza a captura
 imediatamente anterior do mesmo veículo no mesmo arquivo, mesmo que ela esteja
@@ -314,22 +382,45 @@ fora dos 5 minutos, e a envia como `previousLatitude` / `previousLongitude`
 junto da posição atual. A partir dessas duas coordenadas, o backend calcula
 `heading` em graus (`0` = norte, `90` = leste). Sem captura anterior, ou quando
 as coordenadas são iguais, `heading` é `null` e o app não desenha a seta. O app
-não calcula direção localmente. O envelope é o mesmo que um futuro adaptador da
-API de Teresina deve devolver, com `source`, `dataMode`, `lines[]` e
-`unresolvedLines`.
+não calcula direção localmente.
 
-A rota batch é `GET /v1/cities/{citySlug}/positions?codes=0301,0245`, usando o
-`sgLinha` (código de embarque, com zeros à esquerda). O alias estrito é
-`GET /v1/cities/{citySlug}/lines/{sgLinha}/positions` e devolve
+**São Paulo (live).** O crawler lê `/Posicao` da API Olho Vivo a cada 30 s,
+resolve a linha pelo `boardingCode` e grava a última posição em
+`tracking_latest_position` (`LatestPosition`). A leitura do app usa essa tabela
+e devolve `source=sptrans_api` e `dataMode=live`. O histórico fica em
+`tracking_position_history`, uma tabela particionada por dia UTC com retenção de
+**24 horas**.
+
+```sh
+cd backend
+# Inspeção sem escrita
+.venv/bin/python manage.py crawl_sptrans_positions --city sao-paulo --dry-run
+# Ciclo único (o beat já executa a cada 30 s)
+.venv/bin/python manage.py crawl_sptrans_positions --city sao-paulo
+# Partições e trim
+.venv/bin/python manage.py maintain_tracking_partitions --dry-run
+.venv/bin/python manage.py maintain_tracking_partitions
+```
+
+O crawl usa lock (`TRACKING_CRAWL_LOCK_SECONDS`, padrão 25 s) e não apaga
+posições quando a fonte falha. Capturas mais antigas que
+`TRACKING_HISTORY_MAX_CAPTURE_AGE_SECONDS` (padrão 600 s) não entram no
+histórico. O trim horário mantém a retenção efetiva entre 24 e 25 h; com
+`TRACKING_HISTORY_TRIM_MINUTES=0` o trim é desligado e a retenção fica entre 24
+e 48 h. `TRACKING_HISTORY_ENABLED=false` desliga o histórico.
+
+**Envelope comum.** A rota batch é
+`GET /v1/cities/{citySlug}/positions?codes=0301,0245`, usando o `sgLinha`
+(código de embarque, com zeros à esquerda; em São Paulo, `1012-10`). O alias
+estrito é `GET /v1/cities/{citySlug}/lines/{sgLinha}/positions` e devolve
 `404 line_not_found` quando a linha não existe; na rota batch, linhas não
 resolvidas aparecem em `unresolvedLines`. `codigoLinha` e UUID não são aceitos
 como parâmetro de rastreamento. O cache curto usa a chave
 `TRACKING_CACHE_TTL_SECONDS` (padrão: 10 s) e o cabeçalho `X-Tracking-Cache`.
 
-Quando o crawler volátil entrar, o armazenamento previsto continua sendo eventos
-por veículo e horário de captura, com coordenadas, velocidade, direção e
-`dataMode`, além de `tracking_latest_position` para consulta rápida, retenção de
-30 dias e índices BRIN/GiST — sem TimescaleDB no lançamento.
+`TRACKING_LIVE_ACCESS_ENABLED=true` libera o rastreamento live sem billing
+**somente em staging**. Em produção o acesso continua dependendo de
+trial/assinatura; sem a flag, a fonte live responde `402 subscription_required`.
 
 O Redis é usado como cache, rate limit, lock distribuído e broker do Celery, nunca como fonte permanente.
 
@@ -374,6 +465,21 @@ Enquanto o acesso à API de Teresina não for liberado, os CSVs em
 `TRACKING_POSITIONS_SOURCE=csv_demo`, o endpoint responde `500 demo_mode_forbidden`.
 Não use a fonte CSV em produção. Quando houver entitlements reais, a checagem em
 `require_tracking_access` substitui o bypass de demonstração sem mudar o envelope.
+
+São Paulo não usa CSV: a fonte é `sptrans_api`, com dados `live`. Em staging, o
+rastreamento live é liberado por `TRACKING_LIVE_ACCESS_ENABLED=true`; em
+produção a flag fica desligada e o acesso depende de trial/assinatura. Nunca
+ative a flag live em produção. Os dados de São Paulo ficam isolados pelo slug
+`sao-paulo` e não aparecem em Teresina.
+
+### Retenção do histórico
+
+O histórico de posições é mantido por **24 horas**, em partição diária UTC
+(`tracking_position_history_YYYYMMDD`). O job diário cria a partição de amanhã e
+dropa as inteiramente expiradas; o trim horário remove, em lotes, as linhas
+anteriores à janela dentro da partição de fronteira. A retenção efetiva fica
+entre 24 e 25 horas. Não aumente a retenção sem medir disco e volume reais em
+staging.
 
 ### Gate de lançamento
 

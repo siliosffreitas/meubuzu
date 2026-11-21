@@ -95,9 +95,10 @@ centralizado na cidade selecionada.
 
 Comportamento alvo do produto, detalhado em `docs/PRD-backend-meubuzu.md` e `CLAUDE.md`:
 
-- **Cidade:** Teresina-PI no lançamento. A tela de seleção de cidade aparece
-  mesmo com uma única cidade ativa; a escolha é salva no backend e restaurada em
-  outro dispositivo.
+- **Cidade:** Teresina-PI no lançamento; São Paulo-SP entra em seguida com
+  catálogo e posições da SPTrans e traçados do GTFS, nasce inativa e é liberada
+  por comando. A tela de seleção de cidade aparece mesmo com uma única cidade
+  ativa; a escolha é salva no backend e restaurada em outro dispositivo.
 - **Catálogo gratuito somente leitura:** buscar linhas, ver paradas e itinerário
   não exige pagamento.
 - **Teste de 7 dias:** oferecido no primeiro rastreamento, concedido pela loja

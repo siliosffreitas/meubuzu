@@ -56,6 +56,49 @@ void main() {
       expect(cities.single.timezone, 'America/Fortaleza');
     });
 
+    test('lista Teresina e São Paulo ativas', () async {
+      final repository = buildRepository(
+        MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'cities': [
+                {
+                  'slug': 'teresina',
+                  'name': 'Teresina',
+                  'label': 'Teresina - PI',
+                  'state': 'PI',
+                  'country': 'BR',
+                  'timezone': 'America/Fortaleza',
+                  'center': {'latitude': -5.16, 'longitude': -42.79},
+                  'isActive': true,
+                },
+                {
+                  'slug': 'sao-paulo',
+                  'name': 'São Paulo',
+                  'label': 'São Paulo - SP',
+                  'state': 'SP',
+                  'country': 'BR',
+                  'timezone': 'America/Sao_Paulo',
+                  'center': {'latitude': -23.55052, 'longitude': -46.633308},
+                  'isActive': true,
+                  'coverageNote': 'Dados: SPTrans.',
+                },
+              ],
+            }),
+            200,
+          ),
+        ),
+      );
+
+      final cities = await repository.fetchActiveCities();
+
+      expect(cities.map((city) => city.slug), ['teresina', 'sao-paulo']);
+      final saoPaulo = cities.last;
+      expect(saoPaulo.label, 'São Paulo - SP');
+      expect(saoPaulo.timezone, 'America/Sao_Paulo');
+      expect(saoPaulo.coverageNote, 'Dados: SPTrans.');
+    });
+
     test('ignora itens inválidos e cidades sem slug', () async {
       final repository = buildRepository(
         MockClient(

@@ -31,6 +31,8 @@ class CityApiTests(AuthTestCase, SessionMixin):
         body = response.json()
         slugs = [city["slug"] for city in body["cities"]]
         assert "teresina" in slugs
+        # São Paulo entra inativa: só aparece após ativação explícita.
+        assert "sao-paulo" not in slugs
 
         teresina = next(city for city in body["cities"] if city["slug"] == "teresina")
         assert teresina["name"] == "Teresina"

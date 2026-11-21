@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime, timedelta
-from math import atan2, cos, degrees, radians, sin
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
@@ -19,6 +18,8 @@ from apps.catalog.models import City, Line
 from apps.catalog.services import resolve_line_by_boarding_code
 from apps.common.exceptions import ApiError
 
+from .geo import heading_between
+from .models import LatestPosition, TrackingSource
 from .payloads import line_positions_payload, position_payload, positions_payload
 from .sources import (
     CSV_SOURCE,
@@ -28,6 +29,8 @@ from .sources import (
     VehiclePositionDTO,
     normalize_line_code,
 )
+
+SPTRANS_SOURCE = TrackingSource.Kind.SPTRANS_API
 
 MAX_TRACKING_LINES = 200
 
@@ -95,13 +98,17 @@ def _city_timezone(city: City) -> ZoneInfo:
 
 
 def require_tracking_access(_user, *, source_kind: str) -> None:
-    """Libera o modo demo por configuração; produção ainda exige trial/pago.
+    """Libera o modo demo e o rastreamento live de staging por configuração.
 
-    Billing e entitlements reais não existem ainda. Quando existirem, basta
-    substituir esta checagem sem tocar no restante do fluxo de posições.
+    Billing e entitlements reais não existem ainda. Em produção, apenas fontes
+    `live` com a flag de staging desligada continuam bloqueadas.
     """
 
     if source_kind == CSV_SOURCE and _demo_enabled():
+        return
+    if source_kind == SPTRANS_SOURCE and getattr(
+        settings, "TRACKING_LIVE_ACCESS_ENABLED", False
+    ):
         return
     raise ApiError(
         "O rastreamento exige teste ativo ou assinatura.",
@@ -109,6 +116,17 @@ def require_tracking_access(_user, *, source_kind: str) -> None:
         title="Assinatura necessária",
         status_code=402,
     )
+
+
+def resolve_source_kind(city: City) -> str:
+    """Fonte ativa da cidade, com fallback para a configuração global."""
+
+    source = (
+        TrackingSource.objects.filter(city=city, is_active=True).only("kind").first()
+    )
+    if source is not None:
+        return source.kind
+    return getattr(settings, "TRACKING_POSITIONS_SOURCE", CSV_SOURCE)
 
 
 def _get_source(source_kind: str) -> PositionSource:
@@ -120,32 +138,6 @@ def _get_source(source_kind: str) -> PositionSource:
             status_code=503,
         )
     return CsvDemoPositionSource()
-
-
-def _heading_between(
-    from_latitude: float,
-    from_longitude: float,
-    to_latitude: float,
-    to_longitude: float,
-) -> float | None:
-    """Rumo de um ponto a outro em graus (0 = norte, 90 = leste).
-
-    O app apenas gira a seta com esse valor; nenhum cálculo de direção é feito
-    no cliente. Coordenadas iguais não definem direção.
-    """
-
-    if from_latitude == to_latitude and from_longitude == to_longitude:
-        return None
-
-    latitude1 = radians(from_latitude)
-    latitude2 = radians(to_latitude)
-    delta_longitude = radians(to_longitude - from_longitude)
-
-    y = sin(delta_longitude) * cos(latitude2)
-    x = cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(
-        delta_longitude
-    )
-    return (degrees(atan2(y, x)) + 360) % 360
 
 
 def _rebase_position(
@@ -253,7 +245,7 @@ def _positions_for_line(
         if previous is not None:
             payload["previousLatitude"] = previous.latitude
             payload["previousLongitude"] = previous.longitude
-            payload["heading"] = _heading_between(
+            payload["heading"] = heading_between(
                 previous.latitude,
                 previous.longitude,
                 payload["latitude"],
@@ -273,44 +265,23 @@ def _positions_for_line(
     )
 
 
-def _cache_key(city: City, requested: list[str], now: datetime) -> str:
+def _cache_key(city: City, requested: list[str], now: datetime, source_kind: str) -> str:
     ttl = max(int(getattr(settings, "TRACKING_CACHE_TTL_SECONDS", 10)), 1)
     bucket = int(now.timestamp()) // ttl
     # Os zeros à esquerda fazem parte do sgLinha; não os remova da chave.
     codes = [code.strip() for code in requested]
-    raw = f"v{TRACKING_PAYLOAD_VERSION}|{city.slug}|{','.join(codes)}|{bucket}"
+    raw = f"v{TRACKING_PAYLOAD_VERSION}|{city.slug}|{source_kind}|{','.join(codes)}|{bucket}"
     digest = hashlib.sha1(raw.encode()).hexdigest()
     return f"tracking:positions:v{TRACKING_PAYLOAD_VERSION}:{digest}"
 
 
-def get_positions_payload(
-    city: City,
-    requested: list[str],
-    *,
-    user,
-    strict: bool = False,
-) -> tuple[dict, bool]:
-    """Resolve linhas, consulta a fonte e devolve o envelope com cache curto."""
-
-    source_kind = getattr(settings, "TRACKING_POSITIONS_SOURCE", CSV_SOURCE)
-    if source_kind == CSV_SOURCE and not settings.DEBUG and not _demo_enabled():
-        raise ApiError(
-            "A fonte CSV de demonstração não pode ser usada em produção.",
-            code="demo_mode_forbidden",
-            title="Modo demo proibido",
-            status_code=500,
-        )
-
-    require_tracking_access(user, source_kind=source_kind)
-    source = _get_source(source_kind)
-
-    city_tz = _city_timezone(city)
-    now_utc = datetime.now(UTC)
-    now_city = now_utc.astimezone(city_tz)
-
+def _resolve_requested(
+    city: City, requested: list[str], *, strict: bool
+) -> tuple[list[tuple[str, Line]], list[str]]:
     resolved: list[tuple[str, Line]] = []
     unresolved: list[str] = []
     seen_boarding_codes: set[str] = set()
+
     for identifier in requested:
         try:
             line = resolve_line_by_boarding_code(city, identifier)
@@ -325,11 +296,113 @@ def get_positions_payload(
         seen_boarding_codes.add(boarding_code)
         resolved.append((identifier, line))
 
-    cache_key = _cache_key(city, requested, now_utc)
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached, True
+    return resolved, unresolved
 
+
+def _live_line_block(
+    line: Line,
+    positions: list[LatestPosition],
+    *,
+    requested_code: str,
+    now_utc: datetime,
+    stale_after_seconds: int,
+) -> dict:
+    items = []
+    for position in positions:
+        is_stale = (
+            now_utc - position.captured_at
+        ).total_seconds() > stale_after_seconds
+        items.append(
+            position_payload(
+                boarding_code=line.boarding_code,
+                vehicle_code=position.vehicle_code,
+                latitude=float(position.latitude),
+                longitude=float(position.longitude),
+                captured_at=position.captured_at,
+                generated_at=position.generated_at,
+                received_at=position.received_at,
+                heading=position.heading,
+                previous_latitude=(
+                    float(position.previous_latitude)
+                    if position.previous_latitude is not None
+                    else None
+                ),
+                previous_longitude=(
+                    float(position.previous_longitude)
+                    if position.previous_longitude is not None
+                    else None
+                ),
+                is_stale=is_stale,
+            )
+        )
+
+    items.sort(key=lambda item: item["capturedAt"] or "")
+    return line_positions_payload(
+        boarding_code=line.boarding_code,
+        requested_code=requested_code,
+        source=SPTRANS_SOURCE,
+        data_mode="live",
+        is_stale=any(item["isStale"] for item in items),
+        source_status=SOURCE_STATUS_OK if items else SOURCE_STATUS_EMPTY,
+        positions=items,
+    )
+
+
+def _live_payload(
+    city: City,
+    resolved: list[tuple[str, Line]],
+    unresolved: list[str],
+    *,
+    now_utc: datetime,
+) -> dict:
+    """Monta o envelope a partir das últimas posições gravadas pelo crawler."""
+
+    stale_after_seconds = int(getattr(settings, "TRACKING_STALE_AFTER_SECONDS", 120))
+    line_ids = [line.id for _, line in resolved]
+    rows = (
+        LatestPosition.objects.filter(city=city, line_id__in=line_ids).select_related(
+            "line"
+        )
+        if line_ids
+        else []
+    )
+
+    by_line: dict[object, list[LatestPosition]] = {}
+    for row in rows:
+        by_line.setdefault(row.line_id, []).append(row)
+
+    blocks = [
+        _live_line_block(
+            line,
+            by_line.get(line.id, []),
+            requested_code=identifier,
+            now_utc=now_utc,
+            stale_after_seconds=stale_after_seconds,
+        )
+        for identifier, line in resolved
+    ]
+
+    return positions_payload(
+        city_slug=city.slug,
+        generated_at=now_utc,
+        source=SPTRANS_SOURCE,
+        data_mode="live",
+        lines=blocks,
+        unresolved_lines=unresolved,
+    )
+
+
+def _demo_payload(
+    city: City,
+    resolved: list[tuple[str, Line]],
+    unresolved: list[str],
+    *,
+    source_kind: str,
+    now_utc: datetime,
+    now_city: datetime,
+    city_tz: ZoneInfo,
+) -> dict:
+    source = _get_source(source_kind)
     line_codes = {normalize_line_code(line.code) for _, line in resolved}
     try:
         rows = source.fetch(line_codes=line_codes, now=now_city)
@@ -351,7 +424,7 @@ def get_positions_payload(
             boarding_code=line.boarding_code,
             requested_code=identifier,
             source=source_kind,
-            data_mode="demo" if source_kind == CSV_SOURCE else "live",
+            data_mode="demo",
             now_city=now_city,
             city_tz=city_tz,
             received_at=now_utc,
@@ -361,13 +434,59 @@ def get_positions_payload(
         for identifier, line in resolved
     ]
 
-    payload = positions_payload(
+    return positions_payload(
         city_slug=city.slug,
         generated_at=now_utc,
         source=source_kind,
-        data_mode="demo" if source_kind == CSV_SOURCE else "live",
+        data_mode="demo",
         lines=line_blocks,
         unresolved_lines=unresolved,
     )
+
+
+def get_positions_payload(
+    city: City,
+    requested: list[str],
+    *,
+    user,
+    strict: bool = False,
+) -> tuple[dict, bool]:
+    """Resolve a fonte da cidade, consulta as posições e aplica cache curto."""
+
+    source_kind = resolve_source_kind(city)
+    if source_kind == CSV_SOURCE and not settings.DEBUG and not _demo_enabled():
+        raise ApiError(
+            "A fonte CSV de demonstração não pode ser usada em produção.",
+            code="demo_mode_forbidden",
+            title="Modo demo proibido",
+            status_code=500,
+        )
+
+    require_tracking_access(user, source_kind=source_kind)
+
+    city_tz = _city_timezone(city)
+    now_utc = datetime.now(UTC)
+    now_city = now_utc.astimezone(city_tz)
+
+    resolved, unresolved = _resolve_requested(city, requested, strict=strict)
+
+    cache_key = _cache_key(city, requested, now_utc, source_kind)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached, True
+
+    if source_kind == SPTRANS_SOURCE:
+        payload = _live_payload(city, resolved, unresolved, now_utc=now_utc)
+    else:
+        payload = _demo_payload(
+            city,
+            resolved,
+            unresolved,
+            source_kind=source_kind,
+            now_utc=now_utc,
+            now_city=now_city,
+            city_tz=city_tz,
+        )
+
     cache.set(cache_key, payload, getattr(settings, "TRACKING_CACHE_TTL_SECONDS", 10))
     return payload, False

@@ -1,16 +1,16 @@
 # MeuBuzu - Projeto de Localização de Ônibus em Tempo Real
 
-Este projeto é o aplicativo MeuBuzu, que permite aos usuários acompanhar a localização de ônibus em tempo real e consultar informações sobre linhas e paradas. A cidade de lançamento é **Teresina-PI**.
+Este projeto é o aplicativo MeuBuzu, que permite aos usuários acompanhar a localização de ônibus em tempo real e consultar informações sobre linhas e paradas. A cidade de lançamento é **Teresina-PI**. A cobertura seguinte é **São Paulo-SP**, com catálogo e posições da API Olho Vivo (SPTrans) e traçados do GTFS; a cidade nasce inativa e é liberada por comando.
 
 ## 🛠 Tecnologias e Estrutura
 - **Frontend:** Flutter (Android e iOS). Não há versão web no lançamento.
 - **Backend:** Python + Django 5.2 LTS + Django REST Framework + PostgreSQL/PostGIS + Redis + Celery. Substitui o protótipo em Dart/Vaden.
 - **Cobrança:** RevenueCat, via App Store e Google Play. Assinatura mensal.
-- **Fonte de dados:** API de Teresina. Os CSVs de `app/assets` são usados apenas em staging, com `dataMode=demo`.
+- **Fonte de dados:** API de Teresina. Os CSVs de `app/assets` são usados apenas em staging, com `dataMode=demo`. São Paulo usa a API Olho Vivo (SPTrans) para catálogo e posições e o GTFS local apenas para os traçados.
 - **Estrutura de Diretórios:**
   - `backend/`: lógica de servidor e APIs.
   - `app/`: aplicativo Flutter.
-  - `docs/PRD-backend-meubuzu.md`: PRD do backend e decisões D1–D40.
+  - `docs/PRD-backend-meubuzu.md`: PRD do backend e decisões D1–D48.
 
 ## 🚀 Comandos de Desenvolvimento
 
@@ -79,7 +79,7 @@ Este projeto é o aplicativo MeuBuzu, que permite aos usuários acompanhar a loc
 - Favoritar, desfavoritar e abrir uma linha favorita não consome cota nem substitui o limite de linhas acompanhadas.
 
 ### Cidade
-- Teresina é a única cidade ativa no lançamento.
+- Teresina é a única cidade ativa no lançamento; São Paulo é criada inativa e ativada por comando, primeiro em staging.
 - A tela de seleção de cidade aparece mesmo com uma única cidade.
 - A preferência é salva no backend e restaurada em outro dispositivo.
 - Trocar de cidade encerra rastreamentos ativos e limpa caches locais.

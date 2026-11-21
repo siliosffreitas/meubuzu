@@ -259,6 +259,30 @@ def cached_lines(
     return payloads, False
 
 
+def parse_direction(raw: str | None) -> int | None:
+    """Lê `?direction=0|1`; vazio significa "sentido padrão"."""
+
+    if raw is None or not raw.strip():
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ApiError(
+            "direction deve ser 0 ou 1.",
+            code="invalid_direction",
+            title="Sentido inválido",
+            status_code=400,
+        ) from exc
+    if value not in (0, 1):
+        raise ApiError(
+            "direction deve ser 0 ou 1.",
+            code="invalid_direction",
+            title="Sentido inválido",
+            status_code=400,
+        )
+    return value
+
+
 def resolve_line(city: City, boarding_code: str) -> Line:
     """Resolve uma linha exclusivamente pelo `boardingCode` (`sgLinha`).
 
@@ -324,22 +348,40 @@ def resolve_stop(city: City, code: str) -> Stop:
     return stop
 
 
-def line_stops(line: Line) -> list[dict]:
-    """Retorna as paradas da linha na ordem do itinerário."""
+def line_stops(line: Line, direction: int | None = None) -> list[dict]:
+    """Retorna as paradas da linha na ordem do itinerário.
+
+    Sem `direction`, usa o sentido 0 e cai para o sentido 1 quando a linha só
+    tem o inverso — o app continua consumindo um itinerário por vez.
+    """
 
     from .models import LineStop
 
+    if direction is None:
+        direction = (
+            0
+            if LineStop.objects.filter(line=line, direction=0).exists()
+            else 1
+        )
+
     relations = (
-        LineStop.objects.filter(line=line)
+        LineStop.objects.filter(line=line, direction=direction)
         .select_related("stop")
-        .order_by("direction", "sequence")
+        .order_by("sequence")
     )
     return [stop_payload(relation.stop) for relation in relations]
 
 
-def route_for_line(line: Line) -> dict | None:
-    """Retorna o traçado (`direction=0`) da linha, ou `None` se inexistente."""
+def route_for_line(line: Line, direction: int | None = None) -> dict | None:
+    """Retorna o traçado da linha, com fallback para o sentido inverso."""
 
-    route = Route.objects.filter(line=line, direction=0).select_related("line").first()
+    if direction is None:
+        direction = 0 if Route.objects.filter(line=line, direction=0).exists() else 1
+
+    route = (
+        Route.objects.filter(line=line, direction=direction)
+        .select_related("line")
+        .first()
+    )
     return route_payload(route) if route else None
 

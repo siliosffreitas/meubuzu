@@ -15,6 +15,7 @@ from .services import (
     get_active_city,
     line_stops,
     parse_bbox,
+    parse_direction,
     resolve_line,
     resolve_stop,
     route_for_line,
@@ -170,13 +171,18 @@ class LineDetailView(CityScopedAPIView):
 
 
 class LineStopsView(CityScopedAPIView):
-    """Paradas da linha na ordem do itinerário."""
+    """Paradas da linha na ordem do itinerário.
+
+    `?direction=1` é opcional: sem o parâmetro, o backend usa o sentido 0 e cai
+    para o sentido 1 quando a linha só tem o inverso.
+    """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, city_slug: str, boarding_code: str):
         line = resolve_line(self.city, boarding_code)
-        stops = line_stops(line)
+        direction = parse_direction(request.query_params.get("direction"))
+        stops = line_stops(line, direction)
         return Response({"stops": stops, "count": len(stops)})
 
 
@@ -187,7 +193,8 @@ class LineRouteView(CityScopedAPIView):
 
     def get(self, request, city_slug: str, boarding_code: str):
         line = resolve_line(self.city, boarding_code)
-        route = route_for_line(line)
+        direction = parse_direction(request.query_params.get("direction"))
+        route = route_for_line(line, direction)
         return Response(route if route is not None else {"route": None})
 
 

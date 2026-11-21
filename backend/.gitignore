@@ -7,3 +7,5 @@ __pycache__/
 staticfiles/
 media/
 .ruff_cache/
+# GTFS da SPTrans: arquivos grandes, baixados manualmente (o portal exige login).
+data/gtfs/

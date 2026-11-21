@@ -36,6 +36,24 @@ const _line0245 = Line(
   boardingCode: '0245',
 );
 
+const _saoPaulo = City(
+  slug: 'sao-paulo',
+  name: 'São Paulo',
+  label: 'São Paulo - SP',
+  state: 'SP',
+  country: 'BR',
+  timezone: 'America/Sao_Paulo',
+  latitude: -23.55052,
+  longitude: -46.633308,
+);
+
+const _line1012 = Line(
+  name: 'Term. A - Jd. B',
+  origin: 'Term. A',
+  destination: 'Jd. B',
+  boardingCode: '1012-10',
+);
+
 ApiTrackingService buildService(MockClient client, {City? city = _city}) {
   return ApiTrackingService(
     ApiClient('http://127.0.0.1:8000', httpClient: client),
@@ -119,6 +137,61 @@ void main() {
       expect(positions.single.isStale, isFalse);
       expect(positions.single.dataMode, 'demo');
       expect(positions.single.source, 'csv_demo');
+    });
+
+    test('consulta linha de São Paulo e lê o envelope live', () async {
+      late http.Request captured;
+      final service = buildService(
+        MockClient((request) async {
+          captured = request;
+          return jsonResponse({
+            'city': 'sao-paulo',
+            'generatedAt': '2026-11-21T12:00:00Z',
+            'source': 'sptrans_api',
+            'dataMode': 'live',
+            'lines': [
+              {
+                'boardingCode': '1012-10',
+                'requestedCode': '1012-10',
+                'source': 'sptrans_api',
+                'dataMode': 'live',
+                'isStale': false,
+                'sourceStatus': 'ok',
+                'positions': [
+                  {
+                    'boardingCode': '1012-10',
+                    'vehicleCode': '12345',
+                    'latitude': -23.55,
+                    'longitude': -46.63,
+                    'capturedAt': '2026-11-21T11:59:30Z',
+                    'generatedAt': '2026-11-21T11:59:20Z',
+                    'receivedAt': '2026-11-21T12:00:00Z',
+                    'speed': null,
+                    'heading': 45.0,
+                    'previousLatitude': -23.56,
+                    'previousLongitude': -46.64,
+                    'isStale': false,
+                  },
+                ],
+              },
+            ],
+            'unresolvedLines': [],
+          });
+        }),
+        city: _saoPaulo,
+      );
+
+      final positions = await service.findPositions([_line1012]);
+
+      expect(captured.url.path, '/v1/cities/sao-paulo/positions');
+      expect(captured.url.queryParameters['codes'], '1012-10');
+      expect(positions.single.lineCode, '1012-10');
+      expect(positions.single.bus.code, '12345');
+      expect(positions.single.dataMode, 'live');
+      expect(positions.single.source, 'sptrans_api');
+      expect(positions.single.heading, 45.0);
+      expect(positions.single.previousLatitude, -23.56);
+      expect(positions.single.previousLongitude, -46.64);
     });
 
     test('mantém nulos o heading e a posição anterior quando ausentes', () async {

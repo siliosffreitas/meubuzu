@@ -30,6 +30,27 @@ void main() {
       expect(city.coverageNote, 'Cobertura inicial.');
     });
 
+    test('lê São Paulo com o fuso da cidade', () {
+      final city = City.fromJson({
+        'slug': 'sao-paulo',
+        'name': 'São Paulo',
+        'label': 'São Paulo - SP',
+        'state': 'SP',
+        'country': 'BR',
+        'timezone': 'America/Sao_Paulo',
+        'center': {'latitude': -23.55052, 'longitude': -46.633308},
+        'isActive': true,
+        'coverageNote': 'Catálogo: API Olho Vivo (SPTrans); traçados: GTFS.',
+      });
+
+      expect(city.slug, 'sao-paulo');
+      expect(city.label, 'São Paulo - SP');
+      expect(city.timezone, 'America/Sao_Paulo');
+      expect(city.latitude, -23.55052);
+      expect(city.longitude, -46.633308);
+      expect(city.coverageNote, contains('SPTrans'));
+    });
+
     test('aceita centro em texto e valores ausentes', () {
       final city = City.fromJson({
         'slug': 'teresina',

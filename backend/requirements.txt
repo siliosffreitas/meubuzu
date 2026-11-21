@@ -6,6 +6,9 @@ python-dotenv==1.2.4
 PyJWT==2.15.1
 argon2-cffi==25.1.0
 gunicorn==23.0.0
+celery[redis]==5.5.3
+requests==2.32.5
 
 # Desenvolvimento
 ruff==0.17.5
+responses==0.25.8
