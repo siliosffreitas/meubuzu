@@ -134,7 +134,7 @@ void main() {
       ]);
 
       expect(markers.single.infoWindow.title, 'Linha 0301 • Ônibus 4171');
-      expect(markers.single.infoWindow.snippet, 'Atualizado às 09:05');
+      expect(markers.single.infoWindow.snippet, 'Atualizado às 06:05');
     });
 
     test('não cria seta quando a direção ainda é desconhecida', () {

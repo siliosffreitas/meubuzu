@@ -90,7 +90,10 @@ double busMarkerFallbackHue(Color color) => HSLColor.fromColor(color).hue;
 BitmapDescriptor _fallbackIcon(Color color) =>
     BitmapDescriptor.defaultMarkerWithHue(busMarkerFallbackHue(color));
 
+/// Converte DateTime de UTC para o fuso local antes de formatar.
+/// O backend salva capturedAt em UTC; sem isso o app exibe horario +3h para cidades como Sao Paulo (UTC-3).
 String _formatCapturedAt(DateTime value) {
+  value = value.toLocal();
   final hour = value.hour.toString().padLeft(2, '0');
   final minute = value.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
