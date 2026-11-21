@@ -163,10 +163,13 @@ cd backend
 ```
 
 A infraestrutura local sobe com `docker compose up -d` (PostGIS, Redis e
-Mailpit). O backend usa PostgreSQL/PostGIS como fonte de verdade, com Redis e
-Celery para cache, locks e tarefas. Catálogo é importado em ciclo semanal
-(default) ou mensal por cidade; posições são ingeridas a cada 30 s. O `.env` do
-Django contém configuração local; não versione credenciais reais.
+Mailpit), que **não** inclui Celery. O backend usa PostgreSQL/PostGIS como fonte
+de verdade, com Redis e Celery para cache, locks e tarefas. Catálogo é importado
+em ciclo semanal (default) ou mensal por cidade; posições são ingeridas a cada
+30 s. Sem worker e beat rodando, o `runserver` não atualiza posições e o app
+mostra "Posições antigas". Em macOS local o worker precisa de `-P solo` por causa
+de um erro do `prefork`/`spawn`; veja `backend/README.md`. O `.env` do Django
+contém configuração local; não versione credenciais reais.
 
 São Paulo usa a API Olho Vivo (SPTrans) para catálogo e posições e o GTFS local
 apenas para traçados e lista semente. O token fica em `SPTRANS_API_TOKEN`, e os

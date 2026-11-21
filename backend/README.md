@@ -126,6 +126,21 @@ cd backend
 .venv/bin/celery -A config beat -l info
 ```
 
+O `runserver` não executa nenhuma dessas tarefas: **sem o worker e o beat rodando,
+as posições de São Paulo ficam congeladas e o app passa a mostrar "Posições
+antigas"**. O `docker compose` sobe apenas Postgres, Redis e Mailpit; o Celery
+precisa ser iniciado manualmente (ou por um gerenciador de processos no deploy).
+
+Em macOS local, use `-P solo` no worker. O pool `prefork` padrão usa `spawn` e
+pode falhar com `ValueError: not enough values to unpack (expected 3, got 0)`;
+em Linux/produção o padrão continua funcionando:
+
+```sh
+cd backend
+.venv/bin/celery -A config worker -l info -P solo
+.venv/bin/celery -A config beat -l info
+```
+
 O beat agenda:
 
 | Tarefa | Cadência | O que faz |
@@ -139,6 +154,31 @@ Cada execução usa um lock no cache (`TRACKING_CRAWL_LOCK_SECONDS`, padrão 25 
 para não sobrepor ciclos. `CELERY_TASK_ALWAYS_EAGER=true` executa as tarefas no
 próprio processo, útil em testes. Os comandos de gerenciamento equivalentes
 estão documentados nas seções de catálogo e rastreamento.
+
+#### Como verificar se o crawl está ativo
+
+```sh
+cd backend
+ps aux | grep -E "celery -A config (worker|beat)" | grep -v grep
+.venv/bin/celery -A config inspect active
+.venv/bin/python manage.py shell -c "
+from django.utils import timezone
+from django.db.models import Max
+from apps.tracking.models import LatestPosition, TrackingSource
+print('agora', timezone.now())
+print('capturada', LatestPosition.objects.filter(city__slug='sao-paulo').aggregate(Max('captured_at')))
+print('fonte', TrackingSource.objects.filter(city__slug='sao-paulo').values('last_success_at', 'last_error_at', 'last_error_message').first())
+"
+```
+
+O `inspect active` deve responder `1 node online`. A diferença entre `agora` e
+`capturada` precisa ficar em poucos segundos; acima de
+`TRACKING_STALE_AFTER_SECONDS` (padrão 120 s) o app marca as posições como
+antigas. No log do beat aparece `Scheduler: Sending due task
+tracking-sptrans-positions` e no log do worker `Task
+apps.tracking.tasks.crawl_sptrans_positions_task[...] succeeded`. O comando
+`crawl_sptrans_positions` sem `--dry-run` serve apenas para um ciclo manual de
+diagnóstico; no dia a dia quem atualiza é o beat.
 
 ### Endpoints de autenticação
 
