@@ -69,6 +69,15 @@ class FavoritesRepositoryImpl implements FavoritesRepository {
   }
 
   @override
+  Future<List<Favorite>> getFavoritesForCity(String? citySlug) async {
+    final all = await _service.fetch();
+    if (citySlug == null) {
+      return all;
+    }
+    return all.where((f) => f.city.slug.trim() == citySlug).toList();
+  }
+
+  @override
   Future<void> refresh() async {
     final favorites = await _service.fetch();
     _emit(_sorted(favorites));

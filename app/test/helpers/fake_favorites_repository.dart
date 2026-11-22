@@ -40,6 +40,14 @@ class FakeFavoritesRepository implements FavoritesRepository {
   Future<void> refresh() => onRefresh?.call() ?? Future.value();
 
   @override
+  Future<List<Favorite>> getFavoritesForCity(String? citySlug) async {
+    if (citySlug == null) {
+      return _favorites;
+    }
+    return _favorites.where((f) => f.city.slug.trim() == citySlug).toList();
+  }
+
+  @override
   Future<void> add(String boardingCode, {String? citySlug}) async {
     added.add(boardingCode);
     if (isFavorite(boardingCode, citySlug: citySlug)) {
@@ -82,8 +90,8 @@ class FakeFavoritesRepository implements FavoritesRepository {
   @override
   Future<void> toggle(String boardingCode, {String? citySlug}) =>
       isFavorite(boardingCode, citySlug: citySlug)
-          ? remove(boardingCode, citySlug: citySlug)
-          : add(boardingCode, citySlug: citySlug);
+      ? remove(boardingCode, citySlug: citySlug)
+      : add(boardingCode, citySlug: citySlug);
 
   void _emit(List<Favorite> favorites) {
     _favorites = List.unmodifiable(favorites);

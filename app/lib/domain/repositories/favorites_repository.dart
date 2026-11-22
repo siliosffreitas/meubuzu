@@ -6,6 +6,9 @@ abstract interface class FavoritesRepository implements Repository {
   /// Emite a lista atual; novos ouvintes recebem o estado atual imediatamente.
   Stream<List<Favorite>> get favorites;
 
+  /// Retorna os favoritos filtrados pela [citySlug]. Se nulo, retorna todos.
+  Future<List<Favorite>> getFavoritesForCity(String? citySlug);
+
   List<Favorite> get snapshot;
 
   /// Verifica o favorito pelo `boardingCode`, opcionalmente em uma cidade.

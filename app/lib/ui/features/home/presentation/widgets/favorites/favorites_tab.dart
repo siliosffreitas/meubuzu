@@ -6,6 +6,7 @@ import '../../../../../core/widgets/empty_state.dart';
 import '../../../../../core/widgets/tab_header.dart';
 import '../../../../../../di/dependencies.dart';
 import '../../../../../../domain/models/favorite.dart';
+import '../../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../../domain/repositories/favorites_repository.dart';
 import '../../../../../routing/app_routes.dart';
 import 'favorites_state.dart';
@@ -22,6 +23,7 @@ class FavoritesTab extends StatefulWidget {
     this.isSelected = false,
     this.viewModel,
     this.favoritesRepository,
+    this.authRepository,
   });
 
   /// Ação do estado vazio: volta para a aba Mapa.
@@ -35,6 +37,9 @@ class FavoritesTab extends StatefulWidget {
 
   /// Permite injetar um repositório fake em testes.
   final FavoritesRepository? favoritesRepository;
+
+  /// Permite injetar um repositório de autenticação fake em testes.
+  final AuthRepository? authRepository;
 
   @override
   State<FavoritesTab> createState() => _FavoritesTabState();
@@ -56,6 +61,7 @@ class _FavoritesTabState extends State<FavoritesTab>
       _viewModel = FavoritesViewModel(
         widget.favoritesRepository ??
             injector.getRepository<FavoritesRepository>(),
+        widget.authRepository ?? injector.getRepository<AuthRepository>(),
       );
       _ownsViewModel = true;
     }
@@ -204,9 +210,9 @@ class _FavoritesTabState extends State<FavoritesTab>
               favorite: favorite,
               onOpen: () => _openFavorite(favorite),
               onRemove: () => _viewModel.toggle(
-                    favorite.displayCode,
-                    citySlug: favorite.citySlug,
-                  ),
+                favorite.displayCode,
+                citySlug: favorite.citySlug,
+              ),
             ),
             const SizedBox(height: 10),
           ],

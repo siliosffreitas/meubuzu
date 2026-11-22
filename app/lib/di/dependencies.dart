@@ -166,7 +166,10 @@ Future<void> setupDependencies() async {
     () => AccountViewModel(injector.getRepository<AuthRepository>()),
   );
   injector.addViewModel<FavoritesViewModel>(
-    () => FavoritesViewModel(injector.getRepository<FavoritesRepository>()),
+    () => FavoritesViewModel(
+      injector.getRepository<FavoritesRepository>(),
+      injector.getRepository<AuthRepository>(),
+    ),
   );
   injector.addViewModel<MapSearchViewModel>(
     () => MapSearchViewModel(

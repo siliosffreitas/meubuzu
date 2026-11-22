@@ -2,22 +2,33 @@ import 'dart:async';
 
 import '../../../../../../domain/contracts/contracts.dart';
 import '../../../../../../domain/models/favorite.dart';
+import '../../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../../domain/repositories/favorites_repository.dart';
 import 'favorites_state.dart';
 
-/// Carrega os favoritos da conta e mantém a lista agrupada por cidade.
+/// Carrega os favoritos da conta e exibe apenas os da cidade selecionada.
+///
+/// O repositório mantém os favoritos de todas as cidades; a cidade ativa vem
+/// do [AuthRepository]. Quando a cidade muda, a lista exibida é recalculada
+/// imediatamente, sem depender de uma nova busca ao backend.
 class FavoritesViewModel extends ViewmodelBase {
-  FavoritesViewModel(this._repository) {
+  FavoritesViewModel(this._repository, this._auth) {
+    _selectedCitySlug = _normalizedSlug(_auth.selectedCity?.slug);
     _subscription = _repository.favorites.listen(
-      (favorites) => _update(FavoritesReady(favorites)),
+      _handleFavorites,
       onError: (_) => _update(
         const FavoritesError('Não foi possível carregar os favoritos.'),
       ),
     );
+    _auth.addListener(_handleCityChange);
   }
 
   final FavoritesRepository _repository;
+  final AuthRepository _auth;
   StreamSubscription<List<Favorite>>? _subscription;
+
+  List<Favorite> _allFavorites = const [];
+  String? _selectedCitySlug;
 
   FavoritesState _state = const FavoritesInitial();
   String? _errorMessage;
@@ -29,6 +40,7 @@ class FavoritesViewModel extends ViewmodelBase {
   /// Erro de uma ação de favoritar/desfavoritar, exibido como aviso na tela.
   String? get errorMessage => _errorMessage;
 
+  /// Favoritos da cidade selecionada.
   List<Favorite> get favorites => _state.favorites;
 
   /// Favoritos agrupados pelo rótulo da cidade, na ordem recebida da API.
@@ -46,6 +58,8 @@ class FavoritesViewModel extends ViewmodelBase {
     if (_isLoading || _isDisposed) {
       return;
     }
+    // A cidade pode ter mudado enquanto a aba estava oculta.
+    _syncSelectedCity();
     _isLoading = true;
     _update(const FavoritesLoading());
 
@@ -80,6 +94,37 @@ class FavoritesViewModel extends ViewmodelBase {
     }
   }
 
+  void _handleFavorites(List<Favorite> favorites) {
+    _allFavorites = favorites;
+    _emitVisibleFavorites();
+  }
+
+  void _handleCityChange() {
+    _syncSelectedCity();
+  }
+
+  void _syncSelectedCity() {
+    final nextSlug = _normalizedSlug(_auth.selectedCity?.slug);
+    if (nextSlug == _selectedCitySlug) {
+      return;
+    }
+    _selectedCitySlug = nextSlug;
+    _emitVisibleFavorites();
+  }
+
+  void _emitVisibleFavorites() {
+    final slug = _selectedCitySlug;
+    final visible = slug == null
+        ? _allFavorites
+        : _allFavorites.where((favorite) => favorite.citySlug == slug).toList();
+    _update(FavoritesReady(visible));
+  }
+
+  static String? _normalizedSlug(String? slug) {
+    final value = slug?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   void _update(FavoritesState state) {
     if (_isDisposed) {
       return;
@@ -92,6 +137,7 @@ class FavoritesViewModel extends ViewmodelBase {
   void dispose() {
     _isDisposed = true;
     _subscription?.cancel();
+    _auth.removeListener(_handleCityChange);
     super.dispose();
   }
 }
