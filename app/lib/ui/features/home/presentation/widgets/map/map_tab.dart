@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../../core/extensions/line_map_color.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/selected_city_badge.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../data/repositories/tracking_repository.dart';
 import '../../../../../../data/services/line_search_service.dart';
@@ -91,6 +92,9 @@ class _MapTabState extends State<MapTab>
     }
     return LatLng(city.latitude, city.longitude);
   }
+
+  /// Cidade exibida acima da barra de busca.
+  String get _cityLabel => _authRepository?.selectedCity?.displayLabel ?? '';
 
   final Set<String> _fittedLineCodes = <String>{};
   Set<String> _trackedLineKeys = <String>{};
@@ -201,7 +205,9 @@ class _MapTabState extends State<MapTab>
       return;
     }
 
-    _citySlug = nextSlug;
+    setState(() {
+      _citySlug = nextSlug;
+    });
     _centeredOnUser = false;
     _stopTrackingForCityChange();
 
@@ -705,13 +711,20 @@ class _MapTabState extends State<MapTab>
             bottom: false,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: MapSearchBar(
-                text: _selectedSuggestion == null
-                    ? null
-                    : _selectedSuggestion!.type == PlaceSuggestionType.line
-                    ? _selectedSuggestion!.code
-                    : _selectedSuggestion!.title,
-                onTap: _openSearch,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SelectedCityBadge(label: _cityLabel),
+                  const SizedBox(height: 8),
+                  MapSearchBar(
+                    text: _selectedSuggestion == null
+                        ? null
+                        : _selectedSuggestion!.type == PlaceSuggestionType.line
+                        ? _selectedSuggestion!.code
+                        : _selectedSuggestion!.title,
+                    onTap: _openSearch,
+                  ),
+                ],
               ),
             ),
           ),

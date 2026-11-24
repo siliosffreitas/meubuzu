@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meubuzu/data/models/place_suggestion.dart';
+import 'package:meubuzu/domain/models/city.dart';
 import 'package:meubuzu/domain/models/line.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
+import 'package:meubuzu/domain/repositories/auth_repository.dart';
 import 'package:meubuzu/domain/repositories/place_search_repository.dart';
 import 'package:meubuzu/domain/repositories/tracking_repository.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_cache.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_page.dart';
 import 'package:meubuzu/ui/features/home/presentation/widgets/map/map_search_view_model.dart';
+
+import '../../../../../../helpers/fake_auth_repository.dart';
 
 /// Avança o relógio pouco além do debounce para disparar a busca no backend.
 Duration get _debounceWait =>
@@ -74,9 +78,23 @@ const _line = PlaceSuggestion(
   longitude: -46.676,
 );
 
+City _city(String slug, String name, String state) {
+  return City(
+    slug: slug,
+    name: name,
+    label: '$name - $state',
+    state: state,
+    country: 'BR',
+    timezone: 'America/Fortaleza',
+    latitude: -5.16,
+    longitude: -42.79,
+  );
+}
+
 Widget _appWithSearch(
   PlaceSearchRepository repository, {
   TrackingRepository? trackingRepository,
+  AuthRepository? authRepository,
 }) {
   final router = GoRouter(
     initialLocation: '/',
@@ -97,6 +115,7 @@ Widget _appWithSearch(
         builder: (context, state) => MapSearchPage(
           repository: repository,
           trackingRepository: trackingRepository,
+          authRepository: authRepository,
         ),
       ),
     ],
@@ -114,6 +133,65 @@ void main() {
 
       expect(find.text('Encontre sua linha ou parada'), findsOneWidget);
       expect(find.text('Buscar linha ou parada'), findsOneWidget);
+    });
+
+    testWidgets('mostra a cidade selecionada no rodapé', (tester) async {
+      final auth = FakeAuthRepository(
+        city: _city('santa-aurora', 'Santa Aurora', 'SP'),
+      );
+
+      await tester.pumpWidget(
+        _appWithSearch(_FakeSearchRepository(const []), authRepository: auth),
+      );
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Santa Aurora, SP'), findsOneWidget);
+      expect(find.text('Encontre sua linha ou parada'), findsOneWidget);
+    });
+
+    testWidgets('mantém a cidade no rodapé quando há resultados', (
+      tester,
+    ) async {
+      final auth = FakeAuthRepository(
+        city: _city('santa-aurora', 'Santa Aurora', 'SP'),
+      );
+
+      await tester.pumpWidget(
+        _appWithSearch(
+          _FakeSearchRepository(const [_line]),
+          authRepository: auth,
+        ),
+      );
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '875');
+      await tester.pump(_debounceWait);
+      await tester.pumpAndSettle();
+
+      expect(find.text('875A-10'), findsOneWidget);
+      expect(find.text('Santa Aurora, SP'), findsOneWidget);
+    });
+
+    testWidgets('atualiza o rodapé ao trocar de cidade', (tester) async {
+      final auth = FakeAuthRepository(
+        city: _city('santa-aurora', 'Santa Aurora', 'SP'),
+      );
+
+      await tester.pumpWidget(
+        _appWithSearch(_FakeSearchRepository(const []), authRepository: auth),
+      );
+      await tester.tap(find.text('Abrir busca'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Santa Aurora, SP'), findsOneWidget);
+
+      await auth.selectCity(_city('teresina', 'Teresina', 'PI'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Santa Aurora, SP'), findsNothing);
+      expect(find.text('Teresina, PI'), findsOneWidget);
     });
 
     testWidgets('busca e devolve a sugestão escolhida', (tester) async {

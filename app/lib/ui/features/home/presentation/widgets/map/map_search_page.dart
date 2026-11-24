@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/widgets/selected_city_badge.dart';
 import '../../../../../../data/models/place_suggestion.dart';
 import '../../../../../../di/dependencies.dart';
+import '../../../../../../domain/repositories/auth_repository.dart';
 import '../../../../../../domain/repositories/favorites_repository.dart';
 import '../../../../../../domain/repositories/place_search_repository.dart';
 import '../../../../../../domain/repositories/tracking_repository.dart';
@@ -22,6 +24,7 @@ class MapSearchPage extends StatefulWidget {
     this.favoritesRepository,
     this.viewModel,
     this.activeSuggestionCode,
+    this.authRepository,
   });
 
   /// Permite injetar um repositório de busca fake em testes.
@@ -39,6 +42,9 @@ class MapSearchPage extends StatefulWidget {
   /// Linha atualmente exibida no mapa, destacada na lista de resultados.
   final String? activeSuggestionCode;
 
+  /// Permite injetar um repositório de autenticação fake em testes.
+  final AuthRepository? authRepository;
+
   @override
   State<MapSearchPage> createState() => _MapSearchPageState();
 }
@@ -47,10 +53,14 @@ class _MapSearchPageState extends State<MapSearchPage> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   late final MapSearchViewModel _viewModel;
+  AuthRepository? _authRepository;
 
   @override
   void initState() {
     super.initState();
+    _authRepository =
+        widget.authRepository ??
+        (injector.isReady ? injector.getRepository<AuthRepository>() : null);
     _viewModel =
         widget.viewModel ??
         (widget.repository != null
@@ -153,8 +163,24 @@ class _MapSearchPageState extends State<MapSearchPage> {
                 },
               ),
             ),
+            _buildCityFooter(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Rodapé fixo com a cidade selecionada, acima do teclado.
+  Widget _buildCityFooter() {
+    final auth = _authRepository;
+    if (auth == null) {
+      return const SelectedCityBadge(label: '');
+    }
+    return ListenableBuilder(
+      listenable: auth,
+      builder: (context, _) => SelectedCityBadge(
+        label: auth.selectedCity?.displayLabel ?? '',
+        variant: SelectedCityBadgeVariant.footer,
       ),
     );
   }

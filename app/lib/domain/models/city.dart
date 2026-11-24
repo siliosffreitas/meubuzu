@@ -27,6 +27,15 @@ class City {
   final bool isActive;
   final String? coverageNote;
 
+  /// Rótulo curto para cabeçalhos: `"Nome, UF"` quando há UF, senão `"Nome"`.
+  ///
+  /// Diferente de [label] (que vem da API no formato `"Nome - UF"`), este
+  /// getter é usado nos indicadores de cidade do mapa e da busca.
+  String get displayLabel {
+    final uf = state.trim();
+    return uf.isEmpty ? name : '$name, $uf';
+  }
+
   /// Lê uma cidade de um JSON, devolvendo `null` quando o valor não é um mapa.
   static City? fromJsonOrNull(Object? json) {
     if (json is! Map<String, dynamic>) {

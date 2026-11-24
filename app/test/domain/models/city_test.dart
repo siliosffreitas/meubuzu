@@ -91,5 +91,32 @@ void main() {
       expect(city == City.fromJson({...json, 'slug': 'outra'}), isFalse);
       expect(city.hashCode, City.fromJson(json).hashCode);
     });
+
+    group('displayLabel', () {
+      test('usa nome e UF separados por vírgula', () {
+        final city = City.fromJson(json);
+
+        expect(city.displayLabel, 'Teresina, PI');
+      });
+
+      test('mostra apenas o nome quando não há UF', () {
+        final city = City.fromJson({
+          'slug': 'santa-aurora',
+          'name': 'Santa Aurora',
+        });
+
+        expect(city.displayLabel, 'Santa Aurora');
+      });
+
+      test('ignora UF em branco', () {
+        final city = City.fromJson({
+          'slug': 'santa-aurora',
+          'name': 'Santa Aurora',
+          'state': '   ',
+        });
+
+        expect(city.displayLabel, 'Santa Aurora');
+      });
+    });
   });
 }
