@@ -315,21 +315,23 @@ class _MapTabState extends State<MapTab>
     final currentKeys = {
       for (final tracked in trackedLines) trackedLineKey(tracked),
     };
+    final addedKeys = currentKeys.difference(_trackedLineKeys);
+    final removedKeys = _trackedLineKeys.difference(currentKeys);
     final currentDirections = {
       for (final tracked in trackedLines)
         trackedLineKey(tracked): tracked.direction,
     };
-    final previousDirections = _trackedDirections;
     final changedKeys = <String>{
       for (final entry in currentDirections.entries)
-        if (previousDirections[entry.key] != entry.value) entry.key,
+        if (!addedKeys.contains(entry.key) &&
+            _trackedDirections[entry.key] != entry.value)
+          entry.key,
     };
-    final removedKeys = _trackedLineKeys.difference(currentKeys);
     _trackedLineKeys = currentKeys;
     _trackedDirections = currentDirections;
-    if (changedKeys.isNotEmpty) {
-      _fittedLineCodes.removeAll(changedKeys);
-    }
+    // Linha existente que apenas trocou de itinerário não pode gerar outro
+    // enquadramento: a polyline muda, mas o zoom atual do mapa fica intacto.
+    _fittedLineCodes.addAll(changedKeys);
 
     _busDirections.update(trackedLines);
     _busAnimator.animateTo(_trackedBusPositions());
@@ -337,9 +339,9 @@ class _MapTabState extends State<MapTab>
     setState(() {});
     if (removedKeys.isNotEmpty) {
       _fitAfterRemoval(trackedLines);
-    } else if (changedKeys.isNotEmpty) {
-      _fitChangedRoutes(trackedLines, changedKeys);
     } else {
+      // Novas linhas continuam sendo enquadradas; as que só trocaram de sentido
+      // ficam marcadas acima e não recalculam o zoom.
       _fitLatestRoute();
     }
     _ensureBusIcons();
@@ -365,27 +367,6 @@ class _MapTabState extends State<MapTab>
     }
 
     _fitPositions(trackedLinesCoordinates(trackedLines));
-  }
-
-  /// Enquadra os traçados das linhas cujo sentido acabou de mudar.
-  ///
-  /// As posições dos ônibus não são filtradas por sentido, então apenas a
-  /// polyline e a câmera acompanham o novo itinerário.
-  void _fitChangedRoutes(List<TrackedLine> trackedLines, Set<String> keys) {
-    final positions = <UserCoordinates>[];
-    for (final tracked in trackedLines) {
-      final key = trackedLineKey(tracked);
-      if (!keys.contains(key)) {
-        continue;
-      }
-      final routePositions = tracked.route?.positions;
-      if (routePositions == null || routePositions.isEmpty) {
-        continue;
-      }
-      positions.addAll(routePositions);
-      _fittedLineCodes.add(key);
-    }
-    _fitPositions(positions);
   }
 
   /// Descarta enquadramentos de linhas que saíram do mapa.

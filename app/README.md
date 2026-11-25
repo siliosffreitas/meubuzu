@@ -182,10 +182,12 @@ mesmo quando a linha tem apenas um itinerário. Os sentidos vêm de
 `GET /v1/cities/{citySlug}/lines/{boardingCode}/directions`; o painel mostra
 `Itinerário não disponível` quando a lista é vazia e o modal explica que a
 linha ainda não tem itinerário cadastrado. Ao escolher outro sentido, o app
-busca o traçado com `?direction=` (`ApiRouteService`), substitui a polyline e
-reenquadra a câmera. Os marcadores dos ônibus não são filtrados: as posições
-continuam aparecendo mesmo após a troca. O sentido escolhido é preservado pelo
-polling de posições enquanto a linha permanecer acompanhada.
+busca o traçado com `?direction=` (`ApiRouteService`) e substitui a polyline.
+A câmera não é reenquadrada: o zoom atual do mapa é mantido. Os marcadores dos
+ônibus não são filtrados: as posições continuam aparecendo mesmo após a troca.
+O sentido escolhido é preservado pelo polling de posições enquanto a linha
+permanecer acompanhada. Linhas recém-adicionadas continuam sendo enquadradas
+normalmente.
 
 ### Busca de linhas e paradas
 
