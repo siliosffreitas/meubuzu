@@ -431,6 +431,15 @@ e devolve `source=sptrans_api` e `dataMode=live`. O histórico fica em
 `tracking_position_history`, uma tabela particionada por dia UTC com retenção de
 **24 horas**.
 
+O endpoint aplica um corte rígido de idade na leitura: posições cujo
+`captured_at` é mais antigo que `TRACKING_LIVE_MAX_POSITION_AGE_SECONDS`
+(padrão: 300 s) **não são devolvidas**, mesmo que ainda existam em
+`tracking_latest_position` — o crawler não apaga veículos que pararam de
+reportar. A linha sem captura recente responde `positions: []` e
+`sourceStatus: no_positions`. Entre `TRACKING_STALE_AFTER_SECONDS` (padrão:
+120 s) e o corte de 5 min, a posição continua sendo devolvida com
+`isStale: true` e o app mostra o aviso "Posições antigas".
+
 ```sh
 cd backend
 # Inspeção sem escrita

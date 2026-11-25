@@ -263,6 +263,42 @@ class LivePositionsApiTests(AuthTestCase, SessionMixin):
         assert "1273" not in body
         assert "externalId" not in body
 
+    @override_settings(TRACKING_LIVE_MAX_POSITION_AGE_SECONDS=300)
+    def test_drops_positions_older_than_max_age(self):
+        moment = datetime.now(UTC)
+        self.make_position(
+            vehicle_code="ANTIGA",
+            captured_at=moment - timedelta(seconds=301),
+            received_at=moment,
+        )
+        self.make_position(
+            vehicle_code="RECENTE",
+            captured_at=moment - timedelta(seconds=299),
+            received_at=moment,
+        )
+
+        response = self.get_positions()
+
+        assert response.status_code == 200, response.content
+        positions = response.json()["lines"][0]["positions"]
+        assert [item["vehicleCode"] for item in positions] == ["RECENTE"]
+
+    @override_settings(TRACKING_LIVE_MAX_POSITION_AGE_SECONDS=300)
+    def test_line_with_only_old_positions_returns_empty_block(self):
+        moment = datetime.now(UTC)
+        self.make_position(
+            captured_at=moment - timedelta(seconds=301),
+            received_at=moment,
+        )
+
+        response = self.get_positions()
+
+        assert response.status_code == 200, response.content
+        line = response.json()["lines"][0]
+        assert line["positions"] == []
+        assert line["sourceStatus"] == "no_positions"
+        assert line["isStale"] is False
+
     def test_empty_line_returns_empty_block(self):
         response = self.get_positions()
 

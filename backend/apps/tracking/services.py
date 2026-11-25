@@ -355,14 +355,30 @@ def _live_payload(
     *,
     now_utc: datetime,
 ) -> dict:
-    """Monta o envelope a partir das últimas posições gravadas pelo crawler."""
+    """Monta o envelope a partir das últimas posições gravadas pelo crawler.
+
+    A consulta aplica o corte de idade já no banco: posições mais antigas que
+    `TRACKING_LIVE_MAX_POSITION_AGE_SECONDS` não são devolvidas, mesmo que
+    continuem em `LatestPosition` (o crawler não apaga veículos que pararam de
+    reportar). A linha sem nenhuma captura recente cai em `no_positions`.
+    """
 
     stale_after_seconds = int(getattr(settings, "TRACKING_STALE_AFTER_SECONDS", 120))
+    max_age_seconds = int(
+        getattr(
+            settings,
+            "TRACKING_LIVE_MAX_POSITION_AGE_SECONDS",
+            getattr(settings, "TRACKING_POSITION_WINDOW_SECONDS", 300),
+        )
+    )
+    cutoff = now_utc - timedelta(seconds=max_age_seconds)
     line_ids = [line.id for _, line in resolved]
     rows = (
-        LatestPosition.objects.filter(city=city, line_id__in=line_ids).select_related(
-            "line"
-        )
+        LatestPosition.objects.filter(
+            city=city,
+            line_id__in=line_ids,
+            captured_at__gte=cutoff,
+        ).select_related("line")
         if line_ids
         else []
     )
