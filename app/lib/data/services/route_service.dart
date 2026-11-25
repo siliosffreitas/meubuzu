@@ -9,8 +9,9 @@ import '../utils/csv_catalog.dart';
 abstract interface class RouteService implements Service {
   /// Retorna o traçado da linha [lineCode] (`sgLinha`).
   ///
+  /// [direction] seleciona o sentido; sem ele, o backend usa o sentido padrão.
   /// Retorna `null` quando a linha não possui traçado cadastrado.
-  Future<Route?> findRoute(String lineCode);
+  Future<Route?> findRoute(String lineCode, {int? direction});
 }
 
 /// Implementação que lê o traçado de `assets/routes/<sgLinha>.csv`.
@@ -29,7 +30,7 @@ class AssetRouteService implements RouteService {
   final Map<String, Future<Route?>> _routes = {};
 
   @override
-  Future<Route?> findRoute(String lineCode) {
+  Future<Route?> findRoute(String lineCode, {int? direction}) {
     final normalized = lineCode.trim();
     if (normalized.isEmpty) {
       return Future<Route?>.value();

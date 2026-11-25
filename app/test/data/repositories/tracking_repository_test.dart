@@ -1,12 +1,14 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/data/repositories/tracking_repository.dart';
+import 'package:meubuzu/data/services/line_directions_service.dart';
 import 'package:meubuzu/data/services/line_search_service.dart';
 import 'package:meubuzu/data/services/route_service.dart';
 import 'package:meubuzu/data/services/tracking_service.dart';
 import 'package:meubuzu/domain/models/bus.dart';
 import 'package:meubuzu/domain/models/bus_position.dart';
 import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/line_direction.dart';
 import 'package:meubuzu/domain/models/route.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/domain/models/user_coordinates.dart';
@@ -45,11 +47,34 @@ class _FakeRouteService implements RouteService {
 
   final Map<String, Route?> routes;
   final queries = <String>[];
+  final directions = <int?>[];
+  final Set<int> failingDirections = <int>{};
 
   @override
-  Future<Route?> findRoute(String lineCode) async {
+  Future<Route?> findRoute(String lineCode, {int? direction}) async {
     queries.add(lineCode);
+    directions.add(direction);
+    if (direction != null && failingDirections.contains(direction)) {
+      throw StateError('falha na consulta do traçado');
+    }
     return routes[lineCode];
+  }
+}
+
+class _FakeLineDirectionsService implements LineDirectionsService {
+  _FakeLineDirectionsService(this.directions);
+
+  final List<LineDirection> directions;
+  final queries = <String>[];
+  bool shouldThrow = false;
+
+  @override
+  Future<List<LineDirection>> findDirections(String lineCode) async {
+    queries.add(lineCode);
+    if (shouldThrow) {
+      throw StateError('falha na consulta de sentidos');
+    }
+    return directions;
   }
 }
 
@@ -464,6 +489,168 @@ void main() {
 
         repository.dispose();
       });
+    });
+
+    test('começa pelo primeiro sentido com traçado disponível', () async {
+      final directionsService = _FakeLineDirectionsService([
+        const LineDirection(
+          value: 0,
+          label: 'Centro → Bairro',
+          hasRoute: false,
+          stopCount: 5,
+        ),
+        const LineDirection(
+          value: 1,
+          label: 'Bairro → Centro',
+          hasRoute: true,
+          stopCount: 6,
+        ),
+      ]);
+      final routeService = _FakeRouteService({'0301': route});
+      final repository = TrackingRepositoryImpl(
+        routeService,
+        _FakeLineSearchService([line]),
+        directionsService: directionsService,
+      );
+      addTearDown(repository.dispose);
+
+      final tracked = await repository.startTracking('0301');
+
+      expect(tracked!.direction, 1);
+      expect(tracked.directions, directionsService.directions);
+      expect(tracked.currentDirection?.label, 'Bairro → Centro');
+      expect(routeService.directions, [1]);
+    });
+
+    test('mantém o rastreamento mesmo sem sentidos informados', () async {
+      final directionsService = _FakeLineDirectionsService(const []);
+      final repository = TrackingRepositoryImpl(
+        _FakeRouteService({'0301': null}),
+        _FakeLineSearchService([line]),
+        directionsService: directionsService,
+      );
+      addTearDown(repository.dispose);
+
+      final tracked = await repository.startTracking('0301');
+
+      expect(tracked, isNotNull);
+      expect(tracked!.direction, 0);
+      expect(tracked.directions, isEmpty);
+      expect(tracked.currentDirection, isNull);
+      expect(tracked.route, isNull);
+    });
+
+    test('não deixa a consulta de sentidos impedir o rastreamento', () async {
+      final directionsService = _FakeLineDirectionsService(const [])
+        ..shouldThrow = true;
+      final repository = TrackingRepositoryImpl(
+        _FakeRouteService({'0301': route}),
+        _FakeLineSearchService([line]),
+        directionsService: directionsService,
+      );
+      addTearDown(repository.dispose);
+
+      final tracked = await repository.startTracking('0301');
+
+      expect(tracked, isNotNull);
+      expect(tracked!.route, route);
+      expect(tracked.directions, isEmpty);
+    });
+
+    test('troca o traçado e preserva as posições ao mudar o sentido', () async {
+      final secondRoute = Route(
+        positions: const [
+          UserCoordinates(latitude: -5.3, longitude: -42.95),
+        ],
+      );
+      final routeService = _FakeRouteService({'0301': route});
+      final trackingService = _FakeTrackingService([_position('4171')]);
+      final repository = TrackingRepositoryImpl(
+        routeService,
+        _FakeLineSearchService([line]),
+        directionsService: _FakeLineDirectionsService([
+          const LineDirection(value: 0, label: 'Ida', hasRoute: true),
+          const LineDirection(value: 1, label: 'Volta', hasRoute: true),
+        ]),
+        trackingService: trackingService,
+      );
+      addTearDown(repository.dispose);
+
+      await repository.startTracking('0301');
+      routeService.directions.clear();
+      // O fake de rotas usa um mapa por código; trocamos a resposta antes da
+      // segunda consulta para representar o traçado do outro sentido.
+      routeService.routes['0301'] = secondRoute;
+
+      final updated = await repository.changeDirection('0301', 1);
+
+      expect(updated, isNotNull);
+      expect(updated!.direction, 1);
+      expect(updated.route, same(secondRoute));
+      expect(updated.busPositions.map((position) => position.bus.code), [
+        '4171',
+      ]);
+      expect(routeService.directions, [1]);
+
+      final published = await repository.trackingRoutes.first;
+      expect(published.single.direction, 1);
+      expect(published.single.route, same(secondRoute));
+    });
+
+    test('mantém o sentido escolhido ao atualizar as posições', () {
+      fakeAsync((async) {
+        final trackingService = _FakeTrackingService([_position('4171')]);
+        final repository = TrackingRepositoryImpl(
+          _FakeRouteService({'0301': route}),
+          _FakeLineSearchService([line]),
+          directionsService: _FakeLineDirectionsService([
+            const LineDirection(value: 0, label: 'Ida', hasRoute: true),
+            const LineDirection(value: 1, label: 'Volta', hasRoute: true),
+          ]),
+          trackingService: trackingService,
+        );
+        final emissions = <List<TrackedLine>>[];
+        final subscription = repository.trackingRoutes.listen(emissions.add);
+
+        repository.startTracking('0301');
+        async.flushMicrotasks();
+        repository.changeDirection('0301', 1);
+        async.flushMicrotasks();
+
+        trackingService.positions = [_position('5096')];
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+
+        expect(emissions.last.single.direction, 1);
+        expect(emissions.last.single.busPositions.single.bus.code, '5096');
+
+        subscription.cancel();
+        repository.dispose();
+      });
+    });
+
+    test('falha ao trocar o sentido mantém o traçado anterior', () async {
+      final routeService = _FakeRouteService({'0301': route})
+        ..failingDirections.add(1);
+      final repository = TrackingRepositoryImpl(
+        routeService,
+        _FakeLineSearchService([line]),
+        directionsService: _FakeLineDirectionsService([
+          const LineDirection(value: 0, label: 'Ida', hasRoute: true),
+          const LineDirection(value: 1, label: 'Volta', hasRoute: true),
+        ]),
+      );
+      addTearDown(repository.dispose);
+
+      final initial = await repository.startTracking('0301');
+      await expectLater(
+        repository.changeDirection('0301', 1),
+        throwsStateError,
+      );
+
+      final current = await repository.trackingRoutes.first;
+      expect(current.single.direction, 0);
+      expect(current.single.route, same(initial!.route));
     });
   });
 }

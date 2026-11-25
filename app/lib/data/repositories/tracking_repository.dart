@@ -2,8 +2,10 @@ import 'dart:async';
 
 import '../../domain/models/bus_position.dart';
 import '../../domain/models/line.dart';
+import '../../domain/models/line_direction.dart';
 import '../../domain/models/tracked_line.dart';
 import '../../domain/repositories/tracking_repository.dart';
+import '../services/line_directions_service.dart';
 import '../services/line_search_service.dart';
 import '../services/route_service.dart';
 import '../services/tracking_service.dart';
@@ -19,12 +21,15 @@ class TrackingRepositoryImpl implements TrackingRepository {
   TrackingRepositoryImpl(
     this._routeService,
     this._lineSearchService, {
+    LineDirectionsService? directionsService,
     this.trackingService,
     this.pollInterval = const Duration(seconds: 30),
-  });
+  }) : _directionsService =
+           directionsService ?? const EmptyLineDirectionsService();
 
   final RouteService _routeService;
   final LineSearchService _lineSearchService;
+  final LineDirectionsService _directionsService;
 
   /// Serviço que fornece as posições dos ônibus, quando disponível.
   final TrackingService? trackingService;
@@ -37,6 +42,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
 
   final Map<String, TrackedLine> _trackedLines = <String, TrackedLine>{};
   final Set<String> _pendingLines = <String>{};
+  final Set<String> _pendingDirections = <String>{};
 
   List<TrackedLine> _latestRoutes = const [];
 
@@ -79,7 +85,15 @@ class TrackingRepositoryImpl implements TrackingRepository {
         return null;
       }
 
-      final route = await _routeService.findRoute(normalized);
+      final directions = await _loadDirections(normalized);
+      if (_isDisposed) {
+        return null;
+      }
+      final direction = _initialDirection(directions);
+      final route = await _routeService.findRoute(
+        normalized,
+        direction: direction,
+      );
       if (_isDisposed) {
         return null;
       }
@@ -88,6 +102,8 @@ class TrackingRepositoryImpl implements TrackingRepository {
         line: line,
         route: route,
         busPositions: const [],
+        direction: direction,
+        directions: directions,
       );
 
       // Reinicia o cronômetro a partir da adição e consulta todas as linhas
@@ -100,6 +116,54 @@ class TrackingRepositoryImpl implements TrackingRepository {
       return _trackedLines[normalized];
     } finally {
       _pendingLines.remove(normalized);
+    }
+  }
+
+  @override
+  Future<TrackedLine?> changeDirection(String lineCode, int direction) async {
+    final normalized = lineCode.trim();
+    if (normalized.isEmpty || _isDisposed) {
+      return null;
+    }
+
+    final current = _trackedLines[normalized];
+    if (current == null) {
+      return null;
+    }
+    if (current.direction == direction) {
+      return current;
+    }
+    if (!_pendingDirections.add(normalized)) {
+      return null;
+    }
+
+    try {
+      final route = await _routeService.findRoute(
+        normalized,
+        direction: direction,
+      );
+      if (_isDisposed) {
+        return null;
+      }
+
+      // A linha pode ter sido removida enquanto o traçado era carregado.
+      final latest = _trackedLines[normalized];
+      if (latest == null) {
+        return null;
+      }
+
+      final updated = TrackedLine(
+        line: latest.line,
+        route: route,
+        busPositions: latest.busPositions,
+        direction: direction,
+        directions: latest.directions,
+      );
+      _trackedLines[normalized] = updated;
+      _publish();
+      return updated;
+    } finally {
+      _pendingDirections.remove(normalized);
     }
   }
 
@@ -126,6 +190,7 @@ class TrackingRepositoryImpl implements TrackingRepository {
     _cancelPolling();
     _trackedLines.clear();
     _pendingLines.clear();
+    _pendingDirections.clear();
     _latestRoutes = const [];
     _trackingController.close();
   }
@@ -139,6 +204,25 @@ class TrackingRepositoryImpl implements TrackingRepository {
       }
     }
     return results.isNotEmpty ? results.first : null;
+  }
+
+  /// Carrega os sentidos sem impedir o rastreamento quando a consulta falha.
+  Future<List<LineDirection>> _loadDirections(String lineCode) async {
+    try {
+      return await _directionsService.findDirections(lineCode);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Sentido inicial: o primeiro com traçado ou, na falta dele, o primeiro.
+  int _initialDirection(List<LineDirection> directions) {
+    for (final direction in directions) {
+      if (direction.hasRoute) {
+        return direction.value;
+      }
+    }
+    return directions.isNotEmpty ? directions.first.value : 0;
   }
 
   void _restartPolling() {
@@ -215,6 +299,8 @@ class TrackingRepositoryImpl implements TrackingRepository {
           line: current.line,
           route: current.route,
           busPositions: byLineCode[code] ?? const <BusPosition>[],
+          direction: current.direction,
+          directions: current.directions,
         );
       }
     } catch (_) {

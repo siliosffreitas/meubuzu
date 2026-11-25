@@ -195,6 +195,7 @@ diagnóstico; no dia a dia quem atualiza é o beat.
 | `GET` | `/v1/cities/{citySlug}/stops/{code}` | Detalhe de uma parada ativa |
 | `GET` | `/v1/cities/{citySlug}/lines` | Busca de linhas (`q` ou `codes`) |
 | `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}` | Detalhe da linha (`sgLinha`) |
+| `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/directions` | Sentidos/itinerários disponíveis da linha |
 | `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Paradas da linha na ordem do itinerário (`?direction=0|1`) |
 | `GET` | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Traçado da linha (`?direction=0|1`; `route: null` se ausente) |
 | `GET` | `/v1/cities/{citySlug}/stops/{code}/lines` | Linhas que passam pela parada |
@@ -335,6 +336,36 @@ como fonte exclusiva dos traçados. Os dois sentidos da API viram uma única
 só o catálogo da API; `--shapes-only` reimporta apenas os traçados. O comando é
 idempotente, registra cada execução em `CatalogImportRun` e desativa (nunca
 apaga) linhas ausentes na origem.
+
+**Sentidos da linha** (`GET /v1/cities/{citySlug}/lines/{boardingCode}/directions`):
+serve ao seletor de itinerário do rastreamento. Um sentido existe quando há
+`Route` ou `LineStop`; a lista é vazia quando a linha não tem itinerário
+cadastrado. O `hasRoute` informa se há traçado para desenhar no mapa:
+
+```json
+{
+  "boardingCode": "1012-10",
+  "directions": [
+    {
+      "value": 0,
+      "label": "Terminal A → Jardim B",
+      "hasRoute": true,
+      "stopCount": 42
+    },
+    {
+      "value": 1,
+      "label": "Jardim B → Terminal A",
+      "hasRoute": false,
+      "stopCount": 43
+    }
+  ]
+}
+```
+
+O traçado de um sentido específico é lido com
+`GET /v1/cities/{citySlug}/lines/{boardingCode}/route?direction=1`. Trocar o
+sentido no app altera apenas a polyline; as posições dos veículos continuam
+sendo servidas por `/positions` sem filtro de sentido.
 
 **Busca de linhas** (`GET /v1/cities/{citySlug}/lines`): exige `q` ou `codes`;
 `codes` preserva a ordem recebida. Cada linha é devolvida como:

@@ -17,7 +17,7 @@ class ApiRouteService implements RouteService {
   final AuthRepository _auth;
 
   @override
-  Future<Route?> findRoute(String lineCode) async {
+  Future<Route?> findRoute(String lineCode, {int? direction}) async {
     final normalized = lineCode.trim();
     if (normalized.isEmpty) {
       return null;
@@ -30,7 +30,12 @@ class ApiRouteService implements RouteService {
       );
     }
 
-    final uri = ApiPaths.city(city.slug, 'lines/$normalized/route');
+    final path = ApiPaths.city(city.slug, 'lines/$normalized/route');
+    final uri = direction == null
+        ? path
+        : Uri.parse(path)
+            .replace(queryParameters: {'direction': '$direction'})
+            .toString();
     final body = await _client.get(
       uri,
       accessToken: _auth.accessToken,

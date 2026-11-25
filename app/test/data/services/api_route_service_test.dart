@@ -65,6 +65,28 @@ void main() {
       expect(route.positions.last.longitude, -42.80);
     });
 
+    test('envia o sentido escolhido como query parameter', () async {
+      late http.Request captured;
+      final service = buildService(
+        MockClient((request) async {
+          captured = request;
+          return jsonResponse({
+            'coordinates': [
+              [-23.53, -46.67],
+              [-23.60, -46.70],
+            ],
+          });
+        }),
+      );
+
+      final route = await service.findRoute('1012-10', direction: 1);
+
+      expect(captured.url.path, '/v1/cities/teresina/lines/1012-10/route');
+      expect(captured.url.queryParameters['direction'], '1');
+      expect(route, isNotNull);
+      expect(route!.positions, hasLength(2));
+    });
+
     test('retorna null quando a API informa route: null', () async {
       final service = buildService(
         MockClient((request) async => jsonResponse({'route': null})),

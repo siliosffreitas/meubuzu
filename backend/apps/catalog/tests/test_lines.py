@@ -228,6 +228,71 @@ class LineApiTests(AuthTestCase, SessionMixin):
         assert response.status_code == 200, response.content
         assert response.json() == {"route": None}
 
+    def test_line_directions_return_labels_from_itinerary_endpoints(self):
+        first = make_stop(self.city, "100", "PRIMEIRA")
+        second = make_stop(self.city, "200", "SEGUNDA")
+        LineStop.objects.create(line=self.line, stop=first, direction=0, sequence=1)
+        LineStop.objects.create(line=self.line, stop=second, direction=0, sequence=2)
+        LineStop.objects.create(line=self.line, stop=second, direction=1, sequence=1)
+        LineStop.objects.create(line=self.line, stop=first, direction=1, sequence=2)
+        Route.objects.create(
+            line=self.line,
+            direction=0,
+            path=[[-5.16, -42.79], [-5.17, -42.80]],
+        )
+
+        response = self.client.get("/v1/cities/teresina/lines/1/directions")
+
+        assert response.status_code == 200, response.content
+        body = response.json()
+        assert body["boardingCode"] == "1"
+        assert body["directions"] == [
+            {
+                "value": 0,
+                "label": "PRIMEIRA → SEGUNDA",
+                "hasRoute": True,
+                "stopCount": 2,
+            },
+            {
+                "value": 1,
+                "label": "SEGUNDA → PRIMEIRA",
+                "hasRoute": False,
+                "stopCount": 2,
+            },
+        ]
+
+    def test_line_directions_fall_back_to_line_endpoints_without_stops(self):
+        Route.objects.create(
+            line=self.line,
+            direction=0,
+            path=[[-5.16, -42.79], [-5.17, -42.80]],
+        )
+
+        response = self.client.get("/v1/cities/teresina/lines/1/directions")
+
+        assert response.status_code == 200, response.content
+        assert response.json()["directions"] == [
+            {
+                "value": 0,
+                "label": "Origem → Destino",
+                "hasRoute": True,
+                "stopCount": 0,
+            }
+        ]
+
+    def test_line_directions_are_empty_without_itinerary(self):
+        response = self.client.get("/v1/cities/teresina/lines/1/directions")
+
+        assert response.status_code == 200, response.content
+        assert response.json() == {"boardingCode": "1", "directions": []}
+
+    def test_line_directions_use_stable_not_found_error(self):
+        response = self.client.get(
+            "/v1/cities/teresina/lines/inexistente/directions"
+        )
+
+        self.assert_problem(response, status_code=404, code="line_not_found")
+
     def test_stop_lines_returns_lines_passing_through_stop(self):
         stop = make_stop(self.city, "100", "PRIMEIRA")
         LineStop.objects.create(line=self.line, stop=stop, direction=0, sequence=1)

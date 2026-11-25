@@ -83,6 +83,27 @@ class MapTrackingViewModel extends ViewmodelBase {
     }
   }
 
+  /// Troca o sentido exibido da linha [lineCode] (`sgLinha`).
+  ///
+  /// Retorna `true` quando o traçado foi atualizado. Em falha, mantém o estado
+  /// anterior (inclusive os ônibus já exibidos).
+  Future<bool> changeDirection(String lineCode, int direction) async {
+    final normalized = lineCode.trim();
+    if (normalized.isEmpty || _isDisposed) {
+      return false;
+    }
+
+    try {
+      final updated = await _repository.changeDirection(normalized, direction);
+      if (_isDisposed || updated == null) {
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Encerra o acompanhamento da linha [lineCode] (`sgLinha`).
   Future<void> stopTracking(String lineCode) async {
     if (_isDisposed) {

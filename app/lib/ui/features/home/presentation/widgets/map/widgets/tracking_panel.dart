@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../../../core/extensions/line_direction_label.dart';
 import '../../../../../../core/extensions/line_map_color.dart';
 import '../../../../../../core/theme/app_colors.dart';
-import '../../../../../../../domain/models/line.dart';
 import '../../../../../../../domain/models/tracked_line.dart';
 import '../map_tracking_polylines.dart';
+import 'direction_selection_sheet.dart';
 
 /// Painel flutuante com todas as linhas acompanhadas no mapa.
 ///
@@ -20,6 +20,7 @@ class TrackingPanel extends StatefulWidget {
     this.initiallyCollapsed = false,
     this.onLineTap,
     this.onRemoveLine,
+    this.onDirectionSelected,
   });
 
   /// Linhas retornadas pelo view model de rastreamento.
@@ -37,6 +38,12 @@ class TrackingPanel extends StatefulWidget {
   /// Chamado ao arrastar uma linha para o lado, para encerrar o rastreamento.
   final ValueChanged<TrackedLine>? onRemoveLine;
 
+  /// Chamado ao selecionar outro itinerário no modal de sentidos.
+  ///
+  /// O painel mostra um indicador de carregamento enquanto a ação termina.
+  final Future<void> Function(TrackedLine tracked, int direction)?
+  onDirectionSelected;
+
   @override
   State<TrackingPanel> createState() => _TrackingPanelState();
 }
@@ -47,6 +54,7 @@ class _TrackingPanelState extends State<TrackingPanel> {
   static const _maxListHeight = 300.0;
 
   late bool _isCollapsed = widget.initiallyCollapsed;
+  final Set<String> _changingDirections = <String>{};
 
   bool get _hasLines => widget.trackedLines.isNotEmpty;
 
@@ -63,6 +71,40 @@ class _TrackingPanelState extends State<TrackingPanel> {
       setState(() => _isCollapsed = false);
     } else if (velocity > 80 && !_isCollapsed) {
       setState(() => _isCollapsed = true);
+    }
+  }
+
+  /// Abre o seletor de sentidos mesmo quando há apenas um itinerário.
+  ///
+  /// Sem nenhum itinerário, o modal mostra o estado vazio e nenhuma troca é
+  /// solicitada.
+  Future<void> _openDirectionSheet(TrackedLine tracked) async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => DirectionSelectionSheet(tracked: tracked),
+    );
+    if (selected == null || selected == tracked.direction) {
+      return;
+    }
+
+    final onDirectionSelected = widget.onDirectionSelected;
+    if (onDirectionSelected == null || !mounted) {
+      return;
+    }
+
+    final key = trackedLineKey(tracked);
+    setState(() => _changingDirections.add(key));
+    try {
+      await onDirectionSelected(tracked, selected);
+    } finally {
+      if (mounted) {
+        setState(() => _changingDirections.remove(key));
+      }
     }
   }
 
@@ -144,6 +186,10 @@ class _TrackingPanelState extends State<TrackingPanel> {
                                 child: _TrackedLineTile(
                                   tracked: tracked,
                                   onTap: widget.onLineTap,
+                                  onDirectionTap: () =>
+                                      _openDirectionSheet(tracked),
+                                  isChangingDirection: _changingDirections
+                                      .contains(trackedLineKey(tracked)),
                                 ),
                               ),
                             );
@@ -299,15 +345,22 @@ class _DismissBackground extends StatelessWidget {
 }
 
 class _TrackedLineTile extends StatelessWidget {
-  const _TrackedLineTile({required this.tracked, this.onTap});
+  const _TrackedLineTile({
+    required this.tracked,
+    this.onTap,
+    this.onDirectionTap,
+    this.isChangingDirection = false,
+  });
 
   final TrackedLine tracked;
   final ValueChanged<TrackedLine>? onTap;
+  final VoidCallback? onDirectionTap;
+  final bool isChangingDirection;
 
   @override
   Widget build(BuildContext context) {
     final line = tracked.line;
-    final subtitle = trackingLineSubtitle(line);
+    final subtitle = trackingLineSubtitle(tracked);
     final onTap = this.onTap;
 
     return InkWell(
@@ -335,13 +388,43 @@ class _TrackedLineTile extends StatelessWidget {
                   ),
                   if (subtitle.isNotEmpty) ...[
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                    InkWell(
+                      key: Key(
+                        'tracking-line-direction-${trackedLineKey(tracked)}',
+                      ),
+                      onTap: onDirectionTap,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          if (isChangingDirection)
+                            const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            )
+                          else
+                            const Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 15,
+                              color: AppColors.primary,
+                            ),
+                        ],
                       ),
                     ),
                   ],
@@ -398,9 +481,20 @@ class _LineBadge extends StatelessWidget {
   }
 }
 
-/// Texto secundário da linha no painel, no mesmo formato do subtítulo dos
-/// detalhes da linha.
-String trackingLineSubtitle(Line line) => line.directionLabel;
+/// Texto secundário da linha no painel.
+///
+/// Usa o rótulo do sentido selecionado quando o catálogo informou itinerários.
+/// Sem nenhum itinerário, deixa isso explícito — o modal abre em estado vazio.
+String trackingLineSubtitle(TrackedLine tracked) {
+  final label = tracked.currentDirection?.label.trim();
+  if (label != null && label.isNotEmpty) {
+    return label;
+  }
+  if (tracked.directions.isNotEmpty) {
+    return tracked.line.directionLabel;
+  }
+  return 'Itinerário não disponível';
+}
 
 String _formatTime(DateTime value) {
   String twoDigits(int number) => number.toString().padLeft(2, '0');

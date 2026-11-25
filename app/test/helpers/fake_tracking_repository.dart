@@ -17,6 +17,7 @@ class FakeTrackingRepository implements TrackingRepository {
 
   final List<String> startedCodes = <String>[];
   final List<String> stoppedCodes = <String>[];
+  final Map<String, int> changedDirections = <String, int>{};
 
   List<TrackedLine> _current;
   bool _isDisposed = false;
@@ -51,6 +52,27 @@ class FakeTrackingRepository implements TrackingRepository {
       if (_key(tracked.line) == normalized) {
         return tracked;
       }
+    }
+    return null;
+  }
+
+  @override
+  Future<TrackedLine?> changeDirection(String lineCode, int direction) async {
+    final normalized = lineCode.trim();
+    changedDirections[normalized] = direction;
+    for (final tracked in _current) {
+      if (_key(tracked.line) != normalized) {
+        continue;
+      }
+      final updated = TrackedLine(
+        line: tracked.line,
+        route: tracked.route,
+        busPositions: tracked.busPositions,
+        direction: direction,
+        directions: tracked.directions,
+      );
+      emitLine(updated);
+      return updated;
     }
     return null;
   }

@@ -4,6 +4,7 @@ from .views import (
     CityDetailView,
     CityListView,
     LineDetailView,
+    LineDirectionsView,
     LineListView,
     LineRouteView,
     LineStopsView,
@@ -34,6 +35,11 @@ urlpatterns = [
         "cities/<slug:city_slug>/lines/<str:boarding_code>",
         LineDetailView.as_view(),
         name="line-detail",
+    ),
+    path(
+        "cities/<slug:city_slug>/lines/<str:boarding_code>/directions",
+        LineDirectionsView.as_view(),
+        name="line-directions",
     ),
     path(
         "cities/<slug:city_slug>/lines/<str:boarding_code>/stops",

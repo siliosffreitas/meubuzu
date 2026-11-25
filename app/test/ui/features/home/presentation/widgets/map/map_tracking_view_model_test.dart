@@ -27,7 +27,11 @@ final _trackedLine = TrackedLine(
 );
 
 class _FakeTrackingRepository implements TrackingRepository {
-  _FakeTrackingRepository({this.trackedLine, this.error});
+  _FakeTrackingRepository({
+    this.trackedLine,
+    this.error,
+    this.changeShouldFail = false,
+  });
 
   final TrackedLine? trackedLine;
   final Object? error;
@@ -35,6 +39,9 @@ class _FakeTrackingRepository implements TrackingRepository {
 
   final started = <String>[];
   final stopped = <String>[];
+  final changedCodes = <String>[];
+  final changedValues = <int>[];
+  bool changeShouldFail = false;
   bool isDisposed = false;
 
   @override
@@ -50,6 +57,20 @@ class _FakeTrackingRepository implements TrackingRepository {
     final error = this.error;
     if (error != null) {
       throw error;
+    }
+    final tracked = trackedLine;
+    if (tracked != null) {
+      emit([tracked]);
+    }
+    return tracked;
+  }
+
+  @override
+  Future<TrackedLine?> changeDirection(String lineCode, int direction) async {
+    changedCodes.add(lineCode);
+    changedValues.add(direction);
+    if (changeShouldFail) {
+      return null;
     }
     final tracked = trackedLine;
     if (tracked != null) {
@@ -203,6 +224,39 @@ void main() {
       await pumpEventQueue();
 
       expect(viewModel.state, isA<MapTrackingError>());
+    });
+
+    test('troca o sentido pelo repositório', () async {
+      final repository = _FakeTrackingRepository(trackedLine: _trackedLine);
+      final viewModel = MapTrackingViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      final success = await viewModel.changeDirection(' 0301 ', 1);
+
+      expect(success, isTrue);
+      expect(repository.changedCodes, ['0301']);
+      expect(repository.changedValues, [1]);
+      expect(viewModel.trackedLines, [_trackedLine]);
+    });
+
+    test('falha na troca mantém o estado anterior', () async {
+      final repository = _FakeTrackingRepository(
+        trackedLine: _trackedLine,
+        changeShouldFail: true,
+      );
+      final viewModel = MapTrackingViewModel(repository);
+      addTearDown(viewModel.dispose);
+      addTearDown(repository.dispose);
+
+      repository.emit([_trackedLine]);
+      await pumpEventQueue();
+
+      final success = await viewModel.changeDirection('0301', 1);
+
+      expect(success, isFalse);
+      expect(viewModel.trackedLines, [_trackedLine]);
+      expect(viewModel.state, isA<MapTrackingReady>());
     });
 
     test('encerra o acompanhamento pelo repositório', () async {

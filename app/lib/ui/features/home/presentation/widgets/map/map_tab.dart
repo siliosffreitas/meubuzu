@@ -98,6 +98,7 @@ class _MapTabState extends State<MapTab>
 
   final Set<String> _fittedLineCodes = <String>{};
   Set<String> _trackedLineKeys = <String>{};
+  Map<String, int> _trackedDirections = <String, int>{};
   final TrackingBusMarkerIcons _busIcons = TrackingBusMarkerIcons();
   final NearbyStopMarkerIcons _stopIcons = NearbyStopMarkerIcons();
   final TrackingBusDirections _busDirections = TrackingBusDirections();
@@ -168,6 +169,10 @@ class _MapTabState extends State<MapTab>
           for (final tracked in _trackingViewModel.trackedLines)
             trackedLineKey(tracked),
         };
+        _trackedDirections = {
+          for (final tracked in _trackingViewModel.trackedLines)
+            trackedLineKey(tracked): tracked.direction,
+        };
         _busDirections.update(_trackingViewModel.trackedLines);
         _busAnimator.jumpTo(_trackedBusPositions());
         _ensureBusIcons();
@@ -235,6 +240,7 @@ class _MapTabState extends State<MapTab>
     }
 
     _fittedLineCodes.clear();
+    _trackedDirections.clear();
     if (_selectedSuggestion == null && _selectedMarker == null) {
       return;
     }
@@ -309,8 +315,21 @@ class _MapTabState extends State<MapTab>
     final currentKeys = {
       for (final tracked in trackedLines) trackedLineKey(tracked),
     };
+    final currentDirections = {
+      for (final tracked in trackedLines)
+        trackedLineKey(tracked): tracked.direction,
+    };
+    final previousDirections = _trackedDirections;
+    final changedKeys = <String>{
+      for (final entry in currentDirections.entries)
+        if (previousDirections[entry.key] != entry.value) entry.key,
+    };
     final removedKeys = _trackedLineKeys.difference(currentKeys);
     _trackedLineKeys = currentKeys;
+    _trackedDirections = currentDirections;
+    if (changedKeys.isNotEmpty) {
+      _fittedLineCodes.removeAll(changedKeys);
+    }
 
     _busDirections.update(trackedLines);
     _busAnimator.animateTo(_trackedBusPositions());
@@ -318,6 +337,8 @@ class _MapTabState extends State<MapTab>
     setState(() {});
     if (removedKeys.isNotEmpty) {
       _fitAfterRemoval(trackedLines);
+    } else if (changedKeys.isNotEmpty) {
+      _fitChangedRoutes(trackedLines, changedKeys);
     } else {
       _fitLatestRoute();
     }
@@ -344,6 +365,27 @@ class _MapTabState extends State<MapTab>
     }
 
     _fitPositions(trackedLinesCoordinates(trackedLines));
+  }
+
+  /// Enquadra os traçados das linhas cujo sentido acabou de mudar.
+  ///
+  /// As posições dos ônibus não são filtradas por sentido, então apenas a
+  /// polyline e a câmera acompanham o novo itinerário.
+  void _fitChangedRoutes(List<TrackedLine> trackedLines, Set<String> keys) {
+    final positions = <UserCoordinates>[];
+    for (final tracked in trackedLines) {
+      final key = trackedLineKey(tracked);
+      if (!keys.contains(key)) {
+        continue;
+      }
+      final routePositions = tracked.route?.positions;
+      if (routePositions == null || routePositions.isEmpty) {
+        continue;
+      }
+      positions.addAll(routePositions);
+      _fittedLineCodes.add(key);
+    }
+    _fitPositions(positions);
   }
 
   /// Descarta enquadramentos de linhas que saíram do mapa.
@@ -535,6 +577,22 @@ class _MapTabState extends State<MapTab>
     if (_selectedSuggestion?.code == code) {
       setState(() => _selectedSuggestion = null);
     }
+  }
+
+  /// Troca o sentido de uma linha acompanhada no mapa.
+  ///
+  /// Em falha, o view model mantém o traçado e os ônibus anteriores; aqui apenas
+  /// avisamos o usuário para não deixar a ação silenciosa.
+  Future<void> _changeDirection(TrackedLine tracked, int direction) async {
+    final code = _trackingCode(tracked);
+    if (code.isEmpty) {
+      return;
+    }
+    final success = await _trackingViewModel.changeDirection(code, direction);
+    if (!mounted || success) {
+      return;
+    }
+    _showMessage('Não foi possível trocar o sentido da linha $code.');
   }
 
   Future<void> _selectSuggestion(PlaceSuggestion suggestion) async {
@@ -770,6 +828,7 @@ class _MapTabState extends State<MapTab>
                   updatedAt: _trackingViewModel.updatedAt,
                   onLineTap: _openTrackedLineDetails,
                   onRemoveLine: _removeTrackedLine,
+                  onDirectionSelected: _changeDirection,
                 ),
             ],
           ),

@@ -9,7 +9,7 @@ from django.core.cache import cache
 
 from apps.common.exceptions import ApiError
 
-from .models import City, Line, Route, Stop
+from .models import City, Line, LineStop, Route, Stop
 from .payloads import line_payload, route_payload, stop_payload
 from .text import normalize_search_text
 
@@ -355,8 +355,6 @@ def line_stops(line: Line, direction: int | None = None) -> list[dict]:
     tem o inverso — o app continua consumindo um itinerário por vez.
     """
 
-    from .models import LineStop
-
     if direction is None:
         direction = (
             0
@@ -370,6 +368,75 @@ def line_stops(line: Line, direction: int | None = None) -> list[dict]:
         .order_by("sequence")
     )
     return [stop_payload(relation.stop) for relation in relations]
+
+
+def _direction_label(
+    line: Line,
+    direction: int,
+    stops: list[Stop],
+) -> str:
+    """Rótulo público de um sentido, priorizando as pontas do itinerário."""
+
+    if stops:
+        first = (stops[0].name or stops[0].code).strip()
+        last = (stops[-1].name or stops[-1].code).strip()
+        if first and last:
+            return f"Circular • {first}" if first == last else f"{first} → {last}"
+
+    origin = (line.origin or "").strip()
+    destination = (line.destination or "").strip()
+    if origin and destination:
+        if origin == destination:
+            return f"Circular • {origin}"
+        if direction == 0:
+            return f"{origin} → {destination}"
+        if direction == 1:
+            return f"{destination} → {origin}"
+    if origin:
+        return origin
+    if destination:
+        return destination
+    return f"Sentido {direction + 1}"
+
+
+def line_directions(line: Line) -> list[dict]:
+    """Sentidos disponíveis da linha, com rótulo e disponibilidade de traçado.
+
+    O sentido existe quando há traçado (`Route`) ou paradas (`LineStop`). Uma
+    linha sem nenhum dos dois devolve uma lista vazia: o app trata esse caso
+    como "itinerário não disponível" e não inventa um sentido.
+    """
+
+    route_availability = {
+        direction: bool(path)
+        for direction, path in Route.objects.filter(line=line).values_list(
+            "direction", "path"
+        )
+    }
+
+    stops_by_direction: dict[int, list[Stop]] = {}
+    relations = (
+        LineStop.objects.filter(line=line)
+        .select_related("stop")
+        .order_by("direction", "sequence")
+    )
+    for relation in relations:
+        stops_by_direction.setdefault(relation.direction, []).append(relation.stop)
+
+    directions = sorted(set(route_availability) | set(stops_by_direction))
+    return [
+        {
+            "value": direction,
+            "label": _direction_label(
+                line,
+                direction,
+                stops_by_direction.get(direction, []),
+            ),
+            "hasRoute": route_availability.get(direction, False),
+            "stopCount": len(stops_by_direction.get(direction, [])),
+        }
+        for direction in directions
+    ]
 
 
 def route_for_line(line: Line, direction: int | None = None) -> dict | None:

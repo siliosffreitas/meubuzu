@@ -551,6 +551,8 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 
 - Armazenar `LineString` em `geography(LineString,4326)`.
 - Suportar sentido ida/volta quando disponível.
+- Expor os sentidos em `GET /v1/cities/{citySlug}/lines/{boardingCode}/directions`, com `value`, `label`, `hasRoute` e `stopCount`; a lista é vazia quando a linha não possui nenhum itinerário.
+- Aceitar `?direction=0|1` em `/route` e `/stops` para servir o traçado e as paradas do sentido selecionado.
 - Retornar coordenadas em ordem.
 - Cachear com ETag/versão. As chaves de cache de catálogo e posições incluem a versão do formato do payload; incrementá-la no deploy que altera o contrato evita servir payloads antigos até o TTL expirar.
 - Incluir `updatedAt` da importação de origem.
@@ -558,7 +560,8 @@ Produção recusa inicializar com `DATA_MODE=demo` ou `BILLING_ENABLED=false`.
 **Critérios de aceite:**
 
 - App desenha o traçado no mapa.
-- Linha sem traçado não quebra a tela.
+- Trocar o sentido substitui a polyline e mantém as posições dos veículos visíveis.
+- Linha sem traçado não quebra a tela; sem itinerário, o seletor mostra estado vazio.
 - Resposta inclui versão/atualização.
 
 ---
@@ -1551,6 +1554,7 @@ Atualizada por upsert na mesma transação da ingestão.
 |---|---|---|---|
 | GET | `/v1/cities/{citySlug}/lines` | Access | Busca linhas |
 | GET | `/v1/cities/{citySlug}/lines/{boardingCode}` | Access | Detalhes da linha (`sgLinha`) |
+| GET | `/v1/cities/{citySlug}/lines/{boardingCode}/directions` | Access | Sentidos/itinerários disponíveis (`value`, `label`, `hasRoute`, `stopCount`) |
 | GET | `/v1/cities/{citySlug}/lines/{boardingCode}/stops` | Access | Paradas da linha |
 | GET | `/v1/cities/{citySlug}/lines/{boardingCode}/route` | Access | Traçado |
 | GET | `/v1/cities/{citySlug}/positions?codes=...` | Trial/Pago | Posições de várias linhas (`sgLinha`) |
@@ -2283,7 +2287,7 @@ Roadmap por gates, sem datas. M4–M6 não começam sem o acesso total à API de
 | D42 | Segunda cidade | São Paulo-SP (`sao-paulo`), fuso `America/Sao_Paulo`, importação semanal; criada inativa e ativada por comando |
 | D43 | Fonte do catálogo de São Paulo | API Olho Vivo (SPTrans) para linhas, paradas e itinerários; GTFS local apenas para `shapes.txt` e lista semente |
 | D44 | Identificadores da SPTrans | `cl` interno fica em `LineSourceRef`; `boardingCode` público é `lt-tl` (ex.: `1012-10`); `cp` continua sendo o código da parada |
-| D45 | Sentidos da linha | Os sentidos `sl=1`/`sl=2` viram um único `Line` com `direction` 0/1; `direction=0` é o padrão e `?direction=1` é opcional |
+| D45 | Sentidos da linha | Os sentidos `sl=1`/`sl=2` viram um único `Line` com `direction` 0/1; `direction=0` é o padrão e `?direction=1` é opcional. `/directions` lista os sentidos com rota ou paradas; sem nenhum dos dois a lista é vazia e o app abre o seletor em estado vazio |
 | D46 | Fonte de rastreamento por cidade | Teresina `csv_demo`; São Paulo `sptrans_api`; leitura sempre pelo backend |
 | D47 | GTFS | Não versionado; `SPTRANS_GTFS_DIR` aponta para pasta local/volume |
 | D48 | Acesso live em staging | `TRACKING_LIVE_ACCESS_ENABLED=true` libera o rastreamento live sem billing somente em staging; produção depende de trial/assinatura |

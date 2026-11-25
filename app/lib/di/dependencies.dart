@@ -11,11 +11,13 @@ import '../data/services/api_bus_stop_service.dart';
 import '../data/services/api_client.dart';
 import '../data/services/api_favorites_service.dart';
 import '../data/services/api_tracking_service.dart';
+import '../data/services/api_line_directions_service.dart';
 import '../data/services/api_line_search_service.dart';
 import '../data/services/api_line_stops_service.dart';
 import '../data/services/api_route_service.dart';
 import '../data/services/bus_stop_service.dart';
 import '../data/services/favorites_service.dart';
+import '../data/services/line_directions_service.dart';
 import '../data/services/line_search_service.dart';
 import '../data/services/line_stops_service.dart';
 import '../data/services/location_service.dart';
@@ -75,6 +77,12 @@ Future<void> setupDependencies() async {
       injector.getRepository<AuthRepository>(),
     ),
   );
+  injector.addService<LineDirectionsService>(
+    () => ApiLineDirectionsService(
+      injector.getService<ApiClient>(),
+      injector.getRepository<AuthRepository>(),
+    ),
+  );
   injector.addService<RouteService>(
     () => ApiRouteService(
       injector.getService<ApiClient>(),
@@ -130,6 +138,7 @@ Future<void> setupDependencies() async {
     () => TrackingRepositoryImpl(
       injector.getService<RouteService>(),
       injector.getService<LineSearchService>(),
+      directionsService: injector.getService<LineDirectionsService>(),
       trackingService: injector.getService<TrackingService>(),
     ),
   );

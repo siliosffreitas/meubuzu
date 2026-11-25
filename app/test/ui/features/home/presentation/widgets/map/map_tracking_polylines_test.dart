@@ -50,6 +50,29 @@ void main() {
       expect(polyline.width, trackingPolylineWidth);
     });
 
+    test('substitui a polyline quando o sentido muda', () {
+      final reversed = TrackedLine(
+        line: _line,
+        route: Route(
+          positions: const [
+            UserCoordinates(latitude: -5.2, longitude: -42.9),
+            UserCoordinates(latitude: -5.1, longitude: -42.8),
+          ],
+        ),
+        busPositions: const [],
+        direction: 1,
+      );
+
+      final polylines = buildTrackingPolylines([reversed]);
+
+      expect(polylines, hasLength(1));
+      expect(polylines.single.polylineId.value, 'tracked-0301');
+      expect(
+        polylines.single.points,
+        const [LatLng(-5.2, -42.9), LatLng(-5.1, -42.8)],
+      );
+    });
+
     test('usa a mesma cor de identificação da linha', () {
       final polylines = buildTrackingPolylines([_trackedLine]);
 

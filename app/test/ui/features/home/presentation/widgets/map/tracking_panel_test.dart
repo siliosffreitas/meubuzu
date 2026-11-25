@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meubuzu/domain/models/bus.dart';
 import 'package:meubuzu/domain/models/bus_position.dart';
 import 'package:meubuzu/domain/models/line.dart';
+import 'package:meubuzu/domain/models/line_direction.dart';
 import 'package:meubuzu/domain/models/tracked_line.dart';
 import 'package:meubuzu/ui/core/extensions/line_map_color.dart';
 import 'package:meubuzu/ui/core/theme/app_theme.dart';
@@ -29,6 +30,20 @@ const _line305 = Line(
 
 TrackedLine _tracked(Line line) {
   return TrackedLine(line: line, route: null, busPositions: const []);
+}
+
+TrackedLine _trackedWithDirections(
+  Line line,
+  List<LineDirection> directions, {
+  int direction = 0,
+}) {
+  return TrackedLine(
+    line: line,
+    route: null,
+    busPositions: const [],
+    direction: direction,
+    directions: directions,
+  );
 }
 
 BusPosition _position({bool isStale = false, String? dataMode}) {
@@ -115,10 +130,9 @@ void main() {
       expect(find.text('Atualizado 08:42:15'), findsOneWidget);
 
       expect(find.text('Jardim das Flores'), findsOneWidget);
-      expect(find.text('Circular • Praça do Ipê'), findsNWidgets(2));
+      expect(find.text('Itinerário não disponível'), findsNWidgets(3));
       expect(find.text('Vila do Sol'), findsOneWidget);
       expect(find.text('Circular Parque'), findsOneWidget);
-      expect(find.text('Circular • Terminal Central'), findsOneWidget);
     });
 
     testWidgets('usa o singular quando há apenas uma linha', (tester) async {
@@ -353,42 +367,134 @@ void main() {
     });
   });
 
+  group('seleção de sentido', () {
+    testWidgets('abre o modal mesmo sem nenhum itinerário', (tester) async {
+      await tester.pumpWidget(
+        _wrap(TrackingPanel(trackedLines: [_tracked(_line101)])),
+      );
+
+      await tester.tap(
+        find.byKey(const Key('tracking-line-direction-101')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sentido da linha'), findsOneWidget);
+      expect(find.byKey(const Key('direction-selection-empty')), findsOneWidget);
+    });
+
+    testWidgets('abre o modal com um único sentido já marcado', (tester) async {
+      final selected = <int>[];
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [
+              _trackedWithDirections(
+                _line101,
+                const [
+                  LineDirection(
+                    value: 0,
+                    label: 'Circular • Praça do Ipê',
+                    hasRoute: true,
+                  ),
+                ],
+              ),
+            ],
+            onDirectionSelected: (tracked, direction) async {
+              selected.add(direction);
+            },
+          ),
+        ),
+      );
+
+      expect(find.text('Circular • Praça do Ipê'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('tracking-line-direction-101')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('direction-option-101-0')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('direction-option-101-0')));
+      await tester.pumpAndSettle();
+
+      expect(selected, isEmpty);
+      expect(find.text('Sentido da linha'), findsNothing);
+    });
+
+    testWidgets('seleciona outro sentido pelo modal', (tester) async {
+      final selected = <int>[];
+      await tester.pumpWidget(
+        _wrap(
+          TrackingPanel(
+            trackedLines: [
+              _trackedWithDirections(
+                _line203,
+                const [
+                  LineDirection(
+                    value: 0,
+                    label: 'Terminal → Bairro',
+                    hasRoute: true,
+                  ),
+                  LineDirection(
+                    value: 1,
+                    label: 'Bairro → Terminal',
+                    hasRoute: true,
+                  ),
+                ],
+              ),
+            ],
+            onDirectionSelected: (tracked, direction) async {
+              selected.add(direction);
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('tracking-line-direction-203')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Escolha qual itinerário será exibido no mapa.'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('direction-option-203-1')));
+      await tester.pumpAndSettle();
+
+      expect(selected, [1]);
+      expect(find.text('Sentido da linha'), findsNothing);
+    });
+  });
+
   group('trackingLineSubtitle', () {
-    test('indica linha circular quando origem e destino são iguais', () {
-      expect(trackingLineSubtitle(_line101), 'Circular • Praça do Ipê');
+    test('usa o rótulo do sentido selecionado', () {
+      final tracked = _trackedWithDirections(
+        _line101,
+        const [
+          LineDirection(value: 0, label: 'Circular • Praça do Ipê'),
+          LineDirection(value: 1, label: 'Sentido Parque'),
+        ],
+        direction: 1,
+      );
+
+      expect(trackingLineSubtitle(tracked), 'Sentido Parque');
     });
 
-    test('indica o sentido quando origem e destino são diferentes', () {
+    test('usa o rótulo da linha quando o sentido não tem rótulo', () {
       const line = Line(
         name: 'Linha',
         origin: 'Centro',
         destination: 'Bairro',
         boardingCode: '0101',
       );
-
-      expect(trackingLineSubtitle(line), 'Sentido Bairro');
-    });
-
-    test('indica o sentido quando a origem está vazia', () {
-      const line = Line(
-        name: 'Linha',
-        origin: '',
-        destination: 'Bairro',
-        boardingCode: '0101',
+      final tracked = _trackedWithDirections(
+        line,
+        const [LineDirection(value: 2, label: '', hasRoute: true)],
+        direction: 2,
       );
 
-      expect(trackingLineSubtitle(line), 'Sentido Bairro');
+      expect(trackingLineSubtitle(tracked), 'Sentido Bairro');
     });
 
-    test('usa a origem quando o destino está vazio', () {
-      const line = Line(
-        name: 'Linha',
-        origin: 'Centro',
-        destination: '',
-        boardingCode: '0101',
-      );
-
-      expect(trackingLineSubtitle(line), 'Centro');
+    test('indica quando a linha não possui itinerário', () {
+      expect(trackingLineSubtitle(_tracked(_line101)), 'Itinerário não disponível');
     });
   });
 }

@@ -136,6 +136,10 @@ class _FakeTrackingRepository implements TrackingRepository {
   Future<TrackedLine?> startTracking(String lineCode) async => null;
 
   @override
+  Future<TrackedLine?> changeDirection(String lineCode, int direction) async =>
+      null;
+
+  @override
   Future<void> stopTracking(String lineCode) async {}
 
   @override

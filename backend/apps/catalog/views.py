@@ -13,6 +13,7 @@ from .services import (
     cached_lines,
     cached_stops,
     get_active_city,
+    line_directions,
     line_stops,
     parse_bbox,
     parse_direction,
@@ -168,6 +169,25 @@ class LineDetailView(CityScopedAPIView):
     def get(self, request, city_slug: str, boarding_code: str):
         line = resolve_line(self.city, boarding_code)
         return Response(line_payload(line))
+
+
+class LineDirectionsView(CityScopedAPIView):
+    """Sentidos disponíveis da linha, com rótulo e existência de traçado.
+
+    A lista pode ser vazia quando a linha ainda não possui itinerário. O app
+    usa esse endpoint para oferecer a seleção de sentido no rastreamento.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, city_slug: str, boarding_code: str):
+        line = resolve_line(self.city, boarding_code)
+        return Response(
+            {
+                "boardingCode": line.boarding_code,
+                "directions": line_directions(line),
+            }
+        )
 
 
 class LineStopsView(CityScopedAPIView):
